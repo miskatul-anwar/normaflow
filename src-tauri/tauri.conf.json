@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Norma Flow",
+  "version": "2.3.0",
+  "identifier": "com.normaflow",
+  "plugins": {},
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Norma Flow",
+        "titleBarStyle": "Visible",
+        "width": 1280,
+        "height": 720,
+        "minWidth": 800,
+        "minHeight": 600,
+        "fullscreen": false,
+        "theme": "Light",
+        "decorations": true,
+        "center": true,
+        "devtools": false,
+        "backgroundColor": "#ffffff",
+        "maximized": true,
+        "minimizable": true,
+        "resizable": true,
+        "shadow": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png",
+      "icons/logo.ico",
+      "icons/icon.webp",
+      "icons/icon.icns"
+    ]
+  }
+}
