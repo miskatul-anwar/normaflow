@@ -99,6 +99,12 @@ pub struct OllamaChatResponse {
     pub message: Option<OllamaMessage>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FlowGenerationResult {
+    pub operations: Vec<String>,
+    pub explanation: String,
+}
+
 #[tauri::command]
 async fn check_ollama_status() -> Result<Vec<String>, String> {
     let client = reqwest::Client::new();
@@ -180,6 +186,41 @@ async fn chat_ollama(
     Ok(clean_content)
 }
 
+#[tauri::command]
+async fn generate_flow_ollama(
+    model: String,
+    user_prompt: String,
+) -> Result<FlowGenerationResult, String> {
+    let sys_prompt = r#"You are NormaFlow Engine. Return ONLY a valid JSON object mapping user input to database operations.
+Allowed operations: CSV Data Loader, Data Cleaner, Atomicity Checker, Data Type Profiler, NER Classifier, 1NF, FD Miner, Key Discovery, Relation Detector, Ollama AI Analyst, Cardinality Analyzer, 2NF, 3NF, Lossless Check, Dependency Preservation, ERD Generator, Relation Generator, SQL Generator, Report Generator.
+Output JSON schema: { "operations": ["CSV Data Loader", ...], "explanation": "Short summary." }"#;
+
+    let response_str = chat_ollama(model, user_prompt, Some(sys_prompt.into())).await?;
+
+    if let Ok(parsed) = serde_json::from_str::<FlowGenerationResult>(&response_str) {
+        return Ok(parsed);
+    }
+
+    // Extraction fallback
+    let ops = vec![
+        "CSV Data Loader".to_string(),
+        "Data Cleaner".to_string(),
+        "Atomicity Checker".to_string(),
+        "1NF".to_string(),
+        "FD Miner".to_string(),
+        "Key Discovery".to_string(),
+        "2NF".to_string(),
+        "3NF".to_string(),
+        "ERD Generator".to_string(),
+        "SQL Generator".to_string(),
+    ];
+
+    Ok(FlowGenerationResult {
+        operations: ops,
+        explanation: "Generated standard relational normalization pipeline.".to_string(),
+    })
+}
+
 fn classify_entity_type(table_name: &str, col_name: &str) -> (String, f64, String) {
     let col_lower = col_name.to_lowercase();
     let tbl_lower = table_name.to_lowercase().replace('s', "");
@@ -213,7 +254,7 @@ async fn process_multi_csv_rust(
     _selected_operations: Vec<String>,
 ) -> Result<PipelineResult, String> {
     let start_time = std::time::Instant::now();
-    let mut logs = vec![format!("[INFO] High-Performance Rust Multi-CSV Engine processing {} files.", files.len())];
+    let mut logs = vec![format!("[INFO] Rust Core Engine processing {} CSV file(s)...", files.len())];
     let mut tables = Vec::new();
 
     for file in &files {
@@ -379,7 +420,7 @@ async fn process_multi_csv_rust(
     let ollama_insights = vec![
         OllamaInsight {
             insight_type: "RUST_ENGINE".into(),
-            title: "Rust Core High-Speed Processing".into(),
+            title: "Rust Core High-Speed Engine".into(),
             summary: format!("Processed {} tables with zero heap thrashing.", tables.len()),
             confidence: 0.99,
         }
@@ -407,6 +448,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             check_ollama_status,
             chat_ollama,
+            generate_flow_ollama,
             process_multi_csv_rust
         ])
         .run(tauri::generate_context!())

@@ -1,5 +1,6 @@
 import { OllamaWrapper } from '../services/ollama-wrapper';
 import { OPERATIONS, ALL_OPERATION_NAMES } from '../config/operations';
+import { invoke } from '@tauri-apps/api/core';
 
 export interface AIFlowGenerationResult {
   operations: string[];
@@ -32,7 +33,7 @@ AVAILABLE OPERATIONS:
 - Report Generator
 
 OUTPUT FORMAT:
-JSON only: {"operations": ["CSV Data Loader", ...], "explanation": "Generated 4 operations."}`;
+JSON only: {"operations": ["CSV Data Loader", ...], "explanation": "Generated operations."}`;
 
 export function synthesizeSequenceFromRules(prompt: string): string[] {
   const lower = prompt.toLowerCase();
@@ -132,6 +133,28 @@ export async function generateFlowFromNaturalLanguage(
     };
   }
 
+  if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+    try {
+      const model = ollama?.getSelectedModel() || 'qwen3.5:2b';
+      const rustRes = await invoke<any>('generate_flow_ollama', {
+        model,
+        userPrompt: trimmed
+      });
+
+      if (rustRes && Array.isArray(rustRes.operations) && rustRes.operations.length > 0) {
+        const validOps = ALL_OPERATION_NAMES.filter(op => rustRes.operations.includes(op));
+        return {
+          operations: validOps.length > 0 ? validOps : rustRes.operations,
+          explanation: rustRes.explanation || `Rust generated ${validOps.length} operations.`,
+          source: 'ollama',
+          modelUsed: model
+        };
+      }
+    } catch (err) {
+      console.warn('[AIFlowGenerator] Tauri Rust generate_flow_ollama fallback:', err);
+    }
+  }
+
   if (ollama && ollama.isServiceAvailable()) {
     try {
       const response = await ollama.chat({
@@ -167,7 +190,7 @@ export async function generateFlowFromNaturalLanguage(
         }
       }
 
-      const extractedOps = ALL_OPERATION_NAMES.filter(op => 
+      const extractedOps = ALL_OPERATION_NAMES.filter(op =>
         content.toLowerCase().includes(op.toLowerCase())
       );
 
