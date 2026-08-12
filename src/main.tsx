@@ -5,7 +5,7 @@ import '@fontsource/dm-serif-display';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { Toaster } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import { listen } from '@tauri-apps/api/event';
 
 // Global toast instance for Tauri integration
@@ -50,12 +50,9 @@ listen('processing_update', (event: any) => {
     detail: { phase, operation, progress, message }
   }));
 
-  // Show processing updates as toast
-  window.dispatchEvent(new CustomEvent('show-sonner-toast', {
-    detail: {
-      type: 'info',
-      message: `Processing: ${operation} (${phase}) - ${message}`
-    }
+  // Dispatch internal processing update event
+  window.dispatchEvent(new CustomEvent('processing-update', {
+    detail: { phase, operation, progress, message }
   }));
 });
 
@@ -64,7 +61,6 @@ window.addEventListener('show-sonner-toast', (e: any) => {
   playBubblePop();
   const { type, message } = e.detail;
 
-  // Log to browser console with styling
   const timestamp = new Date().toLocaleTimeString();
   const logEntry = `[${timestamp}] ${message}`;
 
@@ -80,16 +76,15 @@ window.addEventListener('show-sonner-toast', (e: any) => {
     `color: ${colors[type as keyof typeof colors] || colors.info}; font-weight: bold; font-family: 'CMU Serif Roman', serif;`
   );
 
-  if (window.toast) {
-    window.toast[type](message, {
-      duration: type === 'error' ? 5000 : 3000,
-      style: {
-        fontFamily: "'CMU Serif Roman', serif",
-        fontSize: '14px',
-        lineHeight: '1.4',
-      },
-    });
-  }
+  const toastFn = (toast as any)[type] || toast.info || toast;
+  toastFn(message, {
+    duration: type === 'error' ? 5000 : 3000,
+    style: {
+      fontFamily: "'CMU Serif Roman', serif",
+      fontSize: '14px',
+      lineHeight: '1.4',
+    },
+  });
 });
 
 // Set up global toast reference

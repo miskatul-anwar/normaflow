@@ -38,8 +38,37 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
     return mimeTypes[type] || 'text/plain';
   };
 
+  const objectsToCSV = (rows: any[]): string => {
+    if (!Array.isArray(rows) || rows.length === 0) return '';
+    const first = rows[0];
+    if (typeof first !== 'object' || first === null) return String(rows.join('\n'));
+    const headers = Object.keys(first);
+    if (headers.length === 0) return '';
+    const lines: string[] = [];
+    lines.push(headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(','));
+    rows.forEach(row => {
+      if (!row || typeof row !== 'object') return;
+      const values = headers.map(h => {
+        const val = row[h];
+        if (val === null || val === undefined) return '""';
+        const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
+        return `"${str.replace(/"/g, '""')}"`;
+      });
+      lines.push(values.join(','));
+    });
+    return lines.join('\n');
+  };
+
+  const getFileContentString = (file: OutputFile): string => {
+    if (typeof file.content === 'string') return file.content;
+    if (file.type === 'csv' && Array.isArray(file.content)) {
+      return objectsToCSV(file.content);
+    }
+    return JSON.stringify(file.content, null, 2);
+  };
+
   const downloadFile = (file: OutputFile) => {
-    const content = typeof file.content === 'string' ? file.content : JSON.stringify(file.content, null, 2);
+    const content = getFileContentString(file);
     const blob = new Blob([content], { type: getMimeType(file.type) });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -148,7 +177,7 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
                           <span className="text-sm text-gray-300 font-mono">{file.name}</span>
                           <button
                             onClick={() => {
-                              const content = typeof file.content === 'string' ? file.content : JSON.stringify(file.content, null, 2);
+                              const content = getFileContentString(file);
                               navigator.clipboard.writeText(content);
                             }}
                             className="text-gray-400 hover:text-gray-200 transition-colors"
@@ -159,9 +188,7 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
                         </div>
                         <div className="p-4 max-h-64 overflow-y-auto">
                           <pre className="text-sm text-gray-100 whitespace-pre-wrap">
-                            {typeof file.content === 'string'
-                              ? file.content.substring(0, 1000) + (file.content.length > 1000 ? '\n...\n[Content truncated]' : '')
-                              : JSON.stringify(file.content, null, 2).substring(0, 1000)}
+                            {getFileContentString(file).substring(0, 1000) + (getFileContentString(file).length > 1000 ? '\n...\n[Content truncated]' : '')}
                           </pre>
                         </div>
                       </div>

@@ -163,7 +163,7 @@ export interface ProcessingProgress {
 export interface OutputFile {
   name: string;
   content: string;
-  type: 'sql' | 'markdown' | 'json' | 'mermaid' | 'text';
+  type: 'sql' | 'markdown' | 'json' | 'mermaid' | 'text' | 'csv';
   category: string;
 }
 

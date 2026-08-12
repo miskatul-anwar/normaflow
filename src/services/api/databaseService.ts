@@ -1082,12 +1082,13 @@ class DatabaseService {
         category: 'Data Preparation'
       });
 
+      const csvContent = this.objectsToCSV(data);
       files.push({
         name: 'cleaned_data.csv',
         type: 'csv',
         description: 'Cleaned dataset in CSV format',
-        content: data.slice(0, 100),
-        size: this.estimateCSVSize(data),
+        content: csvContent,
+        size: csvContent.length,
         category: 'Data Preparation'
       });
     }
@@ -1252,12 +1253,13 @@ class DatabaseService {
       // Export individual 2NF relation data
       relations2NF.forEach((relation) => {
         if (relation.rows && relation.rows.length > 0) {
+          const csvText = this.objectsToCSV(relation.rows);
           files.push({
             name: `relation_2nf_${relation.name}.csv`,
             type: 'csv',
             description: `2NF data for relation: ${relation.name}`,
-            content: relation.rows,
-            size: this.estimateCSVSize(relation.rows),
+            content: csvText,
+            size: csvText.length,
             category: 'Second Normal Form'
           });
         }
@@ -1289,12 +1291,13 @@ class DatabaseService {
       // Export individual 3NF relation data
       relations3NF.forEach((relation) => {
         if (relation.rows && relation.rows.length > 0) {
+          const csvText = this.objectsToCSV(relation.rows);
           files.push({
             name: `relation_3nf_${relation.name}.csv`,
             type: 'csv',
             description: `3NF data for relation: ${relation.name}`,
-            content: relation.rows,
-            size: this.estimateCSVSize(relation.rows),
+            content: csvText,
+            size: csvText.length,
             category: 'Third Normal Form'
           });
 
@@ -2611,8 +2614,8 @@ class DatabaseService {
     return typeMap[type] || 'TEXT';
   }
 
-  private estimateCSVSize(data: any[]): number {
-    if (data.length === 0) return 0;
+  public estimateCSVSize(data: any[]): number {
+    if (!data || data.length === 0) return 0;
     const sample = JSON.stringify(data[0]);
     return sample.length * data.length;
   }
@@ -3215,6 +3218,31 @@ class DatabaseService {
       memoryUsage: this.getMemoryUsage(),
       lastCleared: new Date() // Simplified - would track actual clear time in production
     };
+  }
+
+  private objectsToCSV(rows: any[]): string {
+    if (!Array.isArray(rows) || rows.length === 0) return '';
+    const first = rows[0];
+    if (typeof first !== 'object' || first === null) return String(rows.join('\n'));
+
+    const headers = Object.keys(first);
+    if (headers.length === 0) return '';
+
+    const lines: string[] = [];
+    lines.push(headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(','));
+
+    rows.forEach(row => {
+      if (!row || typeof row !== 'object') return;
+      const values = headers.map(h => {
+        const val = row[h];
+        if (val === null || val === undefined) return '""';
+        const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
+        return `"${str.replace(/"/g, '""')}"`;
+      });
+      lines.push(values.join(','));
+    });
+
+    return lines.join('\n');
   }
 }
 

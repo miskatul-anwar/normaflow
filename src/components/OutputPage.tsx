@@ -40,14 +40,14 @@ export default function OutputPage() {
   }, []);
 
   const safeResults = useMemo(() => {
-    if (results && results.success) {
+    if (results && (results.success !== false && (results.success || results.tables || results.outputFiles))) {
       return results;
     }
     try {
       const cached = sessionStorage.getItem('normaflow_latest_results');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (parsed && parsed.success) return parsed;
+        if (parsed && (parsed.success !== false && (parsed.success || parsed.tables || parsed.outputFiles))) return parsed;
       }
     } catch (e) {
       console.warn('[OutputPage] Failed to parse cached results:', e);
