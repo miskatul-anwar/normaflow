@@ -628,15 +628,18 @@ function MainAppContent() {
           // ignore
         }
         logMessage('success', `Complete multi-CSV normalization pipeline finished for ${filesToRun.length} table(s)!`, 'EXECUTION');
+        return result;
       } else {
         logMessage('error', `Pipeline processing failed: ${result?.error || 'Unknown error'}`, 'EXECUTION');
+        return result;
       }
     } catch (err) {
       logMessage('error', `Pipeline error: ${(err as Error).message}`, 'EXECUTION');
+      return null;
     }
   }, [uploadedFiles, logMessage, processFiles]);
 
-  const handleViewOutput = useCallback(() => {
+  const handleViewOutput = useCallback(async () => {
     let activeResults = processedResults;
     if (!activeResults || !activeResults.success) {
       try {
@@ -652,37 +655,34 @@ function MainAppContent() {
 
     if (!activeResults || !activeResults.success) {
       logMessage('info', 'Executing automatic workflow to generate outputs...', 'NAVIGATION');
-      handleRunAll().then(() => {
+      const freshResult = await handleRunAll();
+      if (freshResult && freshResult.success) {
+        activeResults = freshResult;
+      } else {
         try {
           const cached = sessionStorage.getItem('normaflow_latest_results');
           if (cached) {
             const parsed = JSON.parse(cached);
-            if (parsed && parsed.success) {
-              navigate('/output', {
-                state: {
-                  results: parsed,
-                  outputFiles: parsed.outputFiles,
-                  logs: [...consoleLogs, ...(parsed.logs || [])],
-                  selectedOperations: nodes.slice(1).map(node => String(node.data?.label || ''))
-                }
-              });
-            }
+            if (parsed && parsed.success) activeResults = parsed;
           }
         } catch {
           // ignore
         }
-      });
-      return;
+      }
     }
 
-    navigate('/output', {
-      state: {
-        results: activeResults,
-        outputFiles: activeResults.outputFiles,
-        logs: [...consoleLogs, ...(activeResults.logs || [])],
-        selectedOperations: nodes.slice(1).map(node => String(node.data?.label || ''))
-      }
-    });
+    if (activeResults && activeResults.success) {
+      navigate('/output', {
+        state: {
+          results: activeResults,
+          outputFiles: activeResults.outputFiles,
+          logs: [...consoleLogs, ...(activeResults.logs || [])],
+          selectedOperations: nodes.slice(1).map(node => String(node.data?.label || ''))
+        }
+      });
+    } else {
+      logMessage('error', 'Failed to generate output results.', 'NAVIGATION');
+    }
   }, [processedResults, navigate, consoleLogs, nodes, logMessage, handleRunAll]);
 
   const availableOperationKeys = useMemo(() => Object.keys(OPERATIONS), []);

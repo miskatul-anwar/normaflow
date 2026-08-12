@@ -332,14 +332,14 @@ export default function Heading({
         <button
           className={`flex items-center px-2 py-0.5 rounded transition text-sm drop-shadow-sm ${
             isOutputReady
-              ? "bg-green-200 text-green-700 hover:bg-green-100"
-              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              ? "bg-green-200 text-green-700 hover:bg-green-100 font-semibold"
+              : "bg-gray-200 text-gray-700 hover:bg-gray-100"
           }`}
           onClick={onViewOutput}
-          disabled={!isOutputReady}
           style={{ fontFamily: "'CMU Serif Roman', serif" }}
+          title="View Normalization Outputs"
         >
-          <MdOutlineOutput className="mr-1 h-4 w-4" /> Output
+          <MdOutlineOutput className="mr-1 h-4 w-4 text-green-700" /> Output
         </button>
       </div>
     </div>
