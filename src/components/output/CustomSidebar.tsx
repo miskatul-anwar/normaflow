@@ -17,14 +17,6 @@ export interface CustomSidebarProps {
 export function CustomSidebar({ items, activeTab, onTabChange }: CustomSidebarProps) {
   return (
     <div className="bg-white border-r border-gray-200 h-full overflow-y-auto">
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="font-semibold text-gray-900" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
-          Analysis Results
-        </h3>
-        <p className="text-sm text-gray-500 mt-1" style={{ fontFamily: "'CMU Serif Roman', serif" }}>
-          Navigate through normalization outputs
-        </p>
-      </div>
       <div className="p-2">
         {items.map((item) => (
           <button
