@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { CiRedo, CiUndo } from "react-icons/ci";
-import { FaCode, FaUpload, FaFileCsv } from "react-icons/fa";
+import { FaCode, FaUpload } from "react-icons/fa";
 import { MdOutlineOutput } from "react-icons/md";
 import { TbRefresh } from "react-icons/tb";
 import { Loader2, Zap, Save, Loader, Cpu, ChevronDown, Check } from "lucide-react";
@@ -97,52 +97,45 @@ export default function Heading({
     window.location.reload();
   };
 
-  return (
-    <div className="text-2xl items-center font-bold font-serif text-gray-800 flex mb-2 p-2 relative z-30">
-      <img src="/icon.png" alt="NormaFlow Logo" className="inline-block h-8 w-8 mr-2" />
-      <span
-        style={{
-          fontFamily: "'CMU Serif Bold', serif",
-          letterSpacing: "0.02em",
-          fontWeight: "bold",
-          fontSize: "2.1rem",
-        }}
-      >
-        NormaFlow
-      </span>
+  const activeFiles = fileCount || uploadedFileCount;
 
-      <div className="flex-1 flex justify-center">
-        <div className="flex items-center space-x-2">
-          <button
-            className={`flex items-center px-2 py-0.5 rounded ${
-              canUndo && !isRunning
-                ? "bg-gray-200 text-gray-700 hover:bg-gray-100"
-                : "bg-gray-100 text-gray-400"
-            } transition text-sm drop-shadow-sm`}
-            onClick={onUndo}
-            disabled={!canUndo || isRunning}
-            style={{ fontFamily: "'CMU Serif Roman', serif" }}
-          >
-            <CiUndo className="mr-1 h-4 w-4" />
-            Undo
-          </button>
-          <button
-            className={`flex items-center px-2 py-0.5 rounded ${
-              canRedo && !isRunning
-                ? "bg-gray-200 text-gray-700 hover:bg-gray-100"
-                : "bg-gray-100 text-gray-400"
-            } transition text-sm drop-shadow-sm`}
-            onClick={onRedo}
-            disabled={!canRedo || isRunning}
-            style={{ fontFamily: "'CMU Serif Roman', serif" }}
-          >
-            <CiRedo className="mr-1 h-4 w-4" />
-            Redo
-          </button>
-        </div>
+  return (
+    <div className="flex items-center justify-between w-full h-full px-2 py-1 relative z-30">
+      {/* Brand & Logo Section */}
+      <div className="flex items-center gap-2">
+        <img src="/icon.png" alt="NormaFlow Logo" className="h-7 w-7 object-contain drop-shadow-xs" />
+        <span
+          className="text-xl font-bold tracking-tight text-gray-900"
+          style={{ fontFamily: "'CMU Serif Bold', serif" }}
+        >
+          NormaFlow
+        </span>
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* Center Action Group: Undo & Redo */}
+      <div className="flex items-center gap-1.5 bg-white/80 p-1 rounded-xl border border-gray-200/80 shadow-xs backdrop-blur-sm">
+        <button
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 hover:text-teal-600 hover:bg-teal-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+          onClick={onUndo}
+          disabled={!canUndo || isRunning}
+          title="Undo (Ctrl+Z)"
+          aria-label="Undo"
+        >
+          <CiUndo className="h-5 w-5" />
+        </button>
+        <button
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 hover:text-teal-600 hover:bg-teal-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+          onClick={onRedo}
+          disabled={!canRedo || isRunning}
+          title="Redo (Ctrl+Y)"
+          aria-label="Redo"
+        >
+          <CiRedo className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Right Action Group: Icon-Only Controls */}
+      <div className="flex items-center gap-2">
         <input
           ref={inputRef}
           type="file"
@@ -159,26 +152,28 @@ export default function Heading({
           onChange={handleLoadStateFileChange}
         />
 
-        {/* Custom Popover Model Selection Submenu matching top header design */}
+        {/* Model Selection Dropdown */}
         <div className="relative" ref={menuRef}>
           <button
-            className={`flex items-center px-2 py-0.5 rounded bg-gray-200 text-gray-700 hover:bg-gray-100 transition text-sm drop-shadow-sm ${
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/90 border border-gray-200/80 text-gray-700 hover:border-teal-400 hover:text-teal-600 transition-all shadow-xs active:scale-95 ${
               isRunning ? 'cursor-not-allowed opacity-60' : ''
             }`}
             onClick={() => !isRunning && setIsModelMenuOpen(!isModelMenuOpen)}
             disabled={isRunning}
-            style={{ fontFamily: "'CMU Serif Roman', serif" }}
-            title="Select Ollama Model"
+            title={selectedModel ? `Ollama Model: ${selectedModel}` : 'Select Ollama Model'}
+            aria-label="Select Ollama Model"
           >
-            <Cpu className="mr-1 h-4 w-4 text-teal-600" />
-            <span>
-              {selectedModel ? selectedModel : (ollamaReady ? 'Select Model' : 'NLP Rules')}
-            </span>
-            <ChevronDown className="ml-1 h-3.5 w-3.5 text-gray-500" />
+            <Cpu className="h-4 w-4 text-teal-600" />
+            {selectedModel && (
+              <span className="text-xs font-mono font-medium max-w-[80px] truncate text-gray-700">
+                {selectedModel}
+              </span>
+            )}
+            <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
           </button>
 
           {isModelMenuOpen && (
-            <div className="absolute right-0 mt-1.5 w-56 bg-white rounded-lg border border-gray-200 shadow-xl py-1.5 z-50 text-sm">
+            <div className="absolute right-0 mt-1.5 w-56 bg-white/95 backdrop-blur-md rounded-xl border border-gray-200/90 shadow-xl py-1.5 z-50 text-sm">
               <div className="px-3 py-1.5 border-b border-gray-100 flex items-center justify-between">
                 <span className="font-semibold text-xs text-gray-500 uppercase tracking-wider font-mono">
                   Ollama Models
@@ -223,123 +218,89 @@ export default function Heading({
           )}
         </div>
 
+        {/* Load State */}
         <button
-          className={`flex items-center px-2 py-0.5 rounded transition text-sm drop-shadow-sm ${
-            isRunning
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-100"
-          }`}
+          className="w-9 h-9 rounded-xl bg-white/90 border border-gray-200/80 text-gray-700 hover:text-teal-600 hover:border-teal-400 flex items-center justify-center transition-all shadow-xs active:scale-95 disabled:opacity-50"
           onClick={handleLoadStateClick}
           disabled={isRunning}
-          style={{ fontFamily: "'CMU Serif Roman', serif" }}
+          title="Load State (.json)"
+          aria-label="Load State"
         >
-          <Loader className="mr-1 h-4 w-4" /> Load State
+          <Loader className="h-4 w-4" />
         </button>
 
+        {/* Save State */}
         <button
-          className={`flex items-center px-2 py-0.5 rounded transition text-sm drop-shadow-sm ${
-            isRunning
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-100"
-          }`}
+          className="w-9 h-9 rounded-xl bg-white/90 border border-gray-200/80 text-gray-700 hover:text-teal-600 hover:border-teal-400 flex items-center justify-center transition-all shadow-xs active:scale-95 disabled:opacity-50"
           onClick={onSaveState}
           disabled={isRunning}
-          style={{ fontFamily: "'CMU Serif Roman', serif" }}
+          title="Save State (.json)"
+          aria-label="Save State"
         >
-          <Save className="mr-1 h-4 w-4" /> Save State
+          <Save className="h-4 w-4" />
         </button>
 
+        {/* Upload Datasets */}
         <button
-          className={`flex items-center px-2 py-0.5 rounded transition text-sm drop-shadow-sm ${
-            isRunning
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-100"
-          }`}
+          className="w-9 h-9 rounded-xl bg-white/90 border border-gray-200/80 text-gray-700 hover:text-teal-600 hover:border-teal-400 flex items-center justify-center transition-all shadow-xs active:scale-95 relative disabled:opacity-50"
           onClick={handleUploadClick}
           disabled={isRunning}
-          style={{ fontFamily: "'CMU Serif Roman', serif" }}
+          title="Upload CSV Datasets"
+          aria-label="Upload CSV Datasets"
         >
-          <FaUpload className="mr-1 h-4 w-4" /> Upload
+          <FaUpload className="h-4 w-4" />
+          {activeFiles > 0 && (
+            <span className="absolute -top-1 -right-1 bg-teal-600 text-white text-[10px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold border border-white">
+              {activeFiles}
+            </span>
+          )}
         </button>
 
-        {(fileCount > 0 || uploadedFileCount > 0) && (
-          <span className="flex items-center gap-1 bg-teal-100 text-teal-800 text-xs px-2 py-0.5 rounded border border-teal-300 font-medium">
-            <FaFileCsv className="text-teal-600 h-3.5 w-3.5" />
-            {fileCount || uploadedFileCount} CSV{ (fileCount || uploadedFileCount) > 1 ? 's' : '' }
-          </span>
-        )}
-
+        {/* Refresh App */}
         <button
-          className={`flex items-center px-2 py-0.5 rounded transition text-sm drop-shadow-sm ${
-            isRunning
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-100"
-          }`}
+          className="w-9 h-9 rounded-xl bg-white/90 border border-gray-200/80 text-gray-700 hover:text-teal-600 hover:border-teal-400 flex items-center justify-center transition-all shadow-xs active:scale-95 disabled:opacity-50"
           onClick={handleRefresh}
           disabled={isRunning}
-          style={{ fontFamily: "'CMU Serif Roman', serif" }}
+          title="Refresh Workspace"
+          aria-label="Refresh Workspace"
         >
-          <TbRefresh className="mr-1 h-4 w-4" /> Refresh
+          <TbRefresh className="h-4 w-4" />
         </button>
 
+        {/* Run Selected Step */}
         <button
-          className={`flex items-center px-2 py-0.5 rounded transition text-sm drop-shadow-sm ${
-            isRunning
-              ? "bg-blue-200 text-blue-700 cursor-not-allowed"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-100"
-          }`}
+          className="w-9 h-9 rounded-xl bg-gray-900 text-white hover:bg-gray-800 flex items-center justify-center transition-all shadow-sm active:scale-95 disabled:opacity-50"
           onClick={onRun}
           disabled={isRunning}
-          style={{ fontFamily: "'CMU Serif Roman', serif" }}
+          title="Run Selected Node Operation"
+          aria-label="Run Selected Node Operation"
         >
-          {isRunning ? (
-            <>
-              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-              Running...
-            </>
-          ) : (
-            <>
-              <FaCode className="mr-1 h-4 w-4" />
-              Run
-            </>
-          )}
+          {isRunning ? <Loader2 className="h-4 w-4 animate-spin text-teal-400" /> : <FaCode className="h-4 w-4" />}
         </button>
 
+        {/* Run All Pipeline */}
         <button
-          className={`flex items-center px-2 py-0.5 rounded transition text-sm drop-shadow-sm ${
-            isRunning
-              ? "bg-teal-100 text-teal-700 cursor-not-allowed"
-              : "bg-gradient-to-r from-green-400 to-[#2dd4bf] text-white hover:from-green-500 hover:to-[#2dd4bf] shadow-lg"
-          }`}
+          className="w-9 h-9 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-white hover:from-teal-600 hover:to-emerald-600 flex items-center justify-center transition-all shadow-md active:scale-95 disabled:opacity-50"
           onClick={onRunAll}
           disabled={isRunning}
-          style={{ fontFamily: "'CMU Serif Roman', serif" }}
-          title="Automated multi-CSV pipeline"
+          title="Run Complete Pipeline (Automated Multi-CSV)"
+          aria-label="Run Complete Pipeline"
         >
-          {isRunning ? (
-            <>
-              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            <>
-              <Zap className="mr-1 h-4 w-4" />
-              Run All
-            </>
-          )}
+          {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 fill-current" />}
         </button>
 
+        {/* View Output */}
         <button
-          className={`flex items-center px-2 py-0.5 rounded transition text-sm drop-shadow-sm ${
+          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95 ${
             isOutputReady
-              ? "bg-green-200 text-green-700 hover:bg-green-100 font-semibold"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-100"
+              ? "bg-emerald-500 text-white hover:bg-emerald-600"
+              : "bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200"
           }`}
           onClick={onViewOutput}
-          style={{ fontFamily: "'CMU Serif Roman', serif" }}
-          title="View Normalization Outputs"
+          title="View Output & Normalization Results"
+          aria-label="View Output & Normalization Results"
         >
-          <MdOutlineOutput className="mr-1 h-4 w-4 text-green-700" /> Output
+          <MdOutlineOutput className="h-5 w-5" />
         </button>
       </div>
     </div>

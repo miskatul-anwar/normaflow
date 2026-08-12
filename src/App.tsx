@@ -689,8 +689,8 @@ function MainAppContent() {
 
   return (
     <div className="bg-gray-200 overflow-hidden h-screen">
-      <div className="grid grid-cols-[150px_1fr_480px] grid-rows-[60px_1fr] h-full p-4 gap-4">
-        <header className="col-span-3 bg-gray-200 p-2 border-b-2 border-b-gray-300">
+      <div className="grid grid-cols-[68px_1fr_480px] grid-rows-[56px_1fr] h-full p-3 gap-3">
+        <header className="col-span-3 bg-gray-200/90 flex items-center border-b border-gray-300 px-2 rounded-xl">
           <Heading
             onUndo={handleUndo}
             onRedo={handleRedo}
