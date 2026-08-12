@@ -853,6 +853,52 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
   }
 
   /**
+   * Apply 3NF decomposition on 2NF relations
+   */
+  static async apply3NF(relations2NF: RelationSchema[], fds: FunctionalDependency[]): Promise<RelationSchema[]> {
+    this.logger.info('Applying Third Normal Form (3NF) decomposition...');
+    if (!relations2NF || relations2NF.length === 0) return [];
+    
+    // For each 2NF relation, check transitive dependencies
+    const relations3NF: RelationSchema[] = [];
+    
+    for (const rel of relations2NF) {
+      const relFds = fds.filter(fd => 
+        fd.lhs.every(attr => rel.attributes.includes(attr)) && rel.attributes.includes(fd.rhs)
+      );
+
+      // Check transitive FDs (LHS is not a superkey of relation)
+      const transitiveFds = relFds.filter(fd => 
+        !fd.lhs.every(attr => rel.primaryKey.includes(attr))
+      );
+
+      if (transitiveFds.length === 0) {
+        relations3NF.push(rel);
+      } else {
+        // Decompose
+        for (const fd of transitiveFds) {
+          const relationAttrs = Array.from(new Set([...fd.lhs, fd.rhs]));
+          const name = `Rel3NF_${rel.name}_${fd.rhs}`;
+          relations3NF.push({
+            name,
+            attributes: relationAttrs,
+            primaryKey: fd.lhs,
+            foreignKeys: [],
+            rows: rel.rows || [],
+            sourceType: '3NF_Decomposed',
+            metadata: {
+              rowCount: rel.rows?.length || 0,
+              attributeTypes: rel.metadata?.attributeTypes || {}
+            }
+          });
+        }
+      }
+    }
+
+    return relations3NF.length > 0 ? relations3NF : relations2NF;
+  }
+
+  /**
    * FIXED: Synthesize 3NF using Bernstein algorithm - ENSURES LOSSLESS JOIN
    */
   static async synthesize3NF(

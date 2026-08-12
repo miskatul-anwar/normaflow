@@ -279,13 +279,13 @@ export function PlaceholdersAndVanishInput({
           </div>
         </div>
 
-        {/* Status indicator */}
+        {/* Status indicator above input box */}
         {animating && (
-          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex items-center text-sm text-gray-600">
-            <div className="flex items-center space-x-2 bg-white px-3 py-1 rounded-full shadow-sm border border-teal-200">
+          <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 flex items-center text-sm text-gray-600 z-20">
+            <div className="flex items-center space-x-2 bg-white px-3 py-1 rounded-full shadow-md border border-teal-200">
               <div className="w-2 h-2 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full animate-pulse"></div>
               <span style={{ fontFamily: "'CMU Serif Roman', serif" }}>
-                Processing your request...
+                Processing request...
               </span>
             </div>
           </div>

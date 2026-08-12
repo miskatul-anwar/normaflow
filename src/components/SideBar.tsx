@@ -12,132 +12,46 @@ import { FiTarget } from "react-icons/fi";
 import { BsLock } from "react-icons/bs";
 import { FaCodeBranch } from "react-icons/fa6";
 
-function CircularIconButton({
-    icon: Icon,
-    label,
-    onClick,
-    state = 'default'
-}: {
-    icon: React.ComponentType<{ className?: string }>;
-    label: string;
-    onClick: () => void;
-    state?: 'default' | 'loading' | 'success' | 'error' | 'disabled';
-}) {
-    return (
-        <div className="button-container">
-            <button
-                type="button"
-                title={label}
-                className={`w-12 h-12 rounded-full bg-white hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-gray-900 shadow-sm hover:shadow-md border border-gray-200 hover:border-gray-300 circular-button sidebar-button ${state !== 'default' ? state : ''}`}
-                onClick={onClick}
-                disabled={state === 'disabled' || state === 'loading'}
-            >
-                <Icon className="sidebar-icon" />
-            </button>
-            <span className="operation-label">
-                {label}
-            </span>
-        </div>
-    );
-}
+const OPERATIONS_LIST = [
+  { icon: BiData, label: "CSV Data Loader" },
+  { icon: MdCleaningServices, label: "Data Cleaner" },
+  { icon: LuAtom, label: "Atomicity Checker" },
+  { icon: TbDatabaseCog, label: "Data Type Profiler" },
+  { icon: AiOutlineNodeIndex, label: "FD Miner" },
+  { icon: FaKey, label: "Key Discovery" },
+  { icon: FaCodeBranch, label: "Cardinality Analyzer" },
+  { icon: RiNumber1, label: "1NF" },
+  { icon: RiNumber2, label: "2NF" },
+  { icon: RiNumber3, label: "3NF" },
+  { icon: CiSquareCheck, label: "Lossless Check" },
+  { icon: BsLock, label: "Dependency Preservation" },
+  { icon: FaProjectDiagram, label: "ERD Generator" },
+  { icon: MdAccountTree, label: "Relation Generator" },
+  { icon: FiTarget, label: "SQL Generator" },
+  { icon: HiOutlineDocumentReport, label: "Report Generator" },
+];
 
 export default function SideBar({ onAddNode }: { onAddNode: (label: string) => void }) {
-    return (
-        <div className="sidebar-container">
-            <div className="grid grid-cols-2 gap-2 align-center justify-center">
-                {/* Row 1 */}
-                <CircularIconButton
-                    icon={BiData}
-                    label="CSV Data Loader"
-                    onClick={() => onAddNode("CSV Data Loader")}
-                />
-                <CircularIconButton
-                    icon={MdCleaningServices}
-                    label="Data Cleaner"
-                    onClick={() => onAddNode("Data Cleaner")}
-                />
-
-                {/* Row 2 */}
-                <CircularIconButton
-                    icon={LuAtom}
-                    label="Atomicity Checker"
-                    onClick={() => onAddNode("Atomicity Checker")}
-                />
-                <CircularIconButton
-                    icon={TbDatabaseCog}
-                    label="Data Type Profiler"
-                    onClick={() => onAddNode("Data Type Profiler")}
-                />
-
-                {/* Row 3 */}
-                <CircularIconButton
-                    icon={AiOutlineNodeIndex}
-                    label="FD Miner"
-                    onClick={() => onAddNode("FD Miner")}
-                />
-                <CircularIconButton
-                    icon={FaKey}
-                    label="Key Discovery"
-                    onClick={() => onAddNode("Key Discovery")}
-                />
-
-                {/* Row 4 */}
-                <CircularIconButton
-                    icon={FaCodeBranch}
-                    label="Cardinality Analyzer"
-                    onClick={() => onAddNode("Cardinality Analyzer")}
-                />
-                <CircularIconButton
-                    icon={RiNumber1}
-                    label="1NF"
-                    onClick={() => onAddNode("1NF")}
-                />
-
-                {/* Continue with remaining buttons to fill more rows if needed */}
-                <CircularIconButton
-                    icon={RiNumber2}
-                    label="2NF"
-                    onClick={() => onAddNode("2NF")}
-                />
-                <CircularIconButton
-                    icon={RiNumber3}
-                    label="3NF"
-                    onClick={() => onAddNode("3NF")}
-                />
-
-                <CircularIconButton
-                    icon={CiSquareCheck}
-                    label="Lossless Check"
-                    onClick={() => onAddNode("Lossless Check")}
-                />
-                <CircularIconButton
-                    icon={BsLock}
-                    label="Dependency Preservation"
-                    onClick={() => onAddNode("Dependency Preservation")}
-                />
-
-                <CircularIconButton
-                    icon={FaProjectDiagram}
-                    label="ERD Generator"
-                    onClick={() => onAddNode("ERD Generator")}
-                />
-                <CircularIconButton
-                    icon={MdAccountTree}
-                    label="Relation Generator"
-                    onClick={() => onAddNode("Relation Generator")}
-                />
-
-                <CircularIconButton
-                    icon={FiTarget}
-                    label="SQL Generator"
-                    onClick={() => onAddNode("SQL Generator")}
-                />
-                <CircularIconButton
-                    icon={HiOutlineDocumentReport}
-                    label="Report Generator"
-                    onClick={() => onAddNode("Report Generator")}
-                />
-            </div>
-        </div>
-    );
+  return (
+    <nav className="sidebar-container h-full overflow-y-auto" aria-label="Pipeline Operations">
+      <ul className="grid grid-cols-2 gap-2 justify-items-center">
+        {OPERATIONS_LIST.map(({ icon: Icon, label }) => (
+          <li key={label} className="button-container flex flex-col items-center">
+            <button
+              type="button"
+              aria-label={`Add ${label} node`}
+              title={label}
+              className="w-12 h-12 rounded-full bg-white hover:bg-teal-50 flex items-center justify-center text-gray-700 hover:text-teal-700 shadow-xs hover:shadow-md border border-gray-200 hover:border-teal-300 circular-button sidebar-button transition-all focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1"
+              onClick={() => onAddNode(label)}
+            >
+              <Icon className="sidebar-icon w-5 h-5" />
+            </button>
+            <span className="operation-label text-[10px] leading-tight text-gray-600 text-center mt-1 font-serif">
+              {label}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
 }

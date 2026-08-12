@@ -6,8 +6,12 @@
  */
 
 import { CSVProcessor, DataProcessor, NormalizationEngine } from '../processors';
+import { RelationDetectorService } from '../processors/relationDetector';
+import { OllamaWrapper } from '../ollama-wrapper';
 import { Logger } from '../utils/logger';
 import { FileUtils } from '../utils/fileUtils';
+import { TableData } from '../../types';
+import { invoke } from '@tauri-apps/api/core';
 
 export interface ProcessingOptions {
   maxLhsSize?: number;
@@ -46,11 +50,19 @@ export interface ProcessingResult {
   relations2NF?: any[];
   relationships?: any[];
   erdContent?: string;
+  erdDiagram?: string;
+  sqlStatements?: string;
+  reportMarkdown?: string;
   cardinalityAnalysis?: any;
   losslessCheck?: any;
   dependencyPreservation?: any;
   duration: string;
   selectedOperations?: string[];
+  isMultiTable?: boolean;
+  tables?: TableData[];
+  crossTableRelationships?: any[];
+  nerResults?: any;
+  ollamaInsights?: any[];
   error?: string;
   qualityAssessment?: {
     score: number;
@@ -839,7 +851,8 @@ class DatabaseService {
   }
 
   private getPeakMemoryUsage(): number {
-    return Math.max(...this.performanceMonitor.checkpoints.map(c => c.memory || 0));
+    if (!this.performanceMonitor?.checkpoints || this.performanceMonitor.checkpoints.length === 0) return 0;
+    return Math.max(0, ...this.performanceMonitor.checkpoints.map(c => c.memory || 0));
   }
 
   private formatMemoryUsage(bytes: number): string {
@@ -2836,6 +2849,346 @@ class DatabaseService {
     }
 
     return { differences, improvements, regressions };
+  }
+
+  /**
+   * Multi-CSV Pipeline Processing with NER, Relation Detection, and Ollama AI Integration
+   */
+  async processFiles(
+    files: File[],
+    selectedOperations: string[],
+    onProgress?: (state: ProcessingState) => void,
+    options: ProcessingOptions = {}
+  ): Promise<ProcessingResult> {
+    const startTime = Date.now();
+    try {
+      if (!files || files.length === 0) {
+        throw new Error("No files uploaded for processing.");
+      }
+
+      if (files.length === 1) {
+        return await this.processFile(files[0], selectedOperations, onProgress, options);
+      }
+
+      this.logger.info(`Starting Multi-CSV Pipeline for ${files.length} files...`, { files: files.map(f => f.name) });
+
+      if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+        try {
+          onProgress?.({
+            phase: 'ANALYZE',
+            operation: 'rust-core-engine',
+            progress: 50,
+            message: 'Delegating heavy-lifting pipeline execution to Rust Core Engine...'
+          });
+
+          const fileInputs = await Promise.all(
+            files.map(async f => ({
+              name: f.name,
+              content: await f.text()
+            }))
+          );
+
+          const rustResult = await invoke<any>('process_multi_csv_rust', {
+            files: fileInputs,
+            selectedOperations
+          });
+
+          if (rustResult && rustResult.success) {
+            return {
+              success: true,
+              isMultiTable: rustResult.is_multi_table,
+              tables: rustResult.tables.map((t: any) => ({
+                tableName: t.table_name,
+                fileName: t.file_name,
+                headers: t.headers,
+                rows: [],
+                rowCount: t.row_count,
+                nerTags: t.ner_tags,
+                functionalDependencies: [],
+                candidateKeys: [],
+                primaryKey: t.primary_key,
+                firstNormalForm: [],
+                secondNormalForm: [],
+                thirdNormalForm: []
+              })),
+              crossTableRelationships: rustResult.cross_table_relationships.map((r: any) => ({
+                sourceTable: r.source_table,
+                sourceColumn: r.source_column,
+                targetTable: r.target_table,
+                targetColumn: r.target_column,
+                cardinality: r.cardinality,
+                confidence: r.confidence,
+                matchRatio: r.match_ratio,
+                detectedBy: r.detected_by
+              })),
+              nerResults: {},
+              ollamaInsights: rustResult.ollama_insights,
+              stats: {
+                originalRows: rustResult.tables.reduce((acc: number, t: any) => acc + t.row_count, 0),
+                cleanedRows: rustResult.tables.reduce((acc: number, t: any) => acc + t.row_count, 0),
+                attributes: rustResult.tables.reduce((acc: number, t: any) => acc + t.headers.length, 0),
+                functionalDependencies: 0,
+                candidateKeys: 0,
+                relationships: rustResult.cross_table_relationships.length,
+                relations3NF: rustResult.tables.length,
+                processDuration: rustResult.duration
+              },
+              outputFiles: rustResult.output_files.map((f: any) => ({
+                name: f.name,
+                type: f.file_type,
+                description: f.description,
+                content: f.content,
+                size: f.size,
+                category: f.category
+              })),
+              logs: rustResult.logs,
+              erdDiagram: rustResult.erd_diagram,
+              sqlStatements: rustResult.sql_statements,
+              reportMarkdown: rustResult.report_markdown,
+              duration: rustResult.duration,
+              selectedOperations
+            };
+          }
+        } catch (tauriErr) {
+          this.logger.warn('Tauri Rust engine fallback to TypeScript:', tauriErr);
+        }
+      }
+
+      const tables: TableData[] = [];
+      const logs: string[] = [`[INFO] Multi-CSV Pipeline initiated for ${files.length} dataset files.`];
+
+      // Initialize Ollama Wrapper for AI enrichment
+      const ollama = new OllamaWrapper();
+      await ollama.initializeOllama();
+
+      // 1. Process Each CSV File
+      for (let idx = 0; idx < files.length; idx++) {
+        const file = files[idx];
+        const tableName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
+
+        onProgress?.({
+          phase: 'PREP',
+          operation: 'csv-loader',
+          progress: Math.floor(10 + (idx / files.length) * 25),
+          message: `Processing table ${idx + 1}/${files.length}: ${file.name}...`
+        });
+
+        const csvData = await this.processCSVWithStreaming(file, options);
+        const rows = csvData.data || [];
+        const headers = Object.keys(rows[0] || {});
+
+        // Clean & Profile Data
+        const cleanedRows = await DataProcessor.clean(rows);
+        const fds = await NormalizationEngine.mineFunctionalDependencies(cleanedRows, options.maxLhsSize || 4);
+        const keyRes = await NormalizationEngine.findKeys(headers, fds);
+        const primaryKey = keyRes.candidateKeys[0] || [headers[0] || 'id'];
+
+        // Decompositions for this table
+        const res1NFData = await NormalizationEngine.apply1NF(cleanedRows);
+        const res2NF = await NormalizationEngine.apply2NF(res1NFData, fds);
+        const res3NF = await NormalizationEngine.apply3NF(res2NF, fds);
+
+        const relation1NFSchema = [{
+          name: `${tableName}_1NF`,
+          attributes: headers,
+          primaryKey,
+          foreignKeys: [],
+          rows: res1NFData,
+          metadata: { rowCount: res1NFData.length, attributeTypes: {} }
+        }];
+
+        tables.push({
+          tableName,
+          fileName: file.name,
+          headers,
+          rows: cleanedRows,
+          rowCount: cleanedRows.length,
+          nerTags: [],
+          functionalDependencies: fds,
+          candidateKeys: keyRes.candidateKeys.map((k: string[]) => ({ attributes: k, isMinimal: true })),
+          primaryKey,
+          firstNormalForm: relation1NFSchema,
+          secondNormalForm: res2NF,
+          thirdNormalForm: res3NF
+        });
+
+        logs.push(`[SUCCESS] Table '${tableName}' (${file.name}): ${cleanedRows.length} rows, ${headers.length} columns, ${fds.length} FDs.`);
+      }
+
+      // 2. Perform Named Entity Recognition (NER)
+      onProgress?.({
+        phase: 'PREP',
+        operation: 'ner-classifier',
+        progress: 45,
+        message: 'Running Named Entity Recognition (NER) across tables...'
+      });
+
+      const nerResults = RelationDetectorService.performNER(tables);
+      tables.forEach(t => {
+        t.nerTags = nerResults[t.tableName] || [];
+      });
+      logs.push(`[SUCCESS] NER Entity Classification completed across ${tables.length} tables.`);
+
+      // 3. Detect Cross-Table Relationships & Foreign Keys
+      onProgress?.({
+        phase: 'ANALYZE',
+        operation: 'relation-detector',
+        progress: 65,
+        message: 'Detecting cross-table relationships and foreign key constraints...'
+      });
+
+      const crossTableRelationships = RelationDetectorService.detectCrossTableRelationships(tables);
+      logs.push(`[SUCCESS] Relation Detector identified ${crossTableRelationships.length} foreign key relationships.`);
+
+      // 4. Ollama AI Model Enrichment
+      onProgress?.({
+        phase: 'ANALYZE',
+        operation: 'ollama-ai-analyst',
+        progress: 80,
+        message: 'Enriching multi-table schema with Ollama AI model...'
+      });
+
+      const ollamaInsights = await RelationDetectorService.enrichWithOllama(tables, crossTableRelationships, ollama);
+      logs.push(`[SUCCESS] Ollama AI generated ${ollamaInsights.length} schema optimization insights.`);
+
+      // 5. Generate Multi-Table Mermaid ERD
+      let erdContent = 'erDiagram\n';
+      tables.forEach(t => {
+        erdContent += `  ${t.tableName} {\n`;
+        t.headers.forEach(h => {
+          const isPk = t.primaryKey.includes(h);
+          erdContent += `    string ${h} ${isPk ? 'PK' : ''}\n`;
+        });
+        erdContent += `  }\n`;
+      });
+
+      crossTableRelationships.forEach(r => {
+        const cardSymbol = r.cardinality === '1:1' ? '||--||' : r.cardinality === 'N:M' ? '}}--{{' : '||--|{';
+        erdContent += `  ${r.sourceTable} ${cardSymbol} ${r.targetTable} : "${r.sourceColumn}->${r.targetColumn}"\n`;
+      });
+
+      // 6. Generate Consolidated Multi-Table SQL DDL
+      let sqlDDL = `-- NormaFlow Multi-CSV Consolidated Relational Schema DDL\n-- Generated for ${files.length} tables\n\n`;
+      tables.forEach(t => {
+        sqlDDL += `CREATE TABLE ${t.tableName} (\n`;
+        const colDefs = t.headers.map(h => {
+          const isPk = t.primaryKey.includes(h);
+          return `  ${h} VARCHAR(255)${isPk ? ' PRIMARY KEY' : ''}`;
+        });
+
+        // Add Foreign Key constraints
+        const tableFks = crossTableRelationships.filter(r => r.sourceTable === t.tableName);
+        tableFks.forEach(fk => {
+          colDefs.push(`  CONSTRAINT fk_${t.tableName}_${fk.sourceColumn} FOREIGN KEY (${fk.sourceColumn}) REFERENCES ${fk.targetTable}(${fk.targetColumn})`);
+        });
+
+        sqlDDL += colDefs.join(',\n');
+        sqlDDL += `\n);\n\n`;
+      });
+
+      // 7. Multi-Table Markdown Report
+      let reportMarkdown = `# Multi-CSV Database Normalization Report\n\n`;
+      reportMarkdown += `**Processed Files**: ${files.map(f => f.name).join(', ')}\n`;
+      reportMarkdown += `**Total Tables**: ${tables.length}\n`;
+      reportMarkdown += `**Cross-Table Foreign Keys Detected**: ${crossTableRelationships.length}\n\n`;
+
+      reportMarkdown += `## 1. Table Schema Overview\n\n`;
+      tables.forEach(t => {
+        reportMarkdown += `### Table \`${t.tableName}\` (${t.rowCount} rows)\n`;
+        reportMarkdown += `- **Columns**: ${t.headers.join(', ')}\n`;
+        reportMarkdown += `- **Primary Key**: ${t.primaryKey.join(', ')}\n`;
+        reportMarkdown += `- **Discovered FDs**: ${t.functionalDependencies.length}\n\n`;
+      });
+
+      reportMarkdown += `## 2. Detected Cross-Table Relationships\n\n`;
+      if (crossTableRelationships.length > 0) {
+        reportMarkdown += `| Source Table | Source Column | Target Table | Target Column | Cardinality | Confidence |\n`;
+        reportMarkdown += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+        crossTableRelationships.forEach(r => {
+          reportMarkdown += `| \`${r.sourceTable}\` | \`${r.sourceColumn}\` | \`${r.targetTable}\` | \`${r.targetColumn}\` | \`${r.cardinality}\` | ${(r.confidence * 100).toFixed(1)}% |\n`;
+        });
+      } else {
+        reportMarkdown += `*No direct cross-table foreign key relationships detected automatically.*\n`;
+      }
+
+      reportMarkdown += `\n## 3. Ollama AI Model Insights\n\n`;
+      ollamaInsights.forEach(insight => {
+        reportMarkdown += `### ${insight.title}\n${insight.summary}\n\n`;
+      });
+
+      const outputFiles: OutputFile[] = [
+        {
+          name: 'multi_table_erd.mermaid',
+          type: 'mermaid',
+          description: 'Multi-Table ERD Diagram with Foreign Keys',
+          content: erdContent,
+          size: erdContent.length,
+          category: 'ERD'
+        },
+        {
+          name: 'consolidated_schema.sql',
+          type: 'sql',
+          description: 'Consolidated Multi-Table SQL DDL Script',
+          content: sqlDDL,
+          size: sqlDDL.length,
+          category: 'SQL'
+        },
+        {
+          name: 'multi_csv_normalization_report.md',
+          type: 'markdown',
+          description: 'Multi-CSV Normalization & Relationship Analysis Report',
+          content: reportMarkdown,
+          size: reportMarkdown.length,
+          category: 'Report'
+        }
+      ];
+
+      const totalDuration = `${((Date.now() - startTime) / 1000).toFixed(2)}s`;
+
+      onProgress?.({
+        phase: 'OUTPUT',
+        operation: 'report-generator',
+        progress: 100,
+        message: 'Multi-CSV pipeline completed successfully!'
+      });
+
+      return {
+        success: true,
+        isMultiTable: true,
+        tables,
+        crossTableRelationships,
+        nerResults,
+        ollamaInsights,
+        stats: {
+          originalRows: tables.reduce((acc, t) => acc + t.rowCount, 0),
+          cleanedRows: tables.reduce((acc, t) => acc + t.rowCount, 0),
+          attributes: tables.reduce((acc, t) => acc + t.headers.length, 0),
+          functionalDependencies: tables.reduce((acc, t) => acc + t.functionalDependencies.length, 0),
+          candidateKeys: tables.reduce((acc, t) => acc + t.candidateKeys.length, 0),
+          relationships: crossTableRelationships.length,
+          relations3NF: tables.reduce((acc, t) => acc + t.thirdNormalForm.length, 0),
+          processDuration: totalDuration
+        },
+        outputFiles,
+        logs,
+        erdDiagram: erdContent,
+        sqlStatements: sqlDDL,
+        reportMarkdown,
+        duration: totalDuration,
+        selectedOperations
+      };
+    } catch (err: any) {
+      this.logger.error('Multi-CSV Pipeline error', err);
+      const totalDuration = `${((Date.now() - startTime) / 1000).toFixed(2)}s`;
+      return {
+        success: false,
+        error: err?.message || 'Multi-CSV pipeline execution failed.',
+        outputFiles: [],
+        logs: [`[ERROR] ${err?.message || 'Pipeline execution failed.'}`],
+        duration: totalDuration,
+        stats: { processDuration: totalDuration }
+      };
+    }
   }
 
   // ========== CLEANUP AND CACHE MANAGEMENT ==========

@@ -7,6 +7,7 @@ export interface UseNormalizationReturn {
   results: ProcessingResult | null;
   error: string | null;
   processFile: (file: File, operations: string[]) => Promise<ProcessingResult>;
+  processFiles: (files: File[], operations: string[]) => Promise<ProcessingResult>;
   cancelProcessing: () => void;
   downloadFile: (file: any) => Promise<void>;
   reset: () => void;
@@ -18,30 +19,30 @@ export const useNormalization = (): UseNormalizationReturn => {
   const [results, setResults] = useState<ProcessingResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const processFile = useCallback(async (file: File, operations: string[]): Promise<ProcessingResult> => {
+  const processFiles = useCallback(async (files: File[], operations: string[]): Promise<ProcessingResult> => {
     setIsProcessing(true);
     setError(null);
     setResults(null);
-    setProgress({ phase: 'PREP', operation: 'csv-loader', progress: 0, message: 'Starting...' });
+    setProgress({ phase: 'PREP', operation: 'csv-loader', progress: 0, message: `Starting multi-CSV pipeline for ${files.length} files...` });
 
     try {
-      const result = await DatabaseService.processFile(
-        file,
+      const result = await DatabaseService.processFiles(
+        files,
         operations,
         setProgress,
-        { maxLhsSize: 4, maxSampleSize: 100, timeout: 30000 }
+        { maxLhsSize: 4, maxSampleSize: 100, timeout: 45000 }
       );
 
       setResults(result);
       if (!result.success) {
-        setError(result.error || 'Processing failed');
+        setError(result.error || 'Multi-CSV processing failed');
       }
-      
+
       return result;
     } catch (err) {
       const errorMessage = (err as Error).message;
       setError(errorMessage);
-      
+
       const failedResult: ProcessingResult = {
         success: false,
         error: errorMessage,
@@ -51,7 +52,7 @@ export const useNormalization = (): UseNormalizationReturn => {
         duration: '0s',
         selectedOperations: operations
       };
-      
+
       setResults(failedResult);
       return failedResult;
     } finally {
@@ -59,6 +60,10 @@ export const useNormalization = (): UseNormalizationReturn => {
       setProgress(null);
     }
   }, []);
+
+  const processFile = useCallback(async (file: File, operations: string[]): Promise<ProcessingResult> => {
+    return processFiles([file], operations);
+  }, [processFiles]);
 
   const cancelProcessing = useCallback(() => {
     DatabaseService.cancelProcessing();
@@ -83,6 +88,7 @@ export const useNormalization = (): UseNormalizationReturn => {
     results,
     error,
     processFile,
+    processFiles,
     cancelProcessing,
     downloadFile,
     reset

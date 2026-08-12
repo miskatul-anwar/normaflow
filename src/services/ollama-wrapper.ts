@@ -1,11 +1,12 @@
-// Ollama wrapper for Tauri compatibility with streaming NDJSON support
-interface ChatMessage {
+import { invoke } from '@tauri-apps/api/core';
+
+export interface ChatMessage {
   role: 'user' | 'system' | 'assistant';
   content: string;
 }
 
-interface ChatOptions {
-  model: string;
+export interface ChatOptions {
+  model?: string;
   messages: ChatMessage[];
   options?: {
     temperature?: number;
@@ -14,94 +15,125 @@ interface ChatOptions {
   stream?: boolean;
 }
 
-interface ChatResponse {
+export interface FinalChatResponse {
   message: {
     content: string;
-    role: string;
   };
-  done?: boolean;
+  modelUsed: string;
 }
 
-interface FinalChatResponse {
-  message: {
-    content: string;
-  };
+function isTauriAvailable(): boolean {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
 export class OllamaWrapper {
   private isAvailable: boolean = false;
   private baseUrl: string = 'http://localhost:11434';
+  private installedModels: string[] = [];
+  private selectedModel: string = '';
 
   constructor() {
     this.initializeOllama();
   }
 
-  private async initializeOllama() {
+  public async initializeOllama(): Promise<boolean> {
+    if (isTauriAvailable()) {
+      try {
+        const models = await invoke<string[]>('check_ollama_status');
+        this.installedModels = models;
+        this.isAvailable = models.length > 0;
+        if (models.length > 0) {
+          const preferred = models.find((m: string) =>
+            !m.includes('cloud') && (m.includes('qwen') || m.includes('gemma') || m.includes('llama') || m.includes('mistral'))
+          ) || models[0];
+          this.selectedModel = preferred;
+        }
+        return this.isAvailable;
+      } catch (err) {
+        console.warn('[OllamaWrapper] Tauri Rust check_ollama_status failed:', err);
+      }
+    }
+
     try {
-      console.log('[OllamaWrapper] Testing connection...');
-      
       const response = await fetch(`${this.baseUrl}/api/tags`, {
         method: 'GET',
         signal: AbortSignal.timeout(5000),
       });
 
       if (response.ok) {
-        this.isAvailable = true;
-        console.log('[OllamaWrapper] Connected successfully');
-      } else {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.warn('[OllamaWrapper] Connection failed:', error);
-      this.isAvailable = false;
-    }
-  }
+        const data = await response.json();
+        const models = (data.models || []).map((m: any) => m.name as string);
+        this.installedModels = models;
+        this.isAvailable = models.length > 0;
 
-  private parseNDJSON(text: string): ChatResponse[] {
-    const lines = text.trim().split('\n');
-    const responses: ChatResponse[] = [];
-    
-    for (const line of lines) {
-      if (line.trim()) {
-        try {
-          const parsed = JSON.parse(line) as ChatResponse;
-          responses.push(parsed);
-        } catch (error) {
-          console.warn('[OllamaWrapper] Failed to parse JSON line:', line, error);
-          // Continue parsing other lines even if one fails
+        if (models.length > 0) {
+          const preferred = models.find((m: string) =>
+            !m.includes('cloud') && (m.includes('qwen') || m.includes('gemma') || m.includes('llama') || m.includes('mistral'))
+          ) || models[0];
+          this.selectedModel = preferred;
         }
+        return this.isAvailable;
       }
+      this.isAvailable = false;
+      return false;
+    } catch (error) {
+      console.warn('[OllamaWrapper] Connection check failed:', error);
+      this.isAvailable = false;
+      return false;
     }
-    
-    return responses;
   }
 
-  private assembleStreamingResponse(responses: ChatResponse[]): FinalChatResponse {
-    let fullContent = '';
-    
-    for (const response of responses) {
-      if (response.message && response.message.content) {
-        fullContent += response.message.content;
-      }
-    }
-    
-    return {
-      message: {
-        content: fullContent
-      }
-    };
+  public getModels(): string[] {
+    return this.installedModels;
   }
 
-  async chat(options: ChatOptions): Promise<FinalChatResponse> {
-    if (!this.isAvailable) {
-      throw new Error('Ollama service not available');
+  public getSelectedModel(): string {
+    return this.selectedModel;
+  }
+
+  public setSelectedModel(model: string): void {
+    if (this.installedModels.includes(model)) {
+      this.selectedModel = model;
+    }
+  }
+
+  public isServiceAvailable(): boolean {
+    return this.isAvailable;
+  }
+
+  public async chat(options: ChatOptions): Promise<FinalChatResponse> {
+    if (!this.isAvailable && !(await this.initializeOllama())) {
+      throw new Error('Ollama service is not running on http://localhost:11434');
+    }
+
+    const modelToUse = options.model || this.selectedModel || this.installedModels[0] || 'qwen3.5:2b';
+
+    if (isTauriAvailable()) {
+      try {
+        const userMsg = options.messages.find(m => m.role === 'user')?.content || '';
+        const sysMsg = options.messages.find(m => m.role === 'system')?.content || undefined;
+
+        const cleanContent = await invoke<string>('chat_ollama', {
+          model: modelToUse,
+          prompt: userMsg,
+          systemPrompt: sysMsg
+        });
+
+        return {
+          message: { content: cleanContent },
+          modelUsed: modelToUse
+        };
+      } catch (err) {
+        console.warn('[OllamaWrapper] Tauri chat_ollama failed, falling back to HTTP:', err);
+      }
     }
 
     try {
-      // Force streaming to false for simpler parsing, or handle streaming properly
       const requestOptions = {
-        ...options,
-        stream: false // This will make Ollama return a single response instead of streaming
+        model: modelToUse,
+        messages: options.messages,
+        options: options.options || { temperature: 0.1 },
+        stream: false
       };
 
       const response = await fetch(`${this.baseUrl}/api/chat`, {
@@ -110,7 +142,7 @@ export class OllamaWrapper {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestOptions),
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(45000),
       });
 
       if (!response.ok) {
@@ -118,152 +150,42 @@ export class OllamaWrapper {
       }
 
       const text = await response.text();
-      
-      // Handle both streaming and non-streaming responses
+      let rawContent = '';
+
       if (text.includes('\n')) {
-        // Streaming NDJSON response
-        console.log('[OllamaWrapper] Parsing streaming NDJSON response');
-        const responses = this.parseNDJSON(text);
-        if (responses.length === 0) {
-          throw new Error('No valid JSON responses found in stream');
-        }
-        return this.assembleStreamingResponse(responses);
-      } else {
-        // Single JSON response
-        console.log('[OllamaWrapper] Parsing single JSON response');
-        try {
-          const data = JSON.parse(text) as ChatResponse;
-          return {
-            message: {
-              content: data.message?.content || ''
-            }
-          };
-        } catch (parseError) {
-          console.error('[OllamaWrapper] JSON parse error:', parseError);
-          console.error('[OllamaWrapper] Response text:', text);
-          throw new Error(`Failed to parse response: ${parseError}`);
-        }
-      }
-    } catch (error) {
-      console.error('[OllamaWrapper] Chat error:', error);
-      throw error;
-    }
-  }
-
-  // Alternative streaming method if you want to handle streaming properly
-  async chatStreaming(options: ChatOptions): Promise<FinalChatResponse> {
-    if (!this.isAvailable) {
-      throw new Error('Ollama service not available');
-    }
-
-    try {
-      const requestOptions = {
-        ...options,
-        stream: true
-      };
-
-      const response = await fetch(`${this.baseUrl}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestOptions),
-        signal: AbortSignal.timeout(30000),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      if (!response.body) {
-        throw new Error('No response body available');
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let fullContent = '';
-      let buffer = '';
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          
-          if (done) break;
-          
-          buffer += decoder.decode(value, { stream: true });
-          
-          // Process complete lines
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || ''; // Keep the incomplete line in buffer
-          
-          for (const line of lines) {
-            if (line.trim()) {
-              try {
-                const parsed = JSON.parse(line) as ChatResponse;
-                if (parsed.message && parsed.message.content) {
-                  fullContent += parsed.message.content;
-                }
-                
-                if (parsed.done) {
-                  return {
-                    message: {
-                      content: fullContent
-                    }
-                  };
-                }
-              } catch (error) {
-                console.warn('[OllamaWrapper] Failed to parse streaming line:', line);
+        const lines = text.trim().split('\n');
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              const parsed = JSON.parse(line);
+              if (parsed.message?.content) {
+                rawContent += parsed.message.content;
               }
+            } catch {
+              // ignore
             }
           }
         }
-        
-        // Process any remaining buffer
-        if (buffer.trim()) {
-          try {
-            const parsed = JSON.parse(buffer) as ChatResponse;
-            if (parsed.message && parsed.message.content) {
-              fullContent += parsed.message.content;
-            }
-          } catch (error) {
-            console.warn('[OllamaWrapper] Failed to parse final buffer:', buffer);
-          }
-        }
-
-        return {
-          message: {
-            content: fullContent
-          }
-        };
-      } finally {
-        reader.releaseLock();
+      } else {
+        const data = JSON.parse(text);
+        rawContent = data.message?.content || '';
       }
+
+      const cleanContent = rawContent.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim();
+
+      return {
+        message: {
+          content: cleanContent || rawContent
+        },
+        modelUsed: modelToUse
+      };
     } catch (error) {
-      console.error('[OllamaWrapper] Streaming chat error:', error);
+      console.error('[OllamaWrapper] Chat execution failed:', error);
       throw error;
     }
   }
 
-  isServiceAvailable(): boolean {
-    return this.isAvailable;
-  }
-
-  async reconnect(): Promise<boolean> {
-    await this.initializeOllama();
-    return this.isAvailable;
-  }
-
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.chat({
-        model: 'llama3.2:3b',
-        messages: [{ role: 'user', content: 'hello' }],
-        options: { temperature: 0.1 }
-      });
-      return !!(response && response.message && response.message.content);
-    } catch (error) {
-      console.error('[OllamaWrapper] Test connection failed:', error);
-      return false;
-    }
+  public async reconnect(): Promise<boolean> {
+    return this.initializeOllama();
   }
 }
