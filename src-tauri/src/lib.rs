@@ -1,4 +1,22 @@
 use serde::{Deserialize, Serialize};
+use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
+pub struct DbState {
+    pub pool: Arc<Mutex<Option<Pool<Sqlite>>>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, sqlx::FromRow)]
+pub struct PipelineRecord {
+    pub id: i64,
+    pub file_count: i64,
+    pub duration: String,
+    pub erd_diagram: String,
+    pub sql_statements: String,
+    pub report_markdown: String,
+    pub created_at: String,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InputFile {
@@ -106,6 +124,81 @@ pub struct FlowGenerationResult {
 }
 
 #[tauri::command]
+async fn init_database(state: tauri::State<'_, DbState>) -> Result<String, String> {
+    let mut guard = state.pool.lock().await;
+    if guard.is_none() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(5)
+            .connect("sqlite::memory:")
+            .await
+            .map_err(|e| format!("Failed to create SQLite pool: {}", e))?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS pipeline_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_count INTEGER NOT NULL,
+                duration TEXT NOT NULL,
+                erd_diagram TEXT NOT NULL,
+                sql_statements TEXT NOT NULL,
+                report_markdown TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )"
+        )
+        .execute(&pool)
+        .await
+        .map_err(|e| format!("Failed to initialize database schema: {}", e))?;
+
+        *guard = Some(pool);
+    }
+
+    Ok("Database initialized successfully".into())
+}
+
+#[tauri::command]
+async fn save_pipeline_record(
+    state: tauri::State<'_, DbState>,
+    file_count: i64,
+    duration: String,
+    erd_diagram: String,
+    sql_statements: String,
+    report_markdown: String,
+) -> Result<i64, String> {
+    let guard = state.pool.lock().await;
+    let pool = guard.as_ref().ok_or("Database pool not initialized")?;
+
+    let res = sqlx::query(
+        "INSERT INTO pipeline_history (file_count, duration, erd_diagram, sql_statements, report_markdown) VALUES (?, ?, ?, ?, ?)"
+    )
+    .bind(file_count)
+    .bind(duration)
+    .bind(erd_diagram)
+    .bind(sql_statements)
+    .bind(report_markdown)
+    .execute(pool)
+    .await
+    .map_err(|e| format!("Failed to insert pipeline record: {}", e))?;
+
+    Ok(res.last_insert_rowid())
+}
+
+#[tauri::command]
+async fn get_pipeline_history(
+    state: tauri::State<'_, DbState>
+) -> Result<Vec<PipelineRecord>, String> {
+    let guard = state.pool.lock().await;
+    let pool = guard.as_ref().ok_or("Database pool not initialized")?;
+
+    let records = sqlx::query_as::<_, PipelineRecord>(
+        "SELECT id, file_count, duration, erd_diagram, sql_statements, report_markdown, datetime(created_at) as created_at FROM pipeline_history ORDER BY id DESC"
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Failed to fetch pipeline history: {}", e))?;
+
+    Ok(records)
+}
+
+#[tauri::command]
 async fn check_ollama_status() -> Result<Vec<String>, String> {
     let client = reqwest::Client::new();
     let res = client
@@ -201,7 +294,6 @@ Output JSON schema: { "operations": ["CSV Data Loader", ...], "explanation": "Sh
         return Ok(parsed);
     }
 
-    // Extraction fallback
     let ops = vec![
         "CSV Data Loader".to_string(),
         "Data Cleaner".to_string(),
@@ -443,9 +535,17 @@ async fn process_multi_csv_rust(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let db_state = DbState {
+        pool: Arc::new(Mutex::new(None)),
+    };
+
     tauri::Builder::default()
+        .manage(db_state)
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
+            init_database,
+            save_pipeline_record,
+            get_pipeline_history,
             check_ollama_status,
             chat_ollama,
             generate_flow_ollama,
