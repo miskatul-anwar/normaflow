@@ -16,31 +16,31 @@ export interface CustomSidebarProps {
 
 export function CustomSidebar({ items, activeTab, onTabChange }: CustomSidebarProps) {
   return (
-    <div className="bg-white border-r border-gray-200 h-full overflow-y-auto">
-      <div className="p-2">
+    <div className="bg-white border-r border-gray-200/90 h-full overflow-y-auto p-3">
+      <div className="space-y-1.5">
         {items.map((item) => (
           <button
             key={item.id}
             onClick={() => onTabChange(item.id)}
             disabled={!item.hasData}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 active:scale-98 ${
               activeTab === item.id
-                ? 'bg-teal-50 text-teal-700 border border-teal-200 shadow-sm'
+                ? 'bg-teal-50 text-teal-800 border border-teal-300 shadow-xs font-semibold'
                 : item.hasData
-                ? 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                : 'text-gray-400 cursor-not-allowed opacity-50'
+                ? 'text-gray-700 hover:bg-gray-100/80 hover:text-teal-700 border border-transparent'
+                : 'text-gray-400 cursor-not-allowed opacity-50 border border-transparent'
             }`}
             style={{ fontFamily: "'CMU Serif Roman', serif" }}
           >
-            <span className={`${activeTab === item.id ? 'text-teal-600' : item.hasData ? 'text-gray-400' : 'text-gray-300'}`}>
+            <span className={`${activeTab === item.id ? 'text-teal-600' : item.hasData ? 'text-gray-500' : 'text-gray-300'}`}>
               {item.icon}
             </span>
-            <span className="flex-1 font-medium">{item.label}</span>
+            <span className="flex-1 text-sm">{item.label}</span>
             {item.count !== undefined && (
               <span
-                className={`text-xs px-2 py-1 rounded-full ${
+                className={`text-xs px-2 py-0.5 rounded-full font-mono ${
                   activeTab === item.id
-                    ? 'bg-teal-100 text-teal-700'
+                    ? 'bg-teal-100 text-teal-800 font-bold'
                     : item.hasData
                     ? 'bg-gray-100 text-gray-600'
                     : 'bg-gray-50 text-gray-400'
