@@ -235,10 +235,10 @@ export default function OutputPage() {
           </p>
           <button
             onClick={() => navigate('/')}
-            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+            className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Application
+            Back to Workflow Canvas
           </button>
         </div>
       </div>
@@ -248,14 +248,15 @@ export default function OutputPage() {
   return (
     <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
       {/* Top Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
+      <header className="bg-white border-b border-gray-200 px-6 py-3.5 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/')}
-            className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+            className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-teal-50 border border-gray-200 hover:border-teal-300 text-gray-700 hover:text-teal-600 flex items-center justify-center transition-all shadow-xs active:scale-95 group"
+            title="Return to Main Workflow Canvas"
+            aria-label="Back to Main Application"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back
+            <ArrowLeft className="w-4.5 h-4.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
           </button>
           <div>
             <h1 className="text-xl font-bold text-gray-900" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
