@@ -41,13 +41,20 @@ export default function OutputPage() {
 
   const safeResults = useMemo(() => {
     if (results && (results.success !== false && (results.success || results.tables || results.outputFiles))) {
+      (window as any).__NORMAFLOW_LATEST_RESULTS__ = results;
       return results;
     }
+    if ((window as any).__NORMAFLOW_LATEST_RESULTS__) {
+      return (window as any).__NORMAFLOW_LATEST_RESULTS__;
+    }
     try {
-      const cached = sessionStorage.getItem('normaflow_latest_results');
+      const cached = sessionStorage.getItem('normaflow_latest_results') || localStorage.getItem('normaflow_latest_results');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (parsed && (parsed.success !== false && (parsed.success || parsed.tables || parsed.outputFiles))) return parsed;
+        if (parsed && (parsed.success !== false && (parsed.success || parsed.tables || parsed.outputFiles))) {
+          (window as any).__NORMAFLOW_LATEST_RESULTS__ = parsed;
+          return parsed;
+        }
       }
     } catch (e) {
       console.warn('[OutputPage] Failed to parse cached results:', e);

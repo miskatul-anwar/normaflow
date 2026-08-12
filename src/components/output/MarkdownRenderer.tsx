@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -10,7 +10,7 @@ interface MarkdownRendererProps {
   filename?: string;
 }
 
-export function MarkdownRenderer({ content, filename = 'report.md' }: MarkdownRendererProps) {
+export const MarkdownRenderer = memo(function MarkdownRenderer({ content, filename = 'report.md' }: MarkdownRendererProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -59,4 +59,4 @@ export function MarkdownRenderer({ content, filename = 'report.md' }: MarkdownRe
       </div>
     </div>
   );
-}
+});

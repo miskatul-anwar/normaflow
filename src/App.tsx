@@ -620,10 +620,13 @@ function MainAppContent() {
 
     try {
       const result = await processFiles(filesToRun, allOperations);
-      if (result && result.success) {
+      if (result && (result.success || result.tables)) {
         setProcessedResults(result);
+        (window as any).__NORMAFLOW_LATEST_RESULTS__ = result;
         try {
-          sessionStorage.setItem('normaflow_latest_results', JSON.stringify(result));
+          const serialized = JSON.stringify(result);
+          sessionStorage.setItem('normaflow_latest_results', serialized);
+          localStorage.setItem('normaflow_latest_results', serialized);
         } catch {
           // ignore
         }
@@ -640,43 +643,40 @@ function MainAppContent() {
   }, [uploadedFiles, logMessage, processFiles]);
 
   const handleViewOutput = useCallback(async () => {
-    let activeResults = processedResults;
+    let activeResults = processedResults || (window as any).__NORMAFLOW_LATEST_RESULTS__;
     if (!activeResults || !activeResults.success) {
       try {
-        const cached = sessionStorage.getItem('normaflow_latest_results');
+        const cached = sessionStorage.getItem('normaflow_latest_results') || localStorage.getItem('normaflow_latest_results');
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (parsed && parsed.success) activeResults = parsed;
+          if (parsed && (parsed.success || parsed.tables)) activeResults = parsed;
         }
       } catch {
         // ignore
       }
     }
 
-    if (!activeResults || !activeResults.success) {
-      logMessage('info', 'Executing automatic workflow to generate outputs...', 'NAVIGATION');
-      const freshResult = await handleRunAll();
-      if (freshResult && freshResult.success) {
-        activeResults = freshResult;
-      } else {
-        try {
-          const cached = sessionStorage.getItem('normaflow_latest_results');
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            if (parsed && parsed.success) activeResults = parsed;
-          }
-        } catch {
-          // ignore
-        }
-      }
-    }
-
-    if (activeResults && activeResults.success) {
+    if (activeResults && (activeResults.success !== false && (activeResults.success || activeResults.tables))) {
       navigate('/output', {
         state: {
           results: activeResults,
           outputFiles: activeResults.outputFiles,
           logs: [...consoleLogs, ...(activeResults.logs || [])],
+          selectedOperations: nodes.slice(1).map(node => String(node.data?.label || ''))
+        }
+      });
+      return;
+    }
+
+    logMessage('info', 'Executing automatic workflow to generate outputs...', 'NAVIGATION');
+    const freshResult = await handleRunAll();
+    if (freshResult && (freshResult.success !== false && (freshResult.success || freshResult.tables))) {
+      (window as any).__NORMAFLOW_LATEST_RESULTS__ = freshResult;
+      navigate('/output', {
+        state: {
+          results: freshResult,
+          outputFiles: freshResult.outputFiles,
+          logs: [...consoleLogs, ...(freshResult.logs || [])],
           selectedOperations: nodes.slice(1).map(node => String(node.data?.label || ''))
         }
       });
