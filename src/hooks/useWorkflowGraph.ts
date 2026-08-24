@@ -28,7 +28,7 @@ import { OPERATIONS } from '../config/operations';
 import { validateSequence } from '../utils/workflowValidation';
 
 export const START_NODE_ID = '0';
-const NODE_SPACING = 220;
+const NODE_SPACING = 300;
 const INITIAL_X = 100;
 const INITIAL_Y = 400;
 
@@ -78,9 +78,9 @@ function buildEdge(source: Node, target: Node): Edge {
     target: target.id,
     sourceHandle: 'b',
     targetHandle: 't',
-    markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#0f766e' },
-    style: { strokeWidth: 2, stroke: '#0f766e' },
-    type: 'default',
+    markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: '#0d9488' },
+    style: { strokeWidth: 2.5 },
+    type: 'flow',
   };
 }
 
@@ -154,9 +154,9 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
         addEdge(
           {
             ...connection,
-            markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#0f766e' },
-            style: { strokeWidth: 2, stroke: '#0f766e' },
-            type: 'default',
+            markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: '#0d9488' },
+            style: { strokeWidth: 2.5 },
+            type: 'flow',
           },
           current,
         ),
@@ -283,7 +283,7 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
     nextIdRef.current = 1;
   }, [commitNodes, commitRedoStack]);
 
-  const replaceGraph = useCallback((nextNodes: Node[], nextEdges: Edge[], nextId?: number) => {
+  const replaceGraph = useCallback((nextNodes: Node[], nextEdges?: Edge[], nextId?: number) => {
     const normalized = nextNodes.length > 0 ? nextNodes : [createStartNode()];
     nodesRef.current = normalized;
     setNodes(normalized);

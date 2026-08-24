@@ -15,7 +15,8 @@ import {
   type OnConnect,
 } from '@xyflow/react';
 import { StartNode, TealNode } from '../flow/CustomNodes';
-import { CustomBezierEdge } from '../flow/CustomBezierEdge';
+import { FlowEdge } from '../flow/FlowEdge';
+import { PHASE_ACCENTS } from '../../config/operationVisuals';
 import { OPERATION_DND_MIME } from './OperationPalette';
 
 const nodeTypes: NodeTypes = {
@@ -23,25 +24,27 @@ const nodeTypes: NodeTypes = {
   tealNode: TealNode,
 };
 
-const edgeTypes = { default: CustomBezierEdge };
+const edgeTypes = { flow: FlowEdge };
 
 const proOptions = { hideAttribution: true };
 
 const defaultEdgeOptions = {
+  type: 'flow',
   markerEnd: {
     type: MarkerType.ArrowClosed,
-    width: 16,
-    height: 16,
-    color: '#0f766e',
+    width: 18,
+    height: 18,
+    color: '#0d9488',
   },
   style: {
-    strokeWidth: 2,
-    stroke: '#0f766e',
+    strokeWidth: 2.5,
   },
 };
 
 function getNodeColor(node: Node): string {
-  return String(node.data?.label ?? '').toLowerCase() === 'start' ? '#2dd4bf' : '#ccfbf1';
+  const phase = node.data?.phase as keyof typeof PHASE_ACCENTS | undefined;
+  if (String(node.data?.label ?? '').toLowerCase() === 'start') return '#34d399';
+  return (phase && PHASE_ACCENTS[phase]?.accent) || '#0d9488';
 }
 
 interface FlowCanvasProps {
@@ -105,7 +108,19 @@ export function FlowCanvas({
         maxZoom={2.5}
         deleteKeyCode={['Backspace', 'Delete']}
         className="h-full w-full"
+        connectionLineContainerStyle={{ stroke: '#0d9488', strokeWidth: 2 }}
       >
+        {/* Shared defs for the gradient pipeline edges (see FlowEdge). */}
+        <svg aria-hidden focusable={false} className="nf-edge-defs">
+          <defs>
+            <linearGradient id="nf-edge-flow" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#14b8a6" />
+              <stop offset="55%" stopColor="#0891b2" />
+              <stop offset="100%" stopColor="#7c3aed" />
+            </linearGradient>
+          </defs>
+        </svg>
+
         <Controls
           position="bottom-right"
           showInteractive={true}
@@ -114,17 +129,18 @@ export function FlowCanvas({
         <MiniMap
           position="bottom-left"
           nodeColor={getNodeColor}
-          maskColor="rgba(255, 255, 255, 0.75)"
+          nodeStrokeWidth={3}
+          maskColor="rgba(241, 245, 249, 0.82)"
           pannable
           zoomable
           style={{
-            backgroundColor: '#f8fafc',
+            backgroundColor: '#ffffff',
             border: '1px solid #e2e8f0',
             borderRadius: '12px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+            boxShadow: '0 4px 16px rgba(15, 23, 42, 0.08)',
           }}
         />
-        <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#cbd5e1" />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1.6} color="#cbd5e1" />
       </ReactFlow>
     </div>
   );

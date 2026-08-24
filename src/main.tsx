@@ -1,6 +1,7 @@
 import '@fontsource/dm-sans';
 import '@fontsource/inter';
 import '@fontsource/dm-serif-display';
+import '@xyflow/react/dist/style.css';
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';

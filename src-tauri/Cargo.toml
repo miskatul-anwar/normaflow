@@ -1,6 +1,6 @@
 [package]
 name = "normaflow"
-version = "2.5.0"
+version = "2.6.0"
 description = "NormaFlow — turn raw CSVs into normalized database schemas"
 authors = ["Miskatul Anwar <miskatul.anwar.csecu@gmail.com>"]
 license = "MIT"

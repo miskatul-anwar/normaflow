@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { ReactFlowProvider } from '@xyflow/react';
+import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import type { Node } from '@xyflow/react';
 
 import Heading from './components/heading';
@@ -46,6 +46,7 @@ function downloadJson(snapshot: WorkflowSnapshot): void {
 /** Main workspace: operation palette + full-canvas workflow builder. */
 function Workspace() {
   const navigate = useNavigate();
+  const { fitView } = useReactFlow();
   const [uploadedFiles, setUploadedFiles] = useState<File[]>(() => [createSampleFile()]);
   const [processedResults, setProcessedResults] = useState<any>(() => loadCachedResult());
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -132,7 +133,7 @@ function Workspace() {
     const start = graph.nodes[0];
     const builtNodes: Node[] = [start, ...ALL_OPERATIONS.map((label, index) => ({
       id: String(index + 1),
-      position: { x: 100 + (index + 1) * 220, y: 400 },
+      position: { x: 100 + (index + 1) * 300, y: 400 },
       data: {
         label,
         phase: OPERATIONS[label]?.phase ?? 'PREP',
@@ -148,9 +149,12 @@ function Workspace() {
       return null;
     }
 
-    graph.replaceGraph(builtNodes, []);
+    // replaceGraph derives the sequential chain edges when none are given.
+    graph.replaceGraph(builtNodes);
+    // Frame the freshly built chain once React Flow has laid it out.
+    requestAnimationFrame(() => void fitView({ padding: 0.15, duration: 500 }));
     return executePipeline(files, ALL_OPERATIONS);
-  }, [executePipeline, graph, hasFiles, logMessage, uploadedFiles]);
+  }, [executePipeline, fitView, graph, hasFiles, logMessage, uploadedFiles]);
 
   // ----- output navigation ---------------------------------------------------
 
