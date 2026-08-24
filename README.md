@@ -7,7 +7,7 @@
 **Turn raw CSV files into normalized database schemas — ERDs, SQL DDL and full normalization reports — in seconds.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-115e59.svg)](LICENSE)
-[![Release: v2.4.0](https://img.shields.io/badge/Release-v2.4.0-0284c7.svg?logo=github)](https://github.com/miskatul-anwar/normaflow/releases)
+[![Release: v2.5.0](https://img.shields.io/badge/Release-v2.5.0-0284c7.svg?logo=github)](https://github.com/miskatul-anwar/normaflow/releases)
 [![CI](https://github.com/miskatul-anwar/normaflow/actions/workflows/ci.yml/badge.svg)](https://github.com/miskatul-anwar/normaflow/actions/workflows/ci.yml)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Built with Tauri](https://img.shields.io/badge/Built%20with-Tauri%202-FFC131?logo=tauri&logoColor=black)](https://tauri.app)

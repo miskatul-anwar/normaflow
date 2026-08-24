@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2025-08-24
+
+### Added
+- Interactive canvas controls toolbar (`<Controls />`) supporting zoom in, zoom out, fit view, and interactive canvas lock.
+- Directional arrow markers (`MarkerType.ArrowClosed`) and custom styling on all React Flow pipeline edges.
+- Modern high-density dual-pane workspace architecture with transient toast notifications.
+
+### Changed
+- Removed redundant bottom console and natural-language prompt bar to maximize canvas viewport and performance.
+- Streamlined toolbar controls for rapid schema synthesis and workflow state management.
+
 ## [2.4.0] - 2025-08-24
 
 ### Added
