@@ -1,0 +1,44 @@
+@startuml
+left to right direction
+skinparam roundcorner 8
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+
+actor "Data Engineer / DBA" as User
+
+rectangle "NormaFlow Desktop System" {
+  usecase "Upload Single/Multi CSV Datasets" as UC_Upload
+  usecase "Construct Custom Pipeline on React Flow Canvas" as UC_Canvas
+  usecase "Drag & Drop Operations from Palette" as UC_Palette
+  usecase "Validate Dependency Sequence" as UC_Validate
+  usecase "Execute 3NF Normalization Pipeline" as UC_Run
+  usecase "Mine Functional Dependencies (TANE)" as UC_FD
+  usecase "Discover Minimal Candidate Keys" as UC_Keys
+  usecase "Detect Cross-Table Foreign Keys" as UC_FK
+  usecase "Decompose to 1NF / 2NF / 3NF" as UC_Decompose
+  usecase "View & Pan/Zoom Mermaid ERD" as UC_ERD
+  usecase "Export Consolidated SQL DDL" as UC_SQL
+  usecase "Export Markdown Normalization Report" as UC_Report
+  usecase "Save & Load Workflow Graph (.json)" as UC_SaveLoad
+  usecase "Undo / Redo Canvas Mutations" as UC_UndoRedo
+}
+
+User --> UC_Upload
+User --> UC_Canvas
+User --> UC_Palette
+User --> UC_Run
+User --> UC_ERD
+User --> UC_SQL
+User --> UC_Report
+User --> UC_SaveLoad
+User --> UC_UndoRedo
+
+UC_Canvas ..> UC_Validate : <<include>>
+UC_Run ..> UC_FD : <<include>>
+UC_Run ..> UC_Keys : <<include>>
+UC_Run ..> UC_FK : <<include>>
+UC_Run ..> UC_Decompose : <<include>>
+UC_Run ..> UC_ERD : <<include>>
+UC_Run ..> UC_SQL : <<include>>
+@enduml

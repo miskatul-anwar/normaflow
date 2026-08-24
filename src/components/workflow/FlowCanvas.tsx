@@ -1,8 +1,3 @@
-/**
- * FlowCanvas — React Flow wrapper owning canvas-level concerns:
- * rendering, minimap/controls and drop-target handling for palette drags.
- */
-
 import { useCallback, useRef } from 'react';
 import {
   Background,
@@ -11,6 +6,7 @@ import {
   MiniMap,
   ReactFlow,
   useReactFlow,
+  MarkerType,
   type Edge,
   type Node,
   type NodeTypes,
@@ -30,6 +26,19 @@ const nodeTypes: NodeTypes = {
 const edgeTypes = { default: CustomBezierEdge };
 
 const proOptions = { hideAttribution: true };
+
+const defaultEdgeOptions = {
+  markerEnd: {
+    type: MarkerType.ArrowClosed,
+    width: 16,
+    height: 16,
+    color: '#0f766e',
+  },
+  style: {
+    strokeWidth: 2,
+    stroke: '#0f766e',
+  },
+};
 
 function getNodeColor(node: Node): string {
   return String(node.data?.label ?? '').toLowerCase() === 'start' ? '#2dd4bf' : '#ccfbf1';
@@ -78,12 +87,13 @@ export function FlowCanvas({
   );
 
   return (
-    <div ref={wrapperRef} className="h-full w-full" data-testid="flow-canvas">
+    <div ref={wrapperRef} className="h-full w-full relative" data-testid="flow-canvas">
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -92,23 +102,29 @@ export function FlowCanvas({
         proOptions={proOptions}
         fitView
         minZoom={0.2}
-        maxZoom={2}
+        maxZoom={2.5}
         deleteKeyCode={['Backspace', 'Delete']}
         className="h-full w-full"
       >
-        <Controls className="!top-4 !right-4 !left-auto !bottom-auto" />
+        <Controls
+          position="bottom-right"
+          showInteractive={true}
+          className="!bg-white/95 !backdrop-blur-md !border !border-gray-200/90 !shadow-md !rounded-xl !overflow-hidden"
+        />
         <MiniMap
+          position="bottom-left"
           nodeColor={getNodeColor}
-          maskColor="rgba(255, 255, 255, 0.8)"
+          maskColor="rgba(255, 255, 255, 0.75)"
           pannable
           zoomable
           style={{
             backgroundColor: '#f8fafc',
             border: '1px solid #e2e8f0',
-            borderRadius: '8px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
           }}
         />
-        <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+        <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#cbd5e1" />
       </ReactFlow>
     </div>
   );

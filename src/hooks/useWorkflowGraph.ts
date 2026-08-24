@@ -78,7 +78,8 @@ function buildEdge(source: Node, target: Node): Edge {
     target: target.id,
     sourceHandle: 'b',
     targetHandle: 't',
-    markerEnd: { type: MarkerType.Arrow, width: 20, height: 20, color: '#115e59' },
+    markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#0f766e' },
+    style: { strokeWidth: 2, stroke: '#0f766e' },
     type: 'default',
   };
 }
@@ -153,7 +154,8 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
         addEdge(
           {
             ...connection,
-            markerEnd: { type: MarkerType.Arrow, width: 20, height: 20, color: '#115e59' },
+            markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#0f766e' },
+            style: { strokeWidth: 2, stroke: '#0f766e' },
             type: 'default',
           },
           current,

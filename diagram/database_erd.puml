@@ -1,0 +1,65 @@
+@startuml
+skinparam roundcorner 8
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+
+entity "PIPELINE_HISTORY" as PipelineHistory {
+  * id : INTEGER <<PK, AutoIncrement>>
+  --
+  * executed_at : TIMESTAMP
+  * table_count : INTEGER
+  * operation_sequence : TEXT
+  * erd_mermaid : TEXT
+  * sql_ddl : TEXT
+  * status : TEXT
+}
+
+entity "TABLE_PROFILE" as TableProfile {
+  * table_id : TEXT <<PK>>
+  --
+  * history_id : INTEGER <<FK>>
+  * table_name : TEXT
+  * row_count : INTEGER
+  * candidate_keys : TEXT (JSON)
+  * normal_form : TEXT
+}
+
+entity "COLUMN_PROFILE" as ColumnProfile {
+  * column_id : TEXT <<PK>>
+  --
+  * table_id : TEXT <<FK>>
+  * column_name : TEXT
+  * data_type : TEXT
+  * entity_tag : TEXT
+  * null_count : INTEGER
+  * distinct_count : INTEGER
+  * sample_values : TEXT (JSON)
+}
+
+entity "FUNCTIONAL_DEPENDENCY" as FuncDep {
+  * fd_id : TEXT <<PK>>
+  --
+  * table_id : TEXT <<FK>>
+  * determinant_lhs : TEXT (JSON array)
+  * dependent_rhs : TEXT
+  * confidence : REAL
+  * is_exact : BOOLEAN
+  * violation_count : INTEGER
+}
+
+entity "RELATION_3NF" as Relation3NF {
+  * relation_id : TEXT <<PK>>
+  --
+  * table_id : TEXT <<FK>>
+  * relation_name : TEXT
+  * attributes : TEXT (JSON array)
+  * primary_key : TEXT (JSON array)
+  * foreign_keys : TEXT (JSON array)
+}
+
+PipelineHistory ||--o{ TableProfile : "tracks profiles"
+TableProfile ||--|{ ColumnProfile : "contains columns"
+TableProfile ||--o{ FuncDep : "discovers FDs"
+TableProfile ||--o{ Relation3NF : "decomposes into"
+@enduml

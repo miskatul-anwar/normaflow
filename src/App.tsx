@@ -1,19 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { ReactFlowProvider } from '@xyflow/react';
 import type { Node } from '@xyflow/react';
 
 import Heading from './components/heading';
-import Console from './components/Console';
 import OutputPage from './components/OutputPage';
-import { AskAI } from './components/Input';
 import { OperationPalette } from './components/workflow/OperationPalette';
 import { FlowCanvas } from './components/workflow/FlowCanvas';
 import { useNormalization } from './hooks/useNormalization';
-import { useOperationValidation } from './hooks/useOperationValidation';
 import { useWorkflowGraph, type WorkflowSnapshot } from './hooks/useWorkflowGraph';
-import { useOllamaConnection } from './hooks/useOllamaConnection';
 import { Logger } from './services/utils/logger';
 import { OPERATIONS } from './config/operations';
 import { validateSequence } from './utils/workflowValidation';
@@ -47,40 +43,30 @@ function downloadJson(snapshot: WorkflowSnapshot): void {
   URL.revokeObjectURL(url);
 }
 
-/** Main workspace: palette + canvas + console. */
+/** Main workspace: operation palette + full-canvas workflow builder. */
 function Workspace() {
   const navigate = useNavigate();
   const [uploadedFiles, setUploadedFiles] = useState<File[]>(() => [createSampleFile()]);
-  const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
-  const [consoleOpen, setConsoleOpen] = useState(true);
   const [processedResults, setProcessedResults] = useState<any>(() => loadCachedResult());
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const { isProcessing, progress, processFiles } = useNormalization();
+  const { isProcessing, processFiles } = useNormalization();
 
-  // ----- logging -------------------------------------------------------------
+  // ----- logging & status ----------------------------------------------------
 
   const logMessage = useCallback((level: LogLevel, message: string, category?: string) => {
     if (level === 'success') logger.success(message, undefined, category);
     else if (level === 'error') logger.error(message, undefined, category);
     else logger.info(level === 'warning' ? `[WARNING] ${message}` : message, undefined, category);
 
-    const timestamp = new Date().toLocaleTimeString();
-    const tag = category ? `[${category}] ` : '';
-    setConsoleLogs(prev => [...prev.slice(-500), `[${timestamp}] ${tag}${message}`]);
+    setStatusMessage(message);
+    const timer = setTimeout(() => setStatusMessage(null), 4000);
+    return () => clearTimeout(timer);
   }, []);
 
-  // ----- workflow graph & ollama ---------------------------------------------
+  // ----- workflow graph ------------------------------------------------------
 
   const graph = useWorkflowGraph({ log: logMessage });
-  const ollama = useOllamaConnection(logMessage);
-
-  const validation = useOperationValidation({
-    completedOperations: progress ? [progress.operation] : [],
-    currentNormalForm: progress?.phase || null,
-    uploadedFile: uploadedFiles[0] || null,
-    processedResults,
-    nodes: graph.nodes,
-  });
 
   // ----- file handling -------------------------------------------------------
 
@@ -108,7 +94,7 @@ function Workspace() {
         if (result?.success) {
           setProcessedResults(result);
           saveCachedResult(result);
-          logMessage('success', `Pipeline finished for ${files.length} table(s)`, 'EXECUTION');
+          logMessage('success', `Pipeline completed for ${files.length} table(s)`, 'EXECUTION');
         } else {
           logMessage('error', `Processing failed: ${result?.error ?? 'unknown error'}`, 'EXECUTION');
         }
@@ -130,7 +116,7 @@ function Workspace() {
       return;
     }
     if (operationCount === 0) {
-      logMessage('error', 'Workflow is empty — add operations first.', 'EXECUTION');
+      logMessage('error', 'Workflow is empty — add operations from the palette.', 'EXECUTION');
       return;
     }
     void executePipeline(uploadedFiles, graph.operationLabels);
@@ -139,7 +125,7 @@ function Workspace() {
   const handleRunAll = useCallback(async () => {
     const files = hasFiles ? uploadedFiles : [createSampleFile()];
     if (!hasFiles) {
-      logMessage('info', 'No files uploaded — running with the bundled sample dataset.', 'EXECUTION');
+      logMessage('info', 'Running with bundled sample dataset.', 'EXECUTION');
     }
 
     // Build the canonical full pipeline on the canvas.
@@ -158,7 +144,7 @@ function Workspace() {
 
     const sequenceResult = validateSequence(builtNodes);
     if (!sequenceResult.isValid) {
-      logMessage('error', `Built pipeline failed validation: ${sequenceResult.errors.join(', ')}`, 'EXECUTION');
+      logMessage('error', `Pipeline validation failed: ${sequenceResult.errors.join(', ')}`, 'EXECUTION');
       return null;
     }
 
@@ -174,12 +160,12 @@ function Workspace() {
         state: {
           results,
           outputFiles: results.outputFiles,
-          logs: [...consoleLogs, ...(results.logs ?? [])],
+          logs: results.logs ?? [],
           selectedOperations: graph.operationLabels,
         },
       });
     },
-    [consoleLogs, graph.operationLabels, navigate],
+    [graph.operationLabels, navigate],
   );
 
   const handleViewOutput = useCallback(async () => {
@@ -189,7 +175,7 @@ function Workspace() {
       navigateToOutput(active);
       return;
     }
-    logMessage('info', 'No results yet — running the full pipeline…', 'NAVIGATION');
+    logMessage('info', 'Synthesizing pipeline to generate output…', 'NAVIGATION');
     const fresh = await handleRunAll();
     if (fresh?.success) navigateToOutput(fresh);
     else logMessage('error', 'Could not generate outputs.', 'NAVIGATION');
@@ -216,10 +202,6 @@ function Workspace() {
     [graph, logMessage],
   );
 
-  // ----- render ----------------------------------------------------------------
-
-  const availableOperations = useMemo(() => ALL_OPERATIONS, []);
-
   return (
     <div className="nf-shell">
       <header className="nf-header">
@@ -237,11 +219,6 @@ function Workspace() {
           onLoadState={handleLoadState}
           isRunning={isProcessing}
           isOutputReady={Boolean(processedResults?.success)}
-          selectedModel={ollama.selectedModel}
-          installedModels={ollama.models}
-          ollamaReady={ollama.status === 'online'}
-          onModelSelect={ollama.selectModel}
-          onRefreshModels={() => void ollama.refresh()}
         />
       </header>
 
@@ -258,75 +235,24 @@ function Workspace() {
             onEdgesChange={graph.onEdgesChange}
             onConnect={graph.onConnect}
             onDropOperation={label => {
-              logMessage('info', `Dropped "${label}" onto canvas`, 'WORKFLOW');
+              logMessage('info', `Added "${label}" to canvas`, 'WORKFLOW');
               return graph.tryAddOperation(label);
             }}
           />
         </div>
 
-        <div className="nf-askai">
-          <AskAI
-            onAddNode={graph.tryAddOperation}
-            onAddOperations={graph.addOperationsBatch}
-            onLoadState={stateData => graph.loadSnapshot(stateData)}
-            currentNodes={graph.nodes}
-            availableOperations={availableOperations}
-            onLog={(message: string) => logMessage('info', message, 'AI-AGENT')}
-            ollamaWrapper={ollama.wrapper}
-            selectedModel={ollama.selectedModel}
-            ollamaReady={ollama.status === 'online'}
-          />
-        </div>
-      </main>
-
-      <aside className={`nf-console ${consoleOpen ? '' : 'nf-console--closed'}`} aria-label="Console panel">
-        <button
-          type="button"
-          className="nf-console-toggle"
-          onClick={() => setConsoleOpen(open => !open)}
-          aria-expanded={consoleOpen}
-        >
-          {consoleOpen ? 'Hide console ›' : '‹ Show console'}
-        </button>
-        {consoleOpen && (
-          <Console
-            currentPhase={progress?.phase ?? 'PREP'}
-            completedOperations={progress ? [progress.operation] : []}
-            activeOperation={progress?.operation ?? ''}
-            logs={consoleLogs}
-            processedResults={processedResults}
-            onExecuteCommand={cmd => logMessage('info', cmd, 'COMMAND')}
-            onClearLogs={() => setConsoleLogs([])}
-            onPauseLogs={() => logMessage('info', 'Console logging paused', 'CONSOLE')}
-            isPaused={false}
-            onAddNode={graph.tryAddOperation}
-            onRunOperation={handleRun}
-            onRunAll={() => void handleRunAll()}
-            onUndo={graph.undo}
-            onRedo={graph.redo}
-            canUndo={graph.canUndo}
-            canRedo={graph.canRedo}
-            validationResults={validation.validationResults}
-            blockedOperations={validation.blockedOperations}
-            availableOperations={validation.availableOperations}
-            nextRecommended={validation.nextRecommended}
-            validateOperation={validation.validateOperation}
-            getBlockingReason={validation.getBlockingReason}
-            getOperationDependencies={validation.getOperationDependencies}
-            canGenerateOutputs={validation.canGenerateOutputs}
-            normalizationProgress={validation.normalizationProgress}
-            currentNormalForm={progress?.phase ?? null}
-            uploadedFile={uploadedFiles[0] || null}
-            nodes={graph.nodes}
-          />
+        {statusMessage && (
+          <div className="nf-status-toast">
+            <span>{statusMessage}</span>
+          </div>
         )}
-      </aside>
+      </main>
     </div>
   );
 }
 
 export default function App() {
-  // Warm up the native database (best-effort; history is optional).
+  // Warm up native database
   useEffect(() => {
     import('@tauri-apps/api/core')
       .then(({ invoke }) => invoke('init_database').catch(() => undefined))

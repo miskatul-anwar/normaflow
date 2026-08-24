@@ -24,14 +24,15 @@ export function CustomBezierEdge({
     <path
       id={id}
       style={{
-        stroke: '#115e59',
-        strokeWidth: 1,
+        stroke: '#0f766e',
+        strokeWidth: 2,
         fill: 'none',
         ...style,
       }}
-      className="react-flow__edge-path"
+      className="react-flow__edge-path transition-all duration-200 hover:stroke-teal-500"
       d={edgePath}
       markerEnd={markerEnd}
     />
   );
 }
+

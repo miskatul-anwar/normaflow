@@ -1,0 +1,62 @@
+@startuml
+autonumber
+skinparam roundcorner 8
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+
+actor User
+boundary "Heading UI" as Heading
+control "Workspace (App.tsx)" as Workspace
+entity "useWorkflowGraph" as Graph
+control "useNormalization" as Hook
+control "databaseService" as Service
+boundary "Tauri IPC Bridge" as IPC
+control "Rust Engine (lib.rs)" as RustLib
+entity "engine::csv" as CSVParser
+entity "ner::profiler" as NER
+entity "engine::fk" as FKDetector
+entity "engine::erd" as ERD
+entity "engine::sql" as SQL
+boundary "OutputPage" as Output
+
+User -> Heading : Click "Synthesize 3NF" (Run All)
+Heading -> Workspace : handleRunAll()
+Workspace -> Graph : replaceGraph(canonicalPipelineNodes)
+Workspace -> Hook : processFiles(files, ALL_OPERATIONS)
+Hook -> Service : processFiles(files, operations)
+
+alt Native Tauri Context (invoke available)
+  Service -> IPC : invoke('process_multi_csv_rust', { files })
+  IPC -> RustLib : Dispatch process_multi_csv_rust
+  
+  par Parallel CSV Ingestion
+    RustLib -> CSVParser : parse_csv_stream(file_1)
+    RustLib -> CSVParser : parse_csv_stream(file_n)
+  end
+  CSVParser --> RustLib : TableStats & Samples
+
+  RustLib -> NER : classify_columns(tables)
+  NER --> RustLib : Enriched EntityTags
+
+  RustLib -> FKDetector : detect_foreign_keys(tables)
+  FKDetector --> RustLib : Verified FK Relationships (>= 0.5 containment)
+
+  RustLib -> ERD : generate_mermaid_erd(tables, fks)
+  ERD --> RustLib : Mermaid String
+
+  RustLib -> SQL : generate_ddl(tables, fks)
+  SQL --> RustLib : Consolidated SQL DDL
+
+  RustLib --> IPC : ProcessingResult { success: true, ... }
+  IPC --> Service : Return Result Object
+else Web Fallback Mode
+  Service -> Service : runFallbackEngine (TS fdMiner + 3NF synthesis)
+end
+
+Service --> Hook : ProcessingResult
+Hook --> Workspace : setProcessedResults(result)
+Workspace -> Workspace : saveCachedResult(result)
+Workspace -> Output : navigate('/output', state)
+Output -> User : Render Interactive ERD, DDL, Keys & Reports
+@enduml
