@@ -2906,7 +2906,16 @@ class DatabaseService {
                 headers: t.headers,
                 rows: [],
                 rowCount: t.row_count,
-                nerTags: t.ner_tags,
+                skippedRows: t.skipped_rows ?? 0,
+                // Rust DTOs are snake_case; normalize for the UI layer.
+                nerTags: (t.ner_tags || []).map((tag: any) => ({
+                  columnName: tag.column_name,
+                  tableName: tag.table_name,
+                  entityType: tag.entity_type,
+                  confidence: tag.confidence,
+                  sampleValues: tag.sample_values || [],
+                  description: tag.description
+                })),
                 functionalDependencies: [],
                 candidateKeys: [],
                 primaryKey: t.primary_key,

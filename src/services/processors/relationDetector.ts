@@ -1,89 +1,60 @@
-import { EntityTag, EntityType, CrossTableRelationship, OllamaAIInsight, TableData } from '../../types';
+import { EntityTag, CrossTableRelationship, OllamaAIInsight, TableData } from '../../types';
 import { OllamaWrapper } from '../ollama-wrapper';
+import { classifyColumn } from '../nlp/semanticProfiler';
+import { extractJson } from '../../utils/jsonUtils';
 
 export class RelationDetectorService {
   /**
-   * Named Entity Recognition (NER) for CSV column headers and sample data
+   * Named Entity Recognition (NER) for CSV column headers and sample data.
+   * Delegates to the NLP semantic profiler, which fuses column-name evidence
+   * with value-pattern evidence.
    */
   public static classifyColumnEntity(tableName: string, colName: string, sampleValues: any[]): EntityTag {
-    const colLower = colName.toLowerCase().trim();
-    const strValues = sampleValues.filter(v => v !== null && v !== undefined && String(v).trim() !== '').map(v => String(v).trim());
-    
-    let entityType: EntityType = 'GENERAL_TEXT';
-    let confidence = 0.6;
-    let description = 'Text attribute';
+    const samples = sampleValues
+      .filter(v => v !== null && v !== undefined && String(v).trim() !== '')
+      .map(v => String(v).trim());
+    const distinct = new Set(samples).size;
 
-    if (colLower === 'id' || colLower.endsWith('_id') || colLower.endsWith('id')) {
-      if (colLower === 'id' || colLower === `${tableName.toLowerCase()}_id`) {
-        entityType = 'PRIMARY_KEY_ID';
-        confidence = 0.95;
-        description = 'Primary key';
-      } else {
-        entityType = 'FOREIGN_KEY_REF';
-        confidence = 0.90;
-        description = 'Foreign key';
-      }
-    }
-    else if (colLower.includes('email') || strValues.some(v => v.includes('@') && v.includes('.'))) {
-      entityType = 'EMAIL';
-      confidence = 0.95;
-      description = 'Email address';
-    }
-    else if (colLower.includes('name') || colLower.includes('author') || colLower.includes('customer') || colLower.includes('user') || colLower.includes('employee') || colLower === 'fname' || colLower === 'lname') {
-      entityType = 'PERSON_NAME';
-      confidence = 0.85;
-      description = 'Person name';
-    }
-    else if (colLower.includes('date') || colLower.includes('time') || colLower.includes('created') || colLower.includes('updated') || colLower.includes('year') || colLower.includes('month') || strValues.some(v => !isNaN(Date.parse(v)) && v.length > 5)) {
-      entityType = 'DATE_TIMESTAMP';
-      confidence = 0.90;
-      description = 'Date/timestamp';
-    }
-    else if (colLower.includes('price') || colLower.includes('cost') || colLower.includes('amount') || colLower.includes('salary') || colLower.includes('total') || colLower.includes('revenue') || colLower.includes('budget') || strValues.some(v => v.startsWith('$') || v.startsWith('€') || v.startsWith('£'))) {
-      entityType = 'CURRENCY_PRICE';
-      confidence = 0.92;
-      description = 'Currency/price';
-    }
-    else if (colLower.includes('city') || colLower.includes('country') || colLower.includes('state') || colLower.includes('address') || colLower.includes('zip') || colLower.includes('location')) {
-      entityType = 'LOCATION_ADDRESS';
-      confidence = 0.88;
-      description = 'Location/address';
-    }
-    else if (colLower.includes('company') || colLower.includes('org') || colLower.includes('department') || colLower.includes('vendor') || colLower.includes('publisher')) {
-      entityType = 'ORGANIZATION_COMPANY';
-      confidence = 0.85;
-      description = 'Organization';
-    }
-    else if (colLower.includes('product') || colLower.includes('item') || colLower.includes('sku') || colLower.includes('model') || colLower.includes('title')) {
-      entityType = 'PRODUCT_ITEM';
-      confidence = 0.82;
-      description = 'Product item';
-    }
-    else if (colLower.includes('qty') || colLower.includes('quantity') || colLower.includes('count') || colLower.includes('score') || colLower.includes('age') || strValues.every(v => !isNaN(Number(v)))) {
-      entityType = 'NUMERIC_METRIC';
-      confidence = 0.80;
-      description = 'Numeric metric';
-    }
-
-    return {
+    return classifyColumn({
+      tableName: tableName.toLowerCase(),
       columnName: colName,
-      tableName,
-      entityType,
-      confidence,
-      sampleValues: strValues.slice(0, 3),
-      description
-    };
+      columnIndex: -1,
+      stats: { samples, filled: samples.length, distinct },
+    });
   }
 
-  public static performNER(tables: { tableName: string; headers: string[]; rows: any[] }[]): { [tableName: string]: EntityTag[] } {
+  public static performNER(tables: { tableName: string; headers: string[]; rows: any[]; rowCount?: number }[]): { [tableName: string]: EntityTag[] } {
     const results: { [tableName: string]: EntityTag[] } = {};
 
     tables.forEach(table => {
       const tags: EntityTag[] = [];
-      table.headers.forEach(header => {
-        const sampleValues = table.rows.slice(0, 20).map(r => r[header]);
-        const tag = this.classifyColumnEntity(table.tableName, header, sampleValues);
-        tags.push(tag);
+      table.headers.forEach((header, columnIndex) => {
+        const samples: string[] = [];
+        const seen = new Set<string>();
+        let filled = 0;
+        // Bounded scan: gather up to 24 distinct samples without copying rows.
+        const limit = Math.min(table.rows.length, 2000);
+        for (let i = 0; i < limit && samples.length < 24; i++) {
+          const raw = table.rows[i]?.[header];
+          if (raw === null || raw === undefined || String(raw).trim() === '') continue;
+          filled++;
+          const v = String(raw).trim();
+          if (!seen.has(v)) {
+            seen.add(v);
+            samples.push(v);
+          }
+        }
+        const rowCount = table.rowCount ?? table.rows.length;
+        // If nearly everything sampled is distinct, treat the full row count
+        // as the distinct estimate (high-cardinality identifier shape).
+        const distinct = filled > 0 && seen.size / filled > 0.9 ? rowCount : seen.size;
+
+        tags.push(classifyColumn({
+          tableName: table.tableName.toLowerCase(),
+          columnName: header,
+          columnIndex,
+          stats: { samples, filled, distinct },
+        }));
       });
       results[table.tableName] = tags;
     });
@@ -95,6 +66,16 @@ export class RelationDetectorService {
     const relationships: CrossTableRelationship[] = [];
     if (tables.length < 2) return relationships;
 
+    const singular = (name: string) => name.toLowerCase().replace(/s$/, '').replace(/_table$/, '');
+
+    const nameScore = (srcColLower: string, targetTableName: string, tgtColLower: string): number | null => {
+      const targetSingular = singular(targetTableName);
+      if (srcColLower === `${targetSingular}_id` && (tgtColLower === 'id' || tgtColLower === `${targetSingular}_id`)) return 0.95;
+      if (tgtColLower === `${targetSingular}_id` && srcColLower === 'id') return -0.95; // reversed orientation
+      if (srcColLower === tgtColLower && (srcColLower.endsWith('_id') || srcColLower === 'id')) return 0.6;
+      return null;
+    };
+
     for (let i = 0; i < tables.length; i++) {
       for (let j = 0; j < tables.length; j++) {
         if (i === j) continue;
@@ -103,53 +84,51 @@ export class RelationDetectorService {
 
         source.headers.forEach(srcCol => {
           const srcColLower = srcCol.toLowerCase();
-          const targetTableNameLower = target.tableName.toLowerCase().replace(/s$/, '').replace(/_table$/, '');
 
           target.headers.forEach(tgtCol => {
             const tgtColLower = tgtCol.toLowerCase();
+            const score = nameScore(srcColLower, target.tableName, tgtColLower);
+            if (score === null || score < 0) return; // no match or reversed orientation is stronger
 
-            const isFkMatch = 
-              (srcColLower === `${targetTableNameLower}_id` && (tgtColLower === 'id' || tgtColLower === `${targetTableNameLower}_id`)) ||
-              (tgtColLower === `${targetTableNameLower}_id` && srcColLower === 'id') ||
-              (srcColLower === tgtColLower && (srcColLower.endsWith('_id') || srcColLower === 'id'));
+            // Directed containment: referencing values should exist in the
+            // referenced set. Sampling keeps this O(sample) per pair.
+            const srcSample = source.rows.slice(0, 1000).map(r => String(r[srcCol] ?? '').trim()).filter(Boolean);
+            const tgtSet = new Set(
+              target.rows.slice(0, 1000).map(r => String(r[tgtCol] ?? '').trim()).filter(Boolean),
+            );
+            if (srcSample.length === 0 || tgtSet.size === 0) return;
 
-            if (isFkMatch) {
-              const srcValues = new Set(source.rows.map(r => String(r[srcCol])).filter(Boolean));
-              const tgtValues = new Set(target.rows.map(r => String(r[tgtCol])).filter(Boolean));
+            let hits = 0;
+            const srcSet = new Set<string>();
+            srcSample.forEach(v => {
+              srcSet.add(v);
+              if (tgtSet.has(v)) hits++;
+            });
+            const matchRatio = hits / srcSet.size;
+            if (matchRatio < 0.5) return; // same name, unrelated data
 
-              let intersectionCount = 0;
-              srcValues.forEach(val => {
-                if (tgtValues.has(val)) intersectionCount++;
+            const confidence = Math.min(0.98, Math.max(0.65, score * 0.7 + matchRatio * 0.3));
+
+            const srcUnique = srcSet.size === srcSample.length;
+            const cardinality: '1:1' | '1:N' | 'N:M' =
+              srcUnique && matchRatio > 0.95 ? '1:1' : '1:N';
+
+            const exists = relationships.some(r =>
+              (r.sourceTable === source.tableName && r.targetTable === target.tableName && r.sourceColumn === srcCol && r.targetColumn === tgtCol) ||
+              (r.sourceTable === target.tableName && r.targetTable === source.tableName && r.sourceColumn === tgtCol && r.targetColumn === srcCol),
+            );
+
+            if (!exists) {
+              relationships.push({
+                sourceTable: source.tableName,
+                sourceColumn: srcCol,
+                targetTable: target.tableName,
+                targetColumn: tgtCol,
+                cardinality,
+                confidence,
+                matchRatio,
+                detectedBy: 'VALUE_OVERLAP',
               });
-
-              const matchRatio = srcValues.size > 0 ? intersectionCount / srcValues.size : 0;
-              const confidence = Math.min(0.98, Math.max(0.65, 0.70 + matchRatio * 0.28));
-
-              const srcUnique = srcValues.size === source.rows.length;
-              const tgtUnique = tgtValues.size === target.rows.length;
-
-              let cardinality: '1:1' | '1:N' | 'N:M' = '1:N';
-              if (srcUnique && tgtUnique) cardinality = '1:1';
-              else if (!srcUnique && !tgtUnique) cardinality = 'N:M';
-              else cardinality = '1:N';
-
-              const exists = relationships.some(r => 
-                (r.sourceTable === source.tableName && r.targetTable === target.tableName && r.sourceColumn === srcCol && r.targetColumn === tgtCol) ||
-                (r.sourceTable === target.tableName && r.targetTable === source.tableName && r.sourceColumn === tgtCol && r.targetColumn === srcCol)
-              );
-
-              if (!exists) {
-                relationships.push({
-                  sourceTable: source.tableName,
-                  sourceColumn: srcCol,
-                  targetTable: target.tableName,
-                  targetColumn: tgtCol,
-                  cardinality,
-                  confidence,
-                  matchRatio,
-                  detectedBy: 'VALUE_OVERLAP'
-                });
-              }
             }
           });
         });
@@ -191,20 +170,17 @@ export class RelationDetectorService {
         options: { temperature: 0.2 }
       });
 
-      const text = response.message.content;
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (Array.isArray(parsed)) {
-          parsed.forEach((item: any) => {
-            insights.push({
-              type: item.type || 'SCHEMA_OPTIMIZATION',
-              title: item.title || 'Schema Insight',
-              summary: item.summary || 'Analyzed relational structure.',
-              confidence: item.confidence || 0.92
-            });
+      const extracted = extractJson<unknown[]>(response.message.content);
+      const parsed = extracted?.parsed;
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item: any) => {
+          insights.push({
+            type: item.type || 'SCHEMA_OPTIMIZATION',
+            title: item.title || 'Schema Insight',
+            summary: item.summary || 'Analyzed relational structure.',
+            confidence: typeof item.confidence === 'number' ? item.confidence : 0.92
           });
-        }
+        });
       }
     } catch (err) {
       console.warn('[RelationDetector] Ollama enrichment query skipped:', err);

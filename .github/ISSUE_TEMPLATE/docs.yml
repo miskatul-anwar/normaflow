@@ -1,0 +1,23 @@
+name: Documentation improvement
+description: Suggest improvements or report issues with documentation
+labels: ["documentation", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve the NormaFlow documentation!
+  - type: textarea
+    id: issue-part
+    attributes:
+      label: What part of the documentation needs improvement?
+      description: Provide a link to the page, file, or section.
+      placeholder: e.g. README.md, docs/ARCHITECTURE.md
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested improvement or correction
+      description: Describe what should be changed or added.
+    validations:
+      required: true

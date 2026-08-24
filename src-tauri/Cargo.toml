@@ -1,16 +1,14 @@
 [package]
 name = "normaflow"
-version = "2.3.0"
-description = "Normaflow Tauri Application"
-authors = ["Miskatul Anwar"]
+version = "2.4.0"
+description = "NormaFlow — turn raw CSVs into normalized database schemas"
+authors = ["Miskatul Anwar <miskatul.anwar.csecu@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/miskatul-anwar/normaflow"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+rust-version = "1.77"
 
 [lib]
-# The `_lib` suffix may seem redundant but it is necessary
-# to make the lib name unique and wouldn't conflict with the bin name.
-# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "normaflow_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
@@ -22,8 +20,12 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_bytes = "0.11"
-reqwest = { version = "0.12", features = ["json"] }
-tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"], default-features = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 csv = "1.3"
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "macros", "json"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

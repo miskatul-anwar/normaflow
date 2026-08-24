@@ -17,6 +17,7 @@ import { KeysSection } from './output/KeysSection';
 import { GeneratedFilesSection } from './output/GeneratedFilesSection';
 import { MarkdownRenderer } from './output/MarkdownRenderer';
 import { SVGPreviewSection } from './output/SVGPreviewSection';
+import { loadCachedResult, saveCachedResult } from '../utils/resultCache';
 
 export default function OutputPage() {
   const location = useLocation();
@@ -40,26 +41,13 @@ export default function OutputPage() {
   }, []);
 
   const safeResults = useMemo(() => {
-    if (results && (results.success !== false && (results.success || results.tables || results.outputFiles))) {
-      (window as any).__NORMAFLOW_LATEST_RESULTS__ = results;
+    const isUsable = (r: any) =>
+      r && r.success !== false && (r.success || r.tables || r.outputFiles);
+    if (isUsable(results)) {
+      saveCachedResult(results);
       return results;
     }
-    if ((window as any).__NORMAFLOW_LATEST_RESULTS__) {
-      return (window as any).__NORMAFLOW_LATEST_RESULTS__;
-    }
-    try {
-      const cached = sessionStorage.getItem('normaflow_latest_results') || localStorage.getItem('normaflow_latest_results');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed && (parsed.success !== false && (parsed.success || parsed.tables || parsed.outputFiles))) {
-          (window as any).__NORMAFLOW_LATEST_RESULTS__ = parsed;
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.warn('[OutputPage] Failed to parse cached results:', e);
-    }
-    return null;
+    return loadCachedResult();
   }, [results]);
 
   const isMultiTable = safeResults?.isMultiTable || false;

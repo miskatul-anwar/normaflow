@@ -13,6 +13,7 @@
 
 import { DataUtils } from '../utils/dataUtils';
 import { Logger } from '../utils/logger';
+import { mineFunctionalDependencies as mineFDFast } from './fdMiner';
 
 export interface FunctionalDependency {
   lhs: string[];
@@ -155,130 +156,52 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
   };
 }
 
-  // FIXED: More inclusive thresholds to preserve all FDs
-  private static getDataDrivenThresholds(dataSize: number, attributeCount: number): {
-    maxLhsSize: number;
-    maxEvaluations: number;
-    maxTime: number;
-    confidenceThreshold: number;
-    sampleSize: number;
-    minUniqueGroups: number;
-  } {
-    
-    return {
-      maxLhsSize: Math.min(4, Math.max(1, Math.floor(attributeCount / 3))),
-      maxEvaluations: Math.min(100000, Math.max(10000, attributeCount * attributeCount * 20)),
-      maxTime: Math.min(120000, Math.max(30000, dataSize * 30)),
-      // FIXED: Much lower confidence threshold to preserve all FDs
-      confidenceThreshold: Math.max(0.51, 1.0 - (2.0 / Math.sqrt(dataSize))), // Accept FDs with >51% confidence
-      sampleSize: Math.min(dataSize, Math.max(dataSize, Math.ceil(Math.sqrt(dataSize) * 10))),
-      minUniqueGroups: Math.max(1, Math.floor(dataSize * 0.005)) // At least 0.5% unique groups
-    };
-  }
-
   /**
-   * FIXED: Mine ALL Functional Dependencies - No Harsh Filtering
+   * Mine functional dependencies using the fast partition-refinement miner.
+   *
+   * The previous implementation re-scanned the full dataset for every
+   * (LHS, RHS) candidate — O(combinations × rows) with heavy per-pair Map
+   * allocations. The lattice-based miner shares partitions between related
+   * LHS sets and integer-encodes columns once, making mining orders of
+   * magnitude faster on real datasets while producing exact FDs (plus
+   * high-confidence approximate ones).
    */
   static async mineFunctionalDependencies(data: any[], maxLhsSize: number = 4): Promise<FunctionalDependency[]> {
-    this.logger.info(`Starting comprehensive functional dependency mining (preserving ALL FDs)...`);
-    
     if (!data || data.length === 0) {
       this.logger.warn('No data provided for FD mining');
       return [];
     }
-    
+
     const attributes = Object.keys(data[0] || {});
-    if (attributes.length === 0) {
-      this.logger.warn('No attributes found for FD mining');
+    if (attributes.length < 2) {
+      this.logger.warn('Not enough attributes for FD mining');
       return [];
     }
-    
-    this.logger.info(`Analyzing ${data.length} rows with ${attributes.length} attributes`);
-    
-    const thresholds = this.getDataDrivenThresholds(data.length, attributes.length);
-    const effectiveMaxLhsSize = Math.min(maxLhsSize, thresholds.maxLhsSize);
-    
-    const fds: FunctionalDependency[] = [];
-    const processedCombinations = new Set<string>();
-    let totalChecked = 0;
-    let validFDs = 0;
 
-    // FIXED: Process ALL LHS sizes systematically - preserve all FDs
-    for (let lhsSize = 1; lhsSize <= effectiveMaxLhsSize; lhsSize++) {
-      const startTime = Date.now();
-      this.logger.info(`Processing LHS size ${lhsSize}...`);
-      
-      for (const lhs of this.generateSubsetsIterative(attributes, lhsSize)) {
-        if (Date.now() - startTime > thresholds.maxTime / effectiveMaxLhsSize) {
-          this.logger.warn(`Time limit reached for LHS size ${lhsSize}`);
-          break;
-        }
-        
-        if (totalChecked >= thresholds.maxEvaluations) {
-          this.logger.warn(`Evaluation limit reached: ${totalChecked}`);
-          break;
-        }
-        
-        // Test each RHS attribute
-        for (const rhs of attributes) {
-          if (lhs.includes(rhs)) continue;
-          
-          const combinationKey = `${lhs.sort().join(',')}→${rhs}`;
-          if (processedCombinations.has(combinationKey)) continue;
-          processedCombinations.add(combinationKey);
-          
-          totalChecked++;
-          
-          // FIXED: Perform validation but accept ALL meaningful FDs
-          const validation = this.validateFunctionalDependencyRigorous(lhs, rhs, data);
-          
-          // FIXED: Much more inclusive criteria - preserve FDs with ANY meaningful confidence
-          if (validation.confidence >= 0.51 && // Accept >51% confidence
-              validation.uniqueGroups >= Math.max(1, thresholds.minUniqueGroups)) {
-            
-            // Check minimality only for very high confidence FDs
-            const shouldCheckMinimality = validation.confidence >= 0.85;
-            const isMinimal = shouldCheckMinimality ? this.isMinimalLHS(lhs, rhs, data) : true;
-            
-            if (isMinimal) {
-              fds.push({
-                lhs: [...lhs],
-                rhs,
-                confidence: validation.confidence,
-                uniqueGroups: validation.uniqueGroups,
-                coverage: validation.coverage,
-                violations: validation.violations
-              });
-              validFDs++;
-              
-              const confidenceLevel = validation.confidence >= 0.95 ? 'HIGH' : 
-                                    validation.confidence >= 0.80 ? 'MEDIUM' : 'LOW';
-              this.logger.debug(`FD found [${confidenceLevel}]: {${lhs.join(', ')}} → ${rhs} (confidence: ${(validation.confidence * 100).toFixed(2)}%)`);
-            }
-          }
-          
-          // Yield control periodically
-          if (totalChecked % 200 === 0) {
-            await this.yieldControl();
-          }
-        }
-      }
-      
-      this.logger.info(`LHS size ${lhsSize} completed: ${validFDs} total FDs found so far`);
-    }
-    
-    // FIXED: Sort by confidence but keep ALL FDs
-    fds.sort((a, b) => {
-      if (Math.abs(a.confidence - b.confidence) > 0.001) {
-        return b.confidence - a.confidence;
-      }
-      return b.coverage - a.coverage;
+    this.logger.info(`FD mining (partition refinement): ${data.length} rows × ${attributes.length} attributes`);
+
+    // Yield to keep the UI responsive before the (synchronous) compute burst.
+    await this.yieldControl();
+
+    const { fds, durationMs, combinationsEvaluated, exactCount } = mineFDFast(data, {
+      maxLhsSize,
+      minConfidence: 0.85,
     });
-    
-    this.logger.success(`Comprehensive FD mining completed: ${fds.length} FDs preserved from ${totalChecked} combinations`);
-    this.logger.info(`Confidence distribution: HIGH(>=95%): ${fds.filter(fd => fd.confidence >= 0.95).length}, MEDIUM(>=80%): ${fds.filter(fd => fd.confidence >= 0.80 && fd.confidence < 0.95).length}, LOW(<80%): ${fds.filter(fd => fd.confidence < 0.80).length}`);
-    
-    return fds;
+
+    const mapped: FunctionalDependency[] = fds.map(fd => ({
+      lhs: [...fd.lhs],
+      rhs: fd.rhs,
+      confidence: fd.confidence,
+      coverage: fd.coverage,
+      violations: fd.violations,
+      uniqueGroups: fd.uniqueGroups,
+    }));
+
+    this.logger.success(
+      `FD mining completed in ${durationMs}ms: ${mapped.length} FDs (${exactCount} exact) from ${combinationsEvaluated} evaluated candidates`,
+    );
+
+    return mapped;
   }
 
   /**
@@ -355,30 +278,6 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
       uniqueGroups,
       violations
     };
-  }
-
-  /**
-   * FIXED: More lenient minimality check for low-confidence FDs
-   */
-  private static isMinimalLHS(lhs: string[], rhs: string, data: any[]): boolean {
-    if (lhs.length <= 1) return true;
-    
-    // For high-confidence FDs, check minimality strictly
-    const currentValidation = this.validateFunctionalDependencyRigorous(lhs, rhs, data);
-    if (currentValidation.confidence >= 0.95) {
-      // Test all proper subsets of LHS
-      for (let i = 0; i < lhs.length; i++) {
-        const subLhs = [...lhs.slice(0, i), ...lhs.slice(i + 1)];
-        const validation = this.validateFunctionalDependencyRigorous(subLhs, rhs, data);
-        
-        if (validation.isValid && validation.confidence >= 0.95) {
-          return false; // Found a smaller LHS that also determines RHS
-        }
-      }
-    }
-    
-    // For lower confidence FDs, be more lenient with minimality
-    return true;
   }
 
   /**
@@ -875,20 +774,49 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
       if (transitiveFds.length === 0) {
         relations3NF.push(rel);
       } else {
-        // Decompose
+        // Decompose: each transitive FD X → A forms relation {X, A}.
+        // Rows MUST be projected onto the relation's attributes — carrying the
+        // original wide rows produced schemas whose data didn't match their
+        // declared attributes.
+        const decomposedNames = new Set<string>();
         for (const fd of transitiveFds) {
           const relationAttrs = Array.from(new Set([...fd.lhs, fd.rhs]));
           const name = `Rel3NF_${rel.name}_${fd.rhs}`;
+          if (decomposedNames.has(name)) continue;
+          decomposedNames.add(name);
+          const projectedRows = this.extractRelationData(rel.rows || [], relationAttrs);
           relations3NF.push({
             name,
             attributes: relationAttrs,
             primaryKey: fd.lhs,
             foreignKeys: [],
-            rows: rel.rows || [],
+            rows: projectedRows,
             sourceType: '3NF_Decomposed',
             metadata: {
-              rowCount: rel.rows?.length || 0,
-              attributeTypes: rel.metadata?.attributeTypes || {}
+              rowCount: projectedRows.length,
+              attributeTypes: this.inferAttributeTypes(projectedRows, relationAttrs)
+            }
+          });
+        }
+
+        // Keep a residual relation for attributes not covered by any
+        // decomposition so no column is silently dropped.
+        const covered = new Set(transitiveFds.flatMap(fd => [...fd.lhs, fd.rhs]));
+        const residualAttrs = rel.attributes.filter(attr => !covered.has(attr));
+        const pkAttrs = rel.primaryKey.filter(attr => !covered.has(attr));
+        const residualSet = Array.from(new Set([...pkAttrs, ...residualAttrs]));
+        if (residualSet.length >= 2) {
+          const residualRows = this.extractRelationData(rel.rows || [], residualSet);
+          relations3NF.push({
+            name: `${rel.name}_residual`,
+            attributes: residualSet,
+            primaryKey: rel.primaryKey.filter(attr => residualSet.includes(attr)),
+            foreignKeys: [],
+            rows: residualRows,
+            sourceType: '3NF_Residual',
+            metadata: {
+              rowCount: residualRows.length,
+              attributeTypes: this.inferAttributeTypes(residualRows, residualSet)
             }
           });
         }

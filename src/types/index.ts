@@ -77,6 +77,9 @@ export type EntityType =
   | 'FOREIGN_KEY_REF'
   | 'PERSON_NAME'
   | 'EMAIL'
+  | 'URL'
+  | 'UUID'
+  | 'PHONE_NUMBER'
   | 'LOCATION_ADDRESS'
   | 'DATE_TIMESTAMP'
   | 'CURRENCY_PRICE'
@@ -84,6 +87,7 @@ export type EntityType =
   | 'PRODUCT_ITEM'
   | 'CATEGORY_TYPE'
   | 'NUMERIC_METRIC'
+  | 'BOOLEAN_FLAG'
   | 'GENERAL_TEXT';
 
 export interface EntityTag {
