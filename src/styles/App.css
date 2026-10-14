@@ -231,16 +231,6 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   letter-spacing: -0.01em;
 }
 
-.nf-rail-header-badge {
-  font-size: 10px;
-  font-weight: 600;
-  color: #64748b;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  padding: 0.05rem 0.35rem;
-  border-radius: 999px;
-}
-
 .nf-rail-header-spacer {
   flex: 1 1 auto;
 }

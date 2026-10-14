@@ -92,7 +92,6 @@ export function OperationPalette({
           {isWide ? (
             <div className="nf-rail-header-title-box">
               <span className="nf-rail-header-title">Operations</span>
-              <span className="nf-rail-header-badge">{Math.round(width)}px</span>
             </div>
           ) : (
             <div className="nf-rail-header-spacer" />
@@ -104,7 +103,7 @@ export function OperationPalette({
                 type="button"
                 onClick={onResetWidth}
                 className="nf-rail-header-btn"
-                title="Reset width to default (84px)"
+                title="Reset width to default"
                 aria-label="Reset sidebar width"
               >
                 <RotateCcw size={13} />
