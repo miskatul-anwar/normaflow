@@ -15,7 +15,7 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
     return (
       <div className="text-center py-12 text-gray-500">
         <Files className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-        <p style={{ fontFamily: "'CMU Serif Roman', serif" }}>No output files generated</p>
+        <p style={{ fontFamily: "'Inter', sans-serif" }}>No output files generated</p>
         <p className="text-sm text-gray-400 mt-2">Files are created during the normalization process</p>
       </div>
     );
@@ -100,7 +100,7 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2" style={{ fontFamily: "'Inter', sans-serif" }}>
           <FolderOpen className="w-5 h-5" />
           Generated Files ({outputFiles.length})
         </h4>

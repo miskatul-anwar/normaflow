@@ -1,7 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { PlaceholdersAndVanishInput } from "./ui/placeholders-and-vanish-input";
 import { toast } from 'sonner';
-import { OllamaWrapper } from '../services/ollama-wrapper';
 import { generateFlowFromNaturalLanguage } from '../utils/aiFlowGenerator';
 
 interface AskAIProps {
@@ -11,21 +10,14 @@ interface AskAIProps {
   currentNodes?: any[];
   availableOperations?: string[];
   onLog?: (message: string) => void;
-  ollamaWrapper?: OllamaWrapper | null;
-  selectedModel?: string;
-  ollamaReady?: boolean | null;
 }
 
 export function AskAI({
   onAddNode,
   onAddOperations,
   onLog,
-  ollamaWrapper: externalWrapper,
-  selectedModel: externalSelectedModel,
 }: AskAIProps) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [internalWrapper, setInternalWrapper] = useState<OllamaWrapper | null>(null);
-  const [internalModel, setInternalModel] = useState<string>('');
 
   const placeholders = [
     "Normalize to 3NF",
@@ -37,9 +29,6 @@ export function AskAI({
     "Generate normalization report"
   ];
 
-  const activeWrapper = externalWrapper !== undefined ? externalWrapper : internalWrapper;
-  const activeModel = externalSelectedModel !== undefined ? externalSelectedModel : internalModel;
-
   const logToConsole = useCallback((message: string) => {
     console.log(`[AI-AGENT] ${message}`);
     if (onLog) {
@@ -50,35 +39,10 @@ export function AskAI({
   const logToast = useCallback((type: 'info' | 'success' | 'error' | 'warning', message: string) => {
     toast[type](`AI: ${message}`, {
       position: "bottom-right",
-      style: { fontFamily: "'CMU Serif Roman', serif" },
+      style: { fontFamily: "'Inter', sans-serif" },
       duration: type === 'error' ? 5000 : 3000,
     });
   }, []);
-
-  useEffect(() => {
-    if (externalWrapper !== undefined) return;
-
-    const initializeOllama = async () => {
-      try {
-        logToConsole("Connecting to Ollama...");
-        const wrapper = new OllamaWrapper();
-        const connected = await wrapper.initializeOllama();
-
-        if (connected) {
-          setInternalWrapper(wrapper);
-          const modelName = wrapper.getSelectedModel();
-          setInternalModel(modelName);
-          logToConsole(`Ollama connected (${modelName})`);
-        } else {
-          logToConsole("Ollama offline — Rule Engine Active");
-        }
-      } catch (error: any) {
-        logToConsole(`Ollama error: ${error?.message || 'Error'}`);
-      }
-    };
-
-    initializeOllama();
-  }, [externalWrapper, logToConsole]);
 
   const processAICommand = useCallback(async (userInput: string) => {
     if (!userInput.trim()) {
@@ -87,15 +51,12 @@ export function AskAI({
     }
 
     setIsProcessing(true);
-    logToConsole(`Processing: "${userInput}" [Model: ${activeModel || 'Rules'}]`);
+    logToConsole(`Processing: "${userInput}"`);
     logToast('info', "Generating workflow...");
 
     try {
       const startTime = Date.now();
-      if (activeWrapper && activeModel) {
-        activeWrapper.setSelectedModel(activeModel);
-      }
-      const result = await generateFlowFromNaturalLanguage(userInput, activeWrapper);
+      const result = await generateFlowFromNaturalLanguage(userInput);
       const duration = Date.now() - startTime;
 
       logToConsole(`Generated in ${duration}ms [${result.source}]`);
@@ -118,7 +79,7 @@ export function AskAI({
     } finally {
       setIsProcessing(false);
     }
-  }, [activeWrapper, activeModel, onAddNode, onAddOperations, logToConsole, logToast]);
+  }, [onAddNode, onAddOperations, logToConsole, logToast]);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

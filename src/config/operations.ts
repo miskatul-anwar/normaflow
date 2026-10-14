@@ -64,73 +64,66 @@ export const OPERATIONS: Record<string, OperationDefinition> = {
     dependencies: ['Key Discovery'],
     description: 'Detects foreign key links'
   },
-  'Ollama AI Analyst': {
-    phase: 'ANALYZE',
-    id: 'ollama-ai-analyst',
-    order: 10,
-    dependencies: ['FD Miner'],
-    description: 'Evaluates schema with local LLM'
-  },
   'Cardinality Analyzer': {
     phase: 'ANALYZE',
     id: 'cardinality-analyzer',
-    order: 11,
+    order: 10,
     dependencies: ['Key Discovery'],
     description: 'Calculates relationship cardinality'
   },
   '2NF': {
     phase: 'NORMAL',
     id: '2nf',
-    order: 12,
+    order: 11,
     dependencies: ['1NF', 'FD Miner'],
     description: 'Enforces Second Normal Form'
   },
   '3NF': {
     phase: 'NORMAL',
     id: '3nf',
-    order: 13,
+    order: 12,
     dependencies: ['2NF'],
     description: 'Enforces Third Normal Form'
   },
   'Lossless Check': {
     phase: 'NORMAL',
     id: 'lossless-check',
-    order: 14,
+    order: 13,
     dependencies: ['2NF'],
     description: 'Validates lossless join'
   },
   'Dependency Preservation': {
     phase: 'NORMAL',
     id: 'dependency-preservation',
-    order: 15,
+    order: 14,
     dependencies: ['2NF', 'FD Miner'],
     description: 'Verifies dependency preservation'
   },
   'ERD Generator': {
     phase: 'OUTPUT',
     id: 'erd-generator',
-    order: 16,
+    order: 15,
     dependencies: ['Key Discovery'],
     description: 'Generates Mermaid ERD'
   },
   'Relation Generator': {
     phase: 'OUTPUT',
     id: 'relation-generator',
-    order: 17,
+    order: 16,
     dependencies: ['3NF'],
     description: 'Builds relation schemas'
   },
   'SQL Generator': {
     phase: 'OUTPUT',
     id: 'sql-generator',
-    order: 18,
+    order: 17,
     dependencies: ['Relation Generator'],
     description: 'Generates SQL DDL'
   },
   'Report Generator': {
     phase: 'OUTPUT',
     id: 'report-generator',
-    order: 19,
+    order: 18,
     dependencies: ['Lossless Check', 'Dependency Preservation'],
     description: 'Generates summary report'
   },

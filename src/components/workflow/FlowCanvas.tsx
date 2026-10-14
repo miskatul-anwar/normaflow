@@ -1,11 +1,10 @@
-import { useCallback, useRef } from 'react';
+import { useRef } from 'react';
 import {
   Background,
   BackgroundVariant,
   Controls,
   MiniMap,
   ReactFlow,
-  useReactFlow,
   MarkerType,
   type Edge,
   type Node,
@@ -17,7 +16,6 @@ import {
 import { StartNode, TealNode } from '../flow/CustomNodes';
 import { FlowEdge } from '../flow/FlowEdge';
 import { PHASE_ACCENTS } from '../../config/operationVisuals';
-import { OPERATION_DND_MIME } from './OperationPalette';
 
 const nodeTypes: NodeTypes = {
   startNode: StartNode,
@@ -53,8 +51,6 @@ interface FlowCanvasProps {
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
-  /** Called when an operation is dropped onto the canvas. */
-  onDropOperation?: (label: string) => boolean;
 }
 
 export function FlowCanvas({
@@ -63,31 +59,8 @@ export function FlowCanvas({
   onNodesChange,
   onEdgesChange,
   onConnect,
-  onDropOperation,
 }: FlowCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition } = useReactFlow();
-
-  const handleDragOver = useCallback((event: React.DragEvent) => {
-    if (event.dataTransfer.types.includes(OPERATION_DND_MIME)) {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'copy';
-    }
-  }, []);
-
-  const handleDrop = useCallback(
-    (event: React.DragEvent) => {
-      const label = event.dataTransfer.getData(OPERATION_DND_MIME);
-      if (!label || !onDropOperation) return;
-      event.preventDefault();
-
-      // Position is handled by the workflow store appending at chain end;
-      // we only surface the intent here.
-      void screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      onDropOperation(label);
-    },
-    [onDropOperation, screenToFlowPosition],
-  );
 
   return (
     <div ref={wrapperRef} className="h-full w-full relative" data-testid="flow-canvas">
@@ -100,8 +73,6 @@ export function FlowCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
         proOptions={proOptions}
         fitView
         minZoom={0.2}

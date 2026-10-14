@@ -1,7 +1,5 @@
-import { EntityTag, CrossTableRelationship, OllamaAIInsight, TableData } from '../../types';
-import { OllamaWrapper } from '../ollama-wrapper';
+import { EntityTag, CrossTableRelationship, TableData } from '../../types';
 import { classifyColumn } from '../nlp/semanticProfiler';
-import { extractJson } from '../../utils/jsonUtils';
 
 export class RelationDetectorService {
   /**
@@ -136,65 +134,5 @@ export class RelationDetectorService {
     }
 
     return relationships;
-  }
-
-  public static async enrichWithOllama(
-    tables: TableData[],
-    relationships: CrossTableRelationship[],
-    ollamaWrapper?: OllamaWrapper | null
-  ): Promise<OllamaAIInsight[]> {
-    const insights: OllamaAIInsight[] = [];
-    if (!ollamaWrapper || !ollamaWrapper.isServiceAvailable()) {
-      return [
-        {
-          type: 'NER_TAGGING',
-          title: 'NER Profiling',
-          summary: `Classified entities across ${tables.length} tables.`,
-          confidence: 0.90
-        },
-        {
-          type: 'RELATION_DETECTION',
-          title: 'Foreign Key Detection',
-          summary: `Detected ${relationships.length} foreign key relationships.`,
-          confidence: 0.88
-        }
-      ];
-    }
-
-    try {
-      const schemaSummary = tables.map(t => `${t.tableName} (${t.headers.join(', ')})`).join('\n');
-      const prompt = `Analyze schema for optimization insights:\n${schemaSummary}\nRelationships:\n${relationships.map(r => `${r.sourceTable}.${r.sourceColumn} -> ${r.targetTable}.${r.targetColumn} (${r.cardinality})`).join('\n')}\nJSON format: [{"type":"RELATION_DETECTION","title":"Title","summary":"Summary","confidence":0.95}]`;
-
-      const response = await ollamaWrapper.chat({
-        messages: [{ role: 'user', content: prompt }],
-        options: { temperature: 0.2 }
-      });
-
-      const extracted = extractJson<unknown[]>(response.message.content);
-      const parsed = extracted?.parsed;
-      if (Array.isArray(parsed)) {
-        parsed.forEach((item: any) => {
-          insights.push({
-            type: item.type || 'SCHEMA_OPTIMIZATION',
-            title: item.title || 'Schema Insight',
-            summary: item.summary || 'Analyzed relational structure.',
-            confidence: typeof item.confidence === 'number' ? item.confidence : 0.92
-          });
-        });
-      }
-    } catch (err) {
-      console.warn('[RelationDetector] Ollama enrichment query skipped:', err);
-    }
-
-    if (insights.length === 0) {
-      insights.push({
-        type: 'SCHEMA_OPTIMIZATION',
-        title: 'Schema Analysis',
-        summary: `Validated constraints across ${tables.length} tables.`,
-        confidence: 0.94
-      });
-    }
-
-    return insights;
   }
 }

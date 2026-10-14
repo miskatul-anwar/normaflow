@@ -136,7 +136,7 @@ export function EntityAnalysis({ erdContent }: EntityAnalysisProps) {
             {/* Detailed Analysis */}
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                    <h5 className="font-semibold text-gray-900" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+                    <h5 className="font-semibold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
                         Entity Breakdown
                     </h5>
                 </div>
@@ -195,7 +195,7 @@ export function EntityAnalysis({ erdContent }: EntityAnalysisProps) {
 
             {/* Recommendations */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h5 className="font-semibold text-gray-900 mb-4" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+                <h5 className="font-semibold text-gray-900 mb-4" style={{ fontFamily: "'Inter', sans-serif" }}>
                     Schema Analysis & Recommendations
                 </h5>
 

@@ -42,14 +42,6 @@ pub struct CrossTableRelationship {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct OllamaInsight {
-    pub insight_type: String,
-    pub title: String,
-    pub summary: String,
-    pub confidence: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct OutputFileDto {
     pub name: String,
     pub file_type: String,
@@ -92,50 +84,10 @@ pub struct PipelineResult {
     pub is_multi_table: bool,
     pub tables: Vec<TableDataDto>,
     pub cross_table_relationships: Vec<CrossTableRelationship>,
-    pub ollama_insights: Vec<OllamaInsight>,
     pub output_files: Vec<OutputFileDto>,
     pub erd_diagram: String,
     pub sql_statements: String,
     pub report_markdown: String,
     pub duration: String,
     pub logs: Vec<String>,
-}
-
-// ---------------------------------------------------------------------------
-// Ollama DTOs
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct OllamaTagsResponse {
-    pub models: Option<Vec<OllamaModelItem>>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct OllamaModelItem {
-    pub name: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct OllamaChatRequest {
-    pub model: String,
-    pub messages: Vec<OllamaMessage>,
-    #[serde(default)]
-    pub stream: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct OllamaMessage {
-    pub role: String,
-    pub content: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct OllamaChatResponse {
-    pub message: Option<OllamaMessage>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct FlowGenerationResult {
-    pub operations: Vec<String>,
-    pub explanation: String,
 }

@@ -25,7 +25,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF }: 
     return (
       <div className="text-center py-12 text-gray-500">
         <Table className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-        <p style={{ fontFamily: "'CMU Serif Roman', serif" }}>No normalized relations generated</p>
+        <p style={{ fontFamily: "'Inter', sans-serif" }}>No normalized relations generated</p>
         <p className="text-sm text-gray-400 mt-2">Relations are created during normalization process</p>
       </div>
     );
@@ -113,7 +113,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF }: 
               {activeRelations.map((relation, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+                    <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2" style={{ fontFamily: "'Inter', sans-serif" }}>
                       <Table className="w-5 h-5 text-gray-500" />
                       {relation.name}
                     </h4>

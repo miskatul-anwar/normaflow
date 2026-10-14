@@ -1,22 +1,11 @@
-import { OllamaWrapper } from '../services/ollama-wrapper';
 import { ALL_OPERATION_NAMES } from '../config/operations';
-import { invoke } from '@tauri-apps/api/core';
-import { extractJson } from './jsonUtils';
 
 export interface AIFlowGenerationResult {
   operations: string[];
   explanation: string;
-  source: 'ollama' | 'rule-engine';
+  source: 'rule-engine';
   modelUsed?: string;
 }
-
-const SYSTEM_PROMPT = `You are a database workflow generator. Map natural language commands to exact operation arrays.
-
-AVAILABLE OPERATIONS:
-${ALL_OPERATION_NAMES.map(op => `- ${op}`).join('\n')}
-
-OUTPUT FORMAT:
-JSON only, no code fences: {"operations": ["CSV Data Loader", ...], "explanation": "Generated operations."}`;
 
 export function synthesizeSequenceFromRules(prompt: string): string[] {
   const lower = prompt.toLowerCase();
@@ -62,10 +51,6 @@ export function synthesizeSequenceFromRules(prompt: string): string[] {
     selected.add('Relation Detector');
   }
 
-  if (lower.includes('ai') || lower.includes('ollama') || lower.includes('llm')) {
-    selected.add('Ollama AI Analyst');
-  }
-
   if (lower.includes('cardinality') || lower.includes('erd') || lower.includes('all')) {
     selected.add('Cardinality Analyzer');
   }
@@ -104,8 +89,7 @@ export function synthesizeSequenceFromRules(prompt: string): string[] {
 }
 
 export async function generateFlowFromNaturalLanguage(
-  userPrompt: string,
-  ollama?: OllamaWrapper | null
+  userPrompt: string
 ): Promise<AIFlowGenerationResult> {
   const trimmed = userPrompt.trim();
   if (!trimmed) {
@@ -114,77 +98,6 @@ export async function generateFlowFromNaturalLanguage(
       explanation: 'No input provided.',
       source: 'rule-engine'
     };
-  }
-
-  if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
-    try {
-      const model = ollama?.getSelectedModel() || 'qwen3:4b';
-      const rustRes = await invoke<{ operations?: string[]; explanation?: string }>('generate_flow_ollama', {
-        model,
-        userPrompt: trimmed,
-      });
-
-      if (rustRes && Array.isArray(rustRes.operations)) {
-        // Never surface unknown operation names — filter to the registry and
-        // restore canonical pipeline order.
-        const validOps = ALL_OPERATION_NAMES.filter(op =>
-          rustRes.operations!.some(received => received.trim().toLowerCase() === op.toLowerCase()),
-        );
-        if (validOps.length > 0) {
-          return {
-            operations: validOps,
-            explanation: rustRes.explanation || `Generated ${validOps.length} operations.`,
-            source: 'ollama',
-            modelUsed: model,
-          };
-        }
-        console.warn('[AIFlowGenerator] Rust response contained no known operations:', rustRes.operations);
-      }
-    } catch (err) {
-      console.warn('[AIFlowGenerator] Tauri generate_flow_ollama failed, falling back:', err);
-    }
-  }
-
-  if (ollama && ollama.isServiceAvailable()) {
-    try {
-      const response = await ollama.chat({
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: trimmed },
-        ],
-        options: { temperature: 0.1 },
-      });
-
-      const extracted = extractJson<{ operations?: string[]; explanation?: string }>(response.message.content);
-      const parsedOperations = extracted?.parsed?.operations;
-      if (Array.isArray(parsedOperations) && parsedOperations.length > 0) {
-        const validOps = ALL_OPERATION_NAMES.filter(op =>
-          parsedOperations.some((received: string) => String(received).trim().toLowerCase() === op.toLowerCase()),
-        );
-        if (validOps.length > 0) {
-          return {
-            operations: validOps,
-            explanation: extracted?.parsed?.explanation || `Generated ${validOps.length} operations.`,
-            source: 'ollama',
-            modelUsed: response.modelUsed,
-          };
-        }
-      }
-
-      // Last resort: scan the prose for operation names.
-      const contentLower = response.message.content.toLowerCase();
-      const extractedOps = ALL_OPERATION_NAMES.filter(op => contentLower.includes(op.toLowerCase()));
-      if (extractedOps.length > 0) {
-        return {
-          operations: extractedOps,
-          explanation: `Extracted ${extractedOps.length} operations.`,
-          source: 'ollama',
-          modelUsed: response.modelUsed,
-        };
-      }
-    } catch (error) {
-      console.warn('[AIFlowGenerator] Ollama query error:', error);
-    }
   }
 
   const ruleOperations = synthesizeSequenceFromRules(trimmed);

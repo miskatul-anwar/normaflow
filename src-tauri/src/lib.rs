@@ -3,13 +3,11 @@
 //! Module layout:
 //! - [`types`]    — IPC DTOs shared with the frontend
 //! - [`db`]       — SQLite pipeline history
-//! - [`ollama`]   — local LLM client (configurable via `OLLAMA_HOST`)
 //! - [`engine`]   — CSV parsing, NER, FK detection, ERD/SQL/report generation
 
 mod db;
 mod engine;
 mod ner;
-mod ollama;
 mod types;
 
 pub use types::*;
@@ -46,26 +44,6 @@ async fn get_pipeline_history(
     db::get_history(&state).await
 }
 
-#[tauri::command]
-async fn check_ollama_status() -> Result<Vec<String>, String> {
-    ollama::list_models().await
-}
-
-/// Full-conversation chat. The frontend sends the complete message history —
-/// earlier revisions silently dropped it.
-#[tauri::command]
-async fn chat_ollama(model: String, messages: Vec<OllamaMessage>) -> Result<String, String> {
-    ollama::chat(&model, messages).await
-}
-
-#[tauri::command]
-async fn generate_flow_ollama(
-    model: String,
-    user_prompt: String,
-) -> Result<FlowGenerationResult, String> {
-    ollama::generate_flow(&model, &user_prompt).await
-}
-
 /// High-speed native pipeline: parse → profile → relate → generate artifacts.
 #[tauri::command]
 async fn process_multi_csv_rust(
@@ -87,9 +65,6 @@ pub fn run() {
             init_database,
             save_pipeline_record,
             get_pipeline_history,
-            check_ollama_status,
-            chat_ollama,
-            generate_flow_ollama,
             process_multi_csv_rust
         ])
         .run(tauri::generate_context!())

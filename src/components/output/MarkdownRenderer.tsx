@@ -32,7 +32,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, filena
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
       <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        <h4 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+        <h4 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
           {filename}
         </h4>
         <div className="flex gap-2">
@@ -52,7 +52,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, filena
           </button>
         </div>
       </div>
-      <div className="p-8 markdown-body text-gray-800 font-serif overflow-auto max-h-[800px]">
+      <div className="p-8 markdown-body text-gray-800 font-sans overflow-auto max-h-[800px]">
         <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
           {content}
         </ReactMarkdown>

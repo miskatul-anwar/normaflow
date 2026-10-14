@@ -4,6 +4,15 @@
  * Date: 2025-07-30 05:40:38 UTC
  */
 
+export interface IndexColumnOptions {
+  /**
+   * If true, allows treating recognized identifier column names (e.g. id, sn, no, idx)
+   * as index columns if they are strictly sequential surrogate numbers.
+   * Default: false (never discard legitimate primary keys).
+   */
+  allowDiscardPrimaryKey?: boolean;
+}
+
 export class DataUtils {
   /**
    * Normalize attribute names for database compatibility
@@ -18,91 +27,202 @@ export class DataUtils {
   }
 
   /**
-   * Check if a column name represents an index column
+   * Check if a column name represents a surrogate index column artifact.
+   * Protects legitimate primary key identifiers (id, sn, no, idx, index, etc.).
    */
-  static isIndexColumn(columnName: string): boolean {
-    if (!columnName || typeof columnName !== 'string') return true;
-    
-    const cleanKey = columnName.trim().toLowerCase();
-    const indexPatterns = [
-      /^\d+$/,                         // Pure numbers: 0, 1, 2
-      /^unnamed:?\s*\d*$/i,           // Unnamed: 0, Unnamed: 1
-      /^index$/i,                     // index
-      /^idx$/i,                       // idx
-      /^row_?num(ber)?$/i,           // row_num, row_number
-      /^#/,                          // # prefixed columns
-      /^seq(uence)?$/i,              // seq, sequence
-      /^no\.?$/i,                    // no, no.
-      /^s\.?n\.?$/i,                 // s.n, sn
-      /^id$/i,                       // id (if it's just a simple incrementing ID)
+  static isIndexColumn(
+    columnName: string,
+    values?: any[],
+    options?: IndexColumnOptions
+  ): boolean {
+    if (!columnName || typeof columnName !== 'string' || columnName.trim() === '') {
+      return true; // Empty headers cannot be retained as relational attributes
+    }
+
+    const cleanKey = columnName.trim();
+    const lowerKey = cleanKey.toLowerCase();
+
+    // 1. Protected identifiers that must NEVER be discarded as surrogate indices
+    const isProtectedKey = (name: string): boolean => {
+      const patterns = [
+        /^id$/i,
+        /^_id$/i,
+        /^id_$/i,
+        /^pk$/i,
+        /^uuid$/i,
+        /^guid$/i,
+        /^sn$/i,
+        /^s\.?n\.?$/i,
+        /^s_n$/i,
+        /^serial(_?no)?$/i,
+        /^no$/i,
+        /^no\.?$/i,
+        /^num$/i,
+        /^number$/i,
+        /^idx$/i,
+        /^index$/i,
+        /^seq(uence)?$/i,
+        /^row_?id$/i,
+        /^row_?num(ber)?$/i,
+        /^\d+$/,              // Pure numeric column headers like "2024", "101", "0", "1"
+        /^[#$@%]/             // Symbol-prefixed headers like "#id", "#"
+      ];
+      return patterns.some(p => p.test(name));
+    };
+
+    const isProtected = isProtectedKey(lowerKey);
+
+    if (!options?.allowDiscardPrimaryKey && isProtected) {
+      return false;
+    }
+
+    // 2. Synthetic export artifact patterns (e.g. pandas df.to_csv artifacts)
+    const artifactPatterns = [
+      /^unnamed:?\s*\d*$/i,
+      /^__index_level_\d+__$/i,
+      /^_c\d+$/i
     ];
-    
-    return cleanKey === '' || indexPatterns.some(pattern => pattern.test(cleanKey));
+    const isArtifactName = artifactPatterns.some(p => p.test(lowerKey));
+    const isDiscardablePrimaryKey = Boolean(options?.allowDiscardPrimaryKey) && isProtected;
+
+    if (!isArtifactName && !isDiscardablePrimaryKey) {
+      return false;
+    }
+
+    // 3. If values are provided, verify whether it is actually a sequential surrogate series
+    if (values && values.length > 0) {
+      const nonNullValues = values.filter(v => v !== null && v !== undefined && String(v).trim() !== '');
+      if (nonNullValues.length === 0) return isArtifactName;
+
+      // Check if values represent 0-indexed or 1-indexed strictly sequential integers
+      const firstVal = Number(nonNullValues[0]);
+      if (!Number.isInteger(firstVal) || (firstVal !== 0 && firstVal !== 1)) {
+        // Artifact name / PK name, but data is NOT sequential numbers (e.g. user missing header on real data)
+        return false;
+      }
+
+      const isSequential = nonNullValues.every((v, i) => {
+        const num = Number(v);
+        return Number.isInteger(num) && num === firstVal + i;
+      });
+
+      return isSequential;
+    }
+
+    return isArtifactName;
   }
 
   /**
-   * Infer data type from sample values
+   * Infer data type from sample values with strict numeric and date validation.
    */
   static inferDataType(values: any[]): string {
     if (!values || values.length === 0) return 'string';
-    
-    const nonEmptyValues = values.filter(v => 
-      v !== null && 
-      v !== undefined && 
-      v.toString().trim() !== ''
-    );
-    
+
+    const nullStrings = new Set(['null', 'undefined', 'nan', '\\n', '']);
+    const nonEmptyValues = values.filter(v => {
+      if (v === null || v === undefined) return false;
+      const str = String(v).trim();
+      if (str === '') return false;
+      if (nullStrings.has(str.toLowerCase())) return false;
+      return true;
+    });
+
     if (nonEmptyValues.length === 0) return 'string';
-    
+
     const sampleSize = Math.min(nonEmptyValues.length, 50);
     const sample = nonEmptyValues.slice(0, sampleSize);
-    
-    // Check for boolean values
-    const boolPattern = /^(true|false|yes|no|y|n|0|1|on|off)$/i;
-    if (sample.every(v => boolPattern.test(v.toString()))) {
+
+    // 1. Boolean check (strictly true/false/yes/no, never 0/1 or ambiguous text)
+    const isBool = (v: any) => typeof v === 'boolean' || /^(true|false|yes|no)$/i.test(String(v).trim());
+    if (sample.every(isBool)) {
       return 'boolean';
     }
-    
-    // Check for numeric values
-    const numericSample = sample.filter(v => {
-      const num = parseFloat(v.toString());
+
+    // 2. Numeric check (strict whole-string numeric match, no greedy parseFloat)
+    const strictNumericRegex = /^[-+]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][-+]?\d+)?$/;
+    const isNumeric = (v: any) => {
+      if (typeof v === 'number') return !isNaN(v) && isFinite(v);
+      const str = String(v).trim();
+      if (!strictNumericRegex.test(str)) return false;
+      const num = Number(str);
       return !isNaN(num) && isFinite(num);
-    });
-    
-    if (numericSample.length === sample.length) {
-      const hasDecimals = sample.some(v => v.toString().includes('.'));
-      return hasDecimals ? 'decimal' : 'integer';
+    };
+
+    if (sample.every(isNumeric)) {
+      // Distinguish integer from decimal
+      const hasDecimal = sample.some(v => {
+        const str = String(v).trim();
+        return str.includes('.') || /[eE]/.test(str);
+      });
+      return hasDecimal ? 'decimal' : 'integer';
     }
-    
-    // Check for date values
-    const datePattern = /^\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}|\d{2}-\d{2}-\d{4}|\d{4}\/\d{2}\/\d{2}/;
-    const dateCount = sample.filter(v => {
-      const str = v.toString();
-      return datePattern.test(str) || !isNaN(Date.parse(str));
-    }).length;
-    
-    if (dateCount >= sample.length * 0.8) { // 80% threshold for date detection
+
+    // 3. Date check (anchored patterns + date validity, excluding pure numbers)
+    const isDate = (v: any) => {
+      const s = String(v).trim();
+      if (strictNumericRegex.test(s)) return false; // Pure numbers are never dates
+
+      const isoDate = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+      const isoDateTime = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])[T ]([01]\d|2[0-3]):([0-5]\d):([0-5]\d)(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)?$/i;
+      const slashDate1 = /^(\d{4})\/(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])$/;
+      const slashDate2 = /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12]\d|3[01])\/(\d{4})$/;
+      const dashDate = /^(0?[1-9]|[12]\d|3[01])-(0?[1-9]|1[0-2])-(\d{4})$/;
+
+      let y: number, m: number, d: number;
+      let match = s.match(isoDate) || s.match(slashDate1) || s.match(isoDateTime);
+      if (match) {
+        y = parseInt(match[1], 10);
+        m = parseInt(match[2], 10);
+        d = parseInt(match[3], 10);
+      } else if ((match = s.match(slashDate2))) {
+        m = parseInt(match[1], 10);
+        d = parseInt(match[2], 10);
+        y = parseInt(match[3], 10);
+      } else if ((match = s.match(dashDate))) {
+        const p1 = parseInt(match[1], 10);
+        const p2 = parseInt(match[2], 10);
+        y = parseInt(match[3], 10);
+        if (p1 > 12) {
+          d = p1;
+          m = p2;
+        } else {
+          m = p1;
+          d = p2;
+        }
+      } else {
+        return false;
+      }
+
+      if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+    };
+
+    if (sample.every(isDate)) {
       return 'date';
     }
-    
-    // Check for email values
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (sample.every(v => emailPattern.test(v.toString()))) {
+
+    // 4. Email check
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+    if (sample.every(v => emailRegex.test(String(v).trim()))) {
       return 'email';
     }
-    
-    // Check for URL values
-    const urlPattern = /^https?:\/\/[^\s]+$/;
-    if (sample.every(v => urlPattern.test(v.toString()))) {
+
+    // 5. URL check
+    const urlRegex = /^https?:\/\/[^\s/$.?#].[^\s]*$/i;
+    if (sample.every(v => urlRegex.test(String(v).trim()))) {
       return 'url';
     }
-    
-    // Check for phone numbers
-    const phonePattern = /^[\+]?[1-9][\d]{0,15}$|^\(\d{3}\)\s\d{3}-\d{4}$|^\d{3}-\d{3}-\d{4}$/;
-    if (sample.every(v => phonePattern.test(v.toString().replace(/[\s\-\(\)]/g, '')))) {
+
+    // 6. Phone check
+    const phonePattern = /^(?:\+?\d{1,4}[-.\s]?)?(?:\(?\d{2,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}$/;
+    if (sample.every(v => {
+      const s = String(v).trim();
+      return phonePattern.test(s) && (/[+\-()]/.test(s) || s.length >= 7);
+    })) {
       return 'phone';
     }
-    
+
     // Default to string
     return 'string';
   }
@@ -117,8 +237,8 @@ export class DataUtils {
     
     const stringValue = value.toString().trim();
     
-    // Convert common null representations
-    const nullValues = ['null', 'undefined', 'n/a', 'na', 'none', 'nil', ''];
+    // Convert common null representations (preserving '0', 'false', 'na', 'none')
+    const nullValues = ['null', 'undefined', 'n/a', 'nil', 'nan', '\\n', ''];
     if (nullValues.includes(stringValue.toLowerCase())) {
       return '';
     }
@@ -228,7 +348,7 @@ export class DataUtils {
    */
   static generateRowHash(row: any, attributes: string[]): string {
     return attributes
-      .map(attr => this.cleanValue(row[attr] || ''))
+      .map(attr => this.cleanValue(row[attr] ?? ''))
       .join('||');
   }
 

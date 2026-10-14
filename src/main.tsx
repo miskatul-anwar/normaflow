@@ -1,6 +1,7 @@
-import '@fontsource/dm-sans';
-import '@fontsource/inter';
-import '@fontsource/dm-serif-display';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
 import '@xyflow/react/dist/style.css';
 
 import React from 'react';
@@ -74,14 +75,14 @@ window.addEventListener('show-sonner-toast', (e: any) => {
 
   console.log(
     `%c${logEntry}`,
-    `color: ${colors[type as keyof typeof colors] || colors.info}; font-weight: bold; font-family: 'CMU Serif Roman', serif;`
+    `color: ${colors[type as keyof typeof colors] || colors.info}; font-weight: bold; font-family: 'Inter', sans-serif;`
   );
 
   const toastFn = (toast as any)[type] || toast.info || toast;
   toastFn(message, {
     duration: type === 'error' ? 5000 : 3000,
     style: {
-      fontFamily: "'CMU Serif Roman', serif",
+      fontFamily: "'Inter', sans-serif",
       fontSize: '14px',
       lineHeight: '1.4',
     },
@@ -115,7 +116,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       expand={true}
       toastOptions={{
         style: {
-          fontFamily: "'CMU Serif Roman', serif",
+          fontFamily: "'Inter', sans-serif",
           fontSize: '14px',
           lineHeight: '1.5',
           borderRadius: '8px',
@@ -123,7 +124,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
         },
         duration: 3000,
-        className: 'cmu-toast',
+        className: 'normaflow-toast',
       }}
     />
   </React.StrictMode>

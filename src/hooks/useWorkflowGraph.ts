@@ -25,7 +25,8 @@ import {
 } from '@xyflow/react';
 import { MarkerType } from '@xyflow/react';
 import { OPERATIONS } from '../config/operations';
-import { validateSequence } from '../utils/workflowValidation';
+import { topologicalSortWorkflow, validateSequence } from '../utils/workflowValidation';
+import { ValidationResult } from '../types';
 
 export const START_NODE_ID = '0';
 const NODE_SPACING = 300;
@@ -116,6 +117,7 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
   // Eager mirrors — mutated synchronously alongside setState so consecutive
   // calls in one tick (e.g. batch adds) always observe fresh state.
   const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
   const redoStackRef = useRef(redoStack);
 
   const commitNodes = useCallback((updater: (current: Node[]) => Node[]) => {
@@ -133,10 +135,25 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
     nodesRef.current = nodes;
   }, [nodes]);
 
-  const operationLabels = useCallback(
-    () => nodesRef.current.slice(1).map(node => String(node.data?.label ?? '')),
-    [],
-  );
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
+
+  const getExecutionPlan = useCallback(() => {
+    return topologicalSortWorkflow(nodesRef.current, edgesRef.current);
+  }, []);
+
+  const operationLabels = useCallback((): string[] => {
+    const topo = getExecutionPlan();
+    if (topo.hasCycle) {
+      return [];
+    }
+    return topo.operationLabels;
+  }, [getExecutionPlan]);
+
+  const validateWorkflow = useCallback((): ValidationResult => {
+    return validateSequence(nodesRef.current, edgesRef.current);
+  }, []);
 
   const onNodesChange = useCallback(
     (changes: Parameters<typeof applyNodeChanges>[0]) => setNodes(current => applyNodeChanges(changes, current)),
@@ -150,6 +167,27 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
 
   const onConnect = useCallback(
     (connection: Connection) => {
+      if (connection.source === connection.target) {
+        log?.('error', 'Cannot connect a node to itself.');
+        return;
+      }
+
+      // Test whether adding this edge creates a cycle
+      const candidateEdge = {
+        id: `e${connection.source}-${connection.target}`,
+        source: connection.source,
+        target: connection.target,
+        sourceHandle: connection.sourceHandle,
+        targetHandle: connection.targetHandle
+      } as Edge;
+
+      const testEdges = [...edgesRef.current, candidateEdge];
+      const topo = topologicalSortWorkflow(nodesRef.current, testEdges);
+      if (topo.hasCycle) {
+        log?.('error', `Cannot connect: this connection creates a cyclic dependency (${topo.cycleNodeLabels.join(' ↔ ')})`);
+        return;
+      }
+
       setEdges(current =>
         addEdge(
           {
@@ -340,6 +378,8 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
     canUndo: nodes.length > 1,
     canRedo: redoStack.length > 0,
     operationLabels: operationLabels(),
+    validateWorkflow,
+    getExecutionPlan,
     tryAddOperation,
     addOperationsBatch,
     undo,

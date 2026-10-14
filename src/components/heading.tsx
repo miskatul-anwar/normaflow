@@ -84,7 +84,7 @@ export default function Heading({
         <div className="flex flex-col">
           <span
             className="text-lg font-bold tracking-tight text-gray-900 leading-tight"
-            style={{ fontFamily: "'CMU Serif Bold', serif" }}
+            style={{ fontFamily: "'Inter', sans-serif" }}
           >
             NormaFlow
           </span>

@@ -14,6 +14,7 @@ pub fn generate_sql(tables: &[TableDataDto], relationships: &[CrossTableRelation
         out.push_str(&format!("CREATE TABLE {t_name} (\n"));
 
         let mut cols: Vec<String> = Vec::with_capacity(table.headers.len());
+        let is_composite = table.primary_key.len() > 1;
         for (idx, header) in table.headers.iter().enumerate() {
             let col = sanitize_ident(header);
             let col_type = table
@@ -22,8 +23,23 @@ pub fn generate_sql(tables: &[TableDataDto], relationships: &[CrossTableRelation
                 .map(String::as_str)
                 .unwrap_or("TEXT");
             let is_pk = table.primary_key.iter().any(|pk| sanitize_ident(pk) == col);
-            let not_null = if is_pk { " PRIMARY KEY" } else { "" };
-            cols.push(format!("  {col} {col_type}{not_null}"));
+            let pk_clause = if is_pk && !is_composite {
+                " PRIMARY KEY"
+            } else if is_pk {
+                " NOT NULL"
+            } else {
+                ""
+            };
+            cols.push(format!("  {col} {col_type}{pk_clause}"));
+        }
+
+        if is_composite {
+            let pk_cols: Vec<String> = table
+                .primary_key
+                .iter()
+                .map(|pk| sanitize_ident(pk))
+                .collect();
+            cols.push(format!("  PRIMARY KEY ({})", pk_cols.join(", ")));
         }
 
         for rel in relationships
@@ -108,5 +124,30 @@ mod tests {
         assert!(!sql.contains("VARCHAR(255)")); // regression: everything was VARCHAR before
         assert!(sql.contains("FOREIGN KEY (item_id) REFERENCES items(item_id)"));
         assert!(sql.contains("CREATE INDEX idx_orders_item_id"));
+    }
+
+    #[test]
+    fn composite_primary_key_table_constraint() {
+        let tables = vec![TableDataDto {
+            table_name: "order_items".into(),
+            file_name: "order_items.csv".into(),
+            headers: vec![
+                "order_id".into(),
+                "product_id".into(),
+                "quantity".into(),
+            ],
+            row_count: 1,
+            skipped_rows: 0,
+            primary_key: vec!["order_id".into(), "product_id".into()],
+            ner_tags: Vec::<EntityTag>::new(),
+            column_types: vec!["INTEGER".into(), "INTEGER".into(), "INTEGER".into()],
+            value_samples: vec![],
+        }];
+        let sql = generate_sql(&tables, &[]);
+        assert!(sql.contains("order_id INTEGER NOT NULL"));
+        assert!(sql.contains("product_id INTEGER NOT NULL"));
+        assert!(sql.contains("PRIMARY KEY (order_id, product_id)"));
+        assert!(!sql.contains("order_id INTEGER PRIMARY KEY"));
+        assert!(!sql.contains("product_id INTEGER PRIMARY KEY"));
     }
 }

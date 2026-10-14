@@ -24,6 +24,79 @@ export interface FunctionalDependency {
   uniqueGroups: number;
 }
 
+export interface GroupedFunctionalDependency {
+  lhs: string[];
+  rhs: string[];
+}
+
+export interface CanonicalCoverResult {
+  singletonCover: FunctionalDependency[];
+  groupedCover: GroupedFunctionalDependency[];
+  originalCount: number;
+  canonicalCount: number;
+  extraneousAttributesRemoved: number;
+  redundantFDsRemoved: number;
+}
+
+export interface PrimeAttributeClassification {
+  primeAttributes: string[];
+  nonPrimeAttributes: string[];
+  isPrime: (attr: string) => boolean;
+}
+
+export interface NormalFormViolation {
+  type: 
+    | '1NF_NON_ATOMIC' 
+    | '2NF_PARTIAL_DEPENDENCY' 
+    | '3NF_TRANSITIVE_DEPENDENCY' 
+    | 'BCNF_NON_SUPERKEY_DETERMINANT';
+  culprit?: string;
+  description: string;
+  culpritFD?: { lhs: string[]; rhs: string };
+  candidateKey?: string[];
+  attributes?: string[];
+  sampleValue?: any;
+}
+
+export interface NormalFormResult {
+  nf: '1NF' | '2NF' | '3NF' | 'BCNF';
+  isNormalized: boolean;
+  violations: any[];
+  violationDetails: NormalFormViolation[];
+  primeAttributes?: string[];
+  candidateKeys?: string[][];
+  partialDependencies?: any[];
+  transitiveDependencies?: any[];
+  is1NF?: boolean;
+  is2NF?: boolean;
+  is3NF?: boolean;
+  isBCNF?: boolean;
+}
+
+export interface NormalFormAssessment {
+  highestNormalForm: 'UNNORMALIZED' | '1NF' | '2NF' | '3NF' | 'BCNF';
+  details: {
+    '1NF': NormalFormResult;
+    '2NF': NormalFormResult;
+    '3NF': NormalFormResult;
+    'BCNF': NormalFormResult;
+  };
+}
+
+export interface AtomicityViolationReport {
+  rowIndex: number;
+  column: string;
+  value: any;
+  reason: 'nested_array' | 'nested_object' | 'json_collection' | 'repeating_group_delimiter';
+  detectedElements?: string[];
+}
+
+export interface NormalForm1NFResult extends NormalFormResult {
+  totalAttributes: number;
+  atomicAttributes: string[];
+  nonAtomicAttributes: string[];
+}
+
 export interface CandidateKey {
   attributes: string[];
   isMinimal: boolean;
@@ -62,6 +135,51 @@ export interface Relationship {
   cardinality: string;
   type: 'identifying' | 'non-identifying';
   strength: number;
+}
+
+export interface ChaseStepLog {
+  iteration: number;
+  fd: { lhs: string[]; rhs: string };
+  equatedSymbol: string;
+  replacedSymbol: string;
+  affectedRows: number[];
+}
+
+export interface ChaseResult {
+  isLossless: boolean;
+  tableau: string[][];
+  attributes: string[];
+  iterations: number;
+  fullyDistinguishedRowIndex: number;
+  steps?: ChaseStepLog[];
+}
+
+export interface DependencyPreservationResult {
+  isPreserved: boolean;
+  preservationRatio: number;
+  preserved: FunctionalDependency[];
+  lost: FunctionalDependency[];
+  totalDependencies: number;
+  details: Array<{
+    fd: FunctionalDependency;
+    isPreserved: boolean;
+    reason: 'single_relation' | 'projected_closure' | 'not_preserved';
+    derivedClosure: string[];
+  }>;
+}
+
+export interface BCNFDecompositionStep {
+  sourceRelation: string;
+  violatingFD: { lhs: string[]; rhs: string[] };
+  decomposedRelations: [string, string];
+}
+
+export interface BCNFDecompositionResult {
+  relations: RelationSchema[];
+  isLossless: boolean;
+  isDependencyPreserving: boolean;
+  preservationDetails: DependencyPreservationResult;
+  decompositionSteps: BCNFDecompositionStep[];
 }
 
 interface ValidationResult {
@@ -316,7 +434,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
   }
 
   /**
-   * UNCHANGED: Mathematically Sound Key Discovery
+   * Candidate Key Discovery via L/R/B/N Attribute Classification and Lattice Search.
    */
   static async findKeys(
     attributes: string[], 
@@ -338,186 +456,142 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
       finalStrategy: string;
     }
   }> {
+    const startTime = Date.now();
     this.logger.info(`Mathematical key discovery: ${attributes.length} attributes, ${fds.length} FDs`);
-    
+
+    const candidateKeys = NormalizationEngine.findCandidateKeys(attributes, fds);
+    const duration = Date.now() - startTime;
+
+    const phases = [
+      {
+        name: 'L/R/B/N Attribute Partitioning & Lattice Search',
+        evaluated: candidateKeys.length,
+        keysFound: candidateKeys.length,
+        duration,
+        success: candidateKeys.length > 0
+      }
+    ];
+
     const searchMetrics = {
-      strategy: 'mathematical-closure-based',
-      phases: [] as Array<{
-        name: string;
-        evaluated: number;
-        keysFound: number;
-        duration: number;
-        success: boolean;
-      }>,
-      totalEvaluated: 0,
-      totalDuration: 0,
-      finalStrategy: 'none'
+      strategy: 'LRBN-lattice-closure',
+      phases,
+      totalEvaluated: candidateKeys.length,
+      totalDuration: duration,
+      finalStrategy: this.determineSuccessfulStrategy(phases)
     };
-    
-    const startTime = Date.now();
-    let allSuperkeys: string[][] = [];
-    
-    // PHASE 1: Single attribute keys
-    const phase1Result = await this.findSingleAttributeKeys(attributes, fds);
-    allSuperkeys.push(...phase1Result.keys);
-    searchMetrics.phases.push({
-      name: 'Single Attributes',
-      evaluated: phase1Result.evaluated,
-      keysFound: phase1Result.keys.length,
-      duration: phase1Result.duration,
-      success: phase1Result.keys.length > 0
-    });
-    
-    this.logger.info(`Phase 1: Found ${phase1Result.keys.length} single-attribute keys`);
-    
-    // PHASE 2: Systematic search for minimal keys
-    if (allSuperkeys.length === 0) {
-      const phase2Result = await this.findMinimalKeysSystematic(attributes, fds);
-      allSuperkeys.push(...phase2Result.keys);
-      searchMetrics.phases.push({
-        name: 'Systematic Minimal Search',
-        evaluated: phase2Result.evaluated,
-        keysFound: phase2Result.keys.length,
-        duration: phase2Result.duration,
-        success: phase2Result.keys.length > 0
-      });
-      
-      this.logger.info(`Phase 2: Found ${phase2Result.keys.length} minimal keys`);
+
+    this.logger.success(`Mathematical key discovery completed: ${candidateKeys.length} candidate keys in ${duration}ms`);
+    return { candidateKeys, superkeys: candidateKeys, searchMetrics };
+  }
+
+  /**
+   * Systematic Candidate Key discovery using L, R, B, N attribute categorization.
+   * Discovers ALL minimal candidate keys regardless of size or composite cardinality.
+   */
+  public static findCandidateKeys(
+    attributes: string[], 
+    fds: Array<{ lhs: string[]; rhs: string | string[]; confidence?: number }>
+  ): string[][] {
+    const allAttrs = Array.from(new Set(attributes)).sort();
+    if (allAttrs.length === 0) return [];
+    if (allAttrs.length === 1) return [[allAttrs[0]]];
+
+    // Filter to active FDs where LHS and RHS only contain attributes in allAttrs
+    const validFDs: Array<{ lhs: string[]; rhs: string }> = [];
+    for (const fd of fds) {
+      if (!fd.lhs || fd.lhs.length === 0 || !fd.lhs.every(a => allAttrs.includes(a))) continue;
+      const rhsList = Array.isArray(fd.rhs)
+        ? fd.rhs
+        : typeof fd.rhs === 'string' && fd.rhs.includes(',')
+          ? fd.rhs.split(',').map(s => s.trim()).filter(Boolean)
+          : [fd.rhs];
+      for (const r of rhsList) {
+        if (r && allAttrs.includes(r) && !fd.lhs.includes(r)) {
+          validFDs.push({ lhs: [...fd.lhs], rhs: r });
+        }
+      }
     }
-    
-    // Extract candidate keys (minimal superkeys)
-    const candidateKeys = this.extractCandidateKeys(allSuperkeys);
-    
-    // If no keys found, suggest all attributes as fallback
+
+    const lhsAttrs = new Set<string>();
+    const rhsAttrs = new Set<string>();
+    for (const fd of validFDs) {
+      for (const a of fd.lhs) lhsAttrs.add(a);
+      rhsAttrs.add(fd.rhs);
+    }
+
+    const L = allAttrs.filter(a => lhsAttrs.has(a) && !rhsAttrs.has(a));
+    const N = allAttrs.filter(a => !lhsAttrs.has(a) && !rhsAttrs.has(a));
+    const B = allAttrs.filter(a => lhsAttrs.has(a) && rhsAttrs.has(a));
+
+    const Core = Array.from(new Set([...L, ...N])).sort();
+
+    // Theorem 2: If Core closure determines everything, Core is the unique minimal key!
+    const coreClosure = NormalizationEngine.computeClosure(Core, validFDs);
+    if (coreClosure.size === allAttrs.length) {
+      return [Core.length > 0 ? Core : [...allAttrs]];
+    }
+
+    // Theorem 3: Combinatorial lattice search on B
+    const candidateKeys: string[][] = [];
+    const bList = B.sort();
+
+    const isSuperKeyOfFound = (cand: string[]) => 
+      candidateKeys.some(key => key.every(kAttr => cand.includes(kAttr)));
+
+    // Generate subsets of B by increasing size
+    for (let size = 1; size <= bList.length; size++) {
+      for (const subset of this.generateSubsetsIterative(bList, size)) {
+        const candidate = Array.from(new Set([...Core, ...subset])).sort();
+        if (isSuperKeyOfFound(candidate)) {
+          continue; // Minimality pruning: superset of existing key
+        }
+        const closure = NormalizationEngine.computeClosure(candidate, validFDs);
+        if (closure.size === allAttrs.length) {
+          candidateKeys.push(candidate);
+        }
+      }
+    }
+
+    // Fallback: If no candidate keys found (e.g. F is empty), all attributes form the key
     if (candidateKeys.length === 0) {
-      this.logger.warn('No natural keys found - using all attributes as fallback');
-      candidateKeys.push([...attributes]);
-      allSuperkeys.push([...attributes]);
+      candidateKeys.push([...allAttrs]);
     }
-    
-    searchMetrics.totalEvaluated = searchMetrics.phases.reduce((sum, p) => sum + p.evaluated, 0);
-    searchMetrics.totalDuration = Date.now() - startTime;
-    searchMetrics.finalStrategy = this.determineSuccessfulStrategy(searchMetrics.phases);
-    
-    this.logger.success(`Mathematical key discovery completed: ${candidateKeys.length} candidate keys in ${searchMetrics.totalDuration}ms`);
-    
-    return { candidateKeys, superkeys: allSuperkeys, searchMetrics };
+
+    // Sort candidate keys by size ascending, then lexicographically
+    candidateKeys.sort((a, b) => {
+      if (a.length !== b.length) return a.length - b.length;
+      return a.join(',').localeCompare(b.join(','));
+    });
+
+    return candidateKeys;
   }
 
   /**
-   * UNCHANGED: Find single attribute keys using closure
+   * Mathematically sound attribute closure computation X+ under F.
+   * Fixpoint iteration converges in at most |attributes| steps.
    */
-  private static async findSingleAttributeKeys(
+  public static computeClosure(
     attributes: string[], 
-    fds: FunctionalDependency[]
-  ): Promise<{ keys: string[][], evaluated: number, duration: number }> {
-    const startTime = Date.now();
-    const keys: string[][] = [];
-    let evaluated = 0;
-    
-    for (const attr of attributes) {
-      const closure = this.computeClosure([attr], fds);
-      evaluated++;
-      
-      if (closure.size === attributes.length) {
-        keys.push([attr]);
-        this.logger.debug(`Single key found: {${attr}}`);
-      }
-    }
-    
-    return {
-      keys,
-      evaluated,
-      duration: Date.now() - startTime
-    };
-  }
-
-  /**
-   * UNCHANGED: Systematic search for minimal keys
-   */
-  private static async findMinimalKeysSystematic(
-    attributes: string[], 
-    fds: FunctionalDependency[]
-  ): Promise<{ keys: string[][], evaluated: number, duration: number }> {
-    const startTime = Date.now();
-    const keys: string[][] = [];
-    let evaluated = 0;
-    const maxSize = Math.min(attributes.length, 5); // Increased search space
-    
-    // Search by increasing size until we find keys
-    for (let size = 2; size <= maxSize; size++) {
-      this.logger.info(`Searching for keys of size ${size}...`);
-      let foundKeysAtThisSize = false;
-      
-      for (const subset of this.generateSubsetsIterative(attributes, size)) {
-        const closure = this.computeClosure(subset, fds);
-        evaluated++;
-        
-        if (closure.size === attributes.length) {
-          // Check if this is minimal (no proper subset is also a key)
-          if (this.isMinimalKey(subset, keys)) {
-            keys.push([...subset]);
-            foundKeysAtThisSize = true;
-            this.logger.debug(`Minimal key found: {${subset.join(', ')}}`);
-          }
-        }
-        
-        // Yield control periodically
-        if (evaluated % 100 === 0) {
-          await this.yieldControl();
-        }
-        
-        // Time limit check
-        if (Date.now() - startTime > 45000) {
-          this.logger.warn('Time limit reached in systematic key search');
-          break;
-        }
-      }
-      
-      // If we found keys at this size, we can stop (they are minimal)
-      if (foundKeysAtThisSize) {
-        this.logger.info(`Found keys at size ${size}, stopping search`);
-        break;
-      }
-    }
-    
-    return {
-      keys,
-      evaluated,
-      duration: Date.now() - startTime
-    };
-  }
-
-  /**
-   * UNCHANGED: Check if a key is minimal
-   */
-  private static isMinimalKey(candidate: string[], existingKeys: string[][]): boolean {
-    for (const existingKey of existingKeys) {
-      if (existingKey.every(attr => candidate.includes(attr)) && existingKey.length < candidate.length) {
-        return false; // candidate is a superset of an existing key
-      }
-    }
-    return true;
-  }
-
-  /**
-   * UNCHANGED: Compute closure of attributes using functional dependencies
-   */
-  private static computeClosure(attributes: string[], fds: FunctionalDependency[]): Set<string> {
-    const closure = new Set(attributes);
+    fds: Array<{ lhs: string[]; rhs: string | string[] }>
+  ): Set<string> {
+    const closure = new Set<string>(attributes);
     let changed = true;
-    let iterations = 0;
-    const maxIterations = fds.length * 3; // Reasonable limit
     
-    while (changed && iterations < maxIterations) {
+    while (changed) {
       changed = false;
-      iterations++;
-      
       for (const fd of fds) {
-        // If all LHS attributes are in closure and RHS is not
-        if (fd.lhs.every(attr => closure.has(attr)) && !closure.has(fd.rhs)) {
-          closure.add(fd.rhs);
-          changed = true;
+        if (fd.lhs && fd.lhs.every(attr => closure.has(attr))) {
+          const rhsList = Array.isArray(fd.rhs)
+            ? fd.rhs
+            : typeof fd.rhs === 'string' && fd.rhs.includes(',')
+              ? fd.rhs.split(',').map(s => s.trim()).filter(Boolean)
+              : [fd.rhs];
+          for (const r of rhsList) {
+            if (r && !closure.has(r)) {
+              closure.add(r);
+              changed = true;
+            }
+          }
         }
       }
     }
@@ -526,14 +600,14 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
   }
 
   /**
-   * UNCHANGED: Extract minimal candidate keys from superkeys
+   * Extract minimal candidate keys from superkeys (non-mutating).
    */
-  private static extractCandidateKeys(superkeys: string[][]): string[][] {
+  public static extractCandidateKeys(superkeys: string[][]): string[][] {
     if (superkeys.length === 0) return [];
     
-    // Remove duplicates
+    // Remove duplicates without mutating input arrays
     const uniqueKeys = Array.from(
-      new Set(superkeys.map(key => key.sort().join('|')))
+      new Set(superkeys.map(key => [...key].sort().join('|')))
     ).map(keyStr => keyStr.split('|'));
     
     // Sort by size (smaller keys first)
@@ -548,7 +622,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
       );
       
       if (isMinimal) {
-        candidateKeys.push(key);
+        candidateKeys.push([...key]);
       }
     }
     
@@ -556,80 +630,707 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
   }
 
   /**
-   * UNCHANGED: Apply First Normal Form (1NF)
+   * Computes Canonical (Minimal) Cover Fc for a set of functional dependencies F.
+   * 
+   * 1. Singleton RHS decomposition
+   * 2. Extraneous LHS attribute removal
+   * 3. Redundant dependency elimination
+   * 4. Deterministic sorting and grouping
    */
-  static async apply1NF(data: any[]): Promise<any[]> {
-    this.logger.info('Applying rigorous First Normal Form (1NF)...');
+  public static computeCanonicalCover(
+    fds: FunctionalDependency[]
+  ): CanonicalCoverResult {
+    if (!fds || fds.length === 0) {
+      return {
+        singletonCover: [],
+        groupedCover: [],
+        originalCount: 0,
+        canonicalCount: 0,
+        extraneousAttributesRemoved: 0,
+        redundantFDsRemoved: 0
+      };
+    }
+
+    let extraneousRemovedCount = 0;
+    let redundantRemovedCount = 0;
+
+    // STEP 1: Singleton RHS decomposition and trivial dependency removal
+    let working: Array<{ lhs: string[]; rhs: string }> = [];
+    for (const fd of fds) {
+      const cleanLhs = Array.from(new Set(fd.lhs)).sort();
+      const rhsItems = Array.isArray(fd.rhs)
+        ? fd.rhs
+        : typeof fd.rhs === 'string' && fd.rhs.includes(',')
+          ? fd.rhs.split(',').map(s => s.trim()).filter(Boolean)
+          : [fd.rhs];
+      for (const r of rhsItems) {
+        if (r && !cleanLhs.includes(r) && cleanLhs.length > 0) {
+          working.push({ lhs: [...cleanLhs], rhs: r });
+        }
+      }
+    }
+
+    // Deduplicate
+    const seen = new Set<string>();
+    working = working.filter(fd => {
+      const key = `${fd.lhs.join(',')}|${fd.rhs}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // Deterministic sort
+    working.sort((a, b) => {
+      const lhsCmp = a.lhs.join(',').localeCompare(b.lhs.join(','));
+      return lhsCmp !== 0 ? lhsCmp : a.rhs.localeCompare(b.rhs);
+    });
+
+    // STEP 2: Eliminate extraneous attributes from LHS
+    for (let i = 0; i < working.length; i++) {
+      const fd = working[i];
+      if (fd.lhs.length <= 1) continue;
+
+      let reduced = true;
+      while (reduced && fd.lhs.length > 1) {
+        reduced = false;
+        for (const attr of fd.lhs) {
+          const testLhs = fd.lhs.filter(a => a !== attr);
+          const closure = NormalizationEngine.computeClosure(testLhs, working);
+          if (closure.has(fd.rhs)) {
+            // 'attr' is extraneous on LHS!
+            fd.lhs = testLhs;
+            extraneousRemovedCount++;
+            reduced = true;
+            break; // restart check with shrunk LHS
+          }
+        }
+      }
+    }
+
+    // Deduplicate and remove newly trivial FDs after LHS reduction
+    const postExtraneousSeen = new Set<string>();
+    working = working.filter(fd => {
+      if (fd.lhs.includes(fd.rhs)) return false; // trivial
+      const key = `${[...fd.lhs].sort().join(',')}|${fd.rhs}`;
+      if (postExtraneousSeen.has(key)) return false;
+      postExtraneousSeen.add(key);
+      return true;
+    });
+
+    // STEP 3: Eliminate redundant functional dependencies
+    let i = 0;
+    while (i < working.length) {
+      const current = working[i];
+      const withoutCurrent = working.filter((_, idx) => idx !== i);
+      const closure = NormalizationEngine.computeClosure(current.lhs, withoutCurrent);
+
+      if (closure.has(current.rhs)) {
+        // current dependency is redundant!
+        working.splice(i, 1);
+        redundantRemovedCount++;
+        // stay on current index for next element
+      } else {
+        i++;
+      }
+    }
+
+    // Format singleton output
+    const singletonCover: FunctionalDependency[] = working.map(fd => ({
+      lhs: [...fd.lhs].sort(),
+      rhs: fd.rhs,
+      confidence: 1.0,
+      coverage: 1.0,
+      violations: 0,
+      uniqueGroups: 1
+    }));
+
+    singletonCover.sort((a, b) => {
+      const lhsCmp = a.lhs.join(',').localeCompare(b.lhs.join(','));
+      return lhsCmp !== 0 ? lhsCmp : a.rhs.localeCompare(b.rhs);
+    });
+
+    // STEP 4: Group by identical LHS
+    const groupedMap = new Map<string, { lhs: string[]; rhsSet: Set<string> }>();
+    for (const fd of working) {
+      const sortedLhs = [...fd.lhs].sort();
+      const key = sortedLhs.join(',');
+      if (!groupedMap.has(key)) {
+        groupedMap.set(key, { lhs: sortedLhs, rhsSet: new Set() });
+      }
+      groupedMap.get(key)!.rhsSet.add(fd.rhs);
+    }
+
+    const groupedCover: GroupedFunctionalDependency[] = Array.from(groupedMap.values()).map(g => ({
+      lhs: g.lhs,
+      rhs: Array.from(g.rhsSet).sort()
+    }));
+
+    groupedCover.sort((a, b) => a.lhs.join(',').localeCompare(b.lhs.join(',')));
+
+    return {
+      singletonCover,
+      groupedCover,
+      originalCount: fds.length,
+      canonicalCount: singletonCover.length,
+      extraneousAttributesRemoved: extraneousRemovedCount,
+      redundantFDsRemoved: redundantRemovedCount
+    };
+  }
+
+  /**
+   * Minimal cover computation (returns singleton cover list).
+   */
+  public static computeMinimalCover(fds: FunctionalDependency[]): FunctionalDependency[] {
+    return NormalizationEngine.computeCanonicalCover(fds).singletonCover;
+  }
+
+  /**
+   * Prime Attribute Classification across all candidate keys.
+   */
+  public static classifyPrimeAttributes(
+    attributes: string[], 
+    candidateKeys: string[][]
+  ): PrimeAttributeClassification {
+    const primeSet = new Set<string>();
+    for (const key of candidateKeys) {
+      for (const attr of key) {
+        primeSet.add(attr);
+      }
+    }
+
+    const primeAttributes = Array.from(primeSet).sort();
+    const nonPrimeAttributes = attributes.filter(a => !primeSet.has(a)).sort();
+
+    return {
+      primeAttributes,
+      nonPrimeAttributes,
+      isPrime: (attr: string) => primeSet.has(attr)
+    };
+  }
+
+  /**
+   * Helper to classify attributes into prime and non-prime lists.
+   */
+  public static classifyAttributes(
+    attributes: string[], 
+    candidateKeys: string[][]
+  ): { prime: string[]; nonPrime: string[] } {
+    const { primeAttributes, nonPrimeAttributes } = NormalizationEngine.classifyPrimeAttributes(attributes, candidateKeys);
+    return { prime: primeAttributes, nonPrime: nonPrimeAttributes };
+  }
+
+  /**
+   * 1NF Verification: Validates attribute atomicity without destructive truncation.
+   */
+  public static is1NF(rows: any[], attributes?: string[]): NormalForm1NFResult {
+    const attrs = attributes && attributes.length > 0 
+      ? attributes 
+      : (rows && rows.length > 0 ? Object.keys(rows[0] || {}) : []);
+
+    if (!rows || rows.length === 0 || attrs.length === 0) {
+      return {
+        nf: '1NF',
+        isNormalized: true,
+        is1NF: true,
+        violations: [],
+        violationDetails: [],
+        totalAttributes: attrs.length,
+        atomicAttributes: [...attrs],
+        nonAtomicAttributes: []
+      };
+    }
+
+    const sampleLimit = Math.min(rows.length, 500);
+    const nonAtomicSet = new Set<string>();
+    const violations: any[] = [];
+    const violationDetails: NormalFormViolation[] = [];
+
+    for (const attr of attrs) {
+      let violationFound = false;
+
+      for (let r = 0; r < sampleLimit && !violationFound; r++) {
+        const val = rows[r]?.[attr];
+        if (val === null || val === undefined || val === '') continue;
+
+        // Check 1: Native arrays
+        if (Array.isArray(val)) {
+          violationFound = true;
+          nonAtomicSet.add(attr);
+          const desc = `Column '${attr}' contains nested array data.`;
+          const strObj = Object.assign(new String(desc), {
+            type: '1NF_NON_ATOMIC',
+            culprit: attr,
+            description: desc,
+            sampleValue: val
+          });
+          violations.push(strObj);
+          violationDetails.push({
+            type: '1NF_NON_ATOMIC',
+            culprit: attr,
+            description: desc,
+            sampleValue: val
+          });
+          break;
+        }
+
+        // Check 2: Nested plain objects (not Date)
+        if (typeof val === 'object' && !(val instanceof Date)) {
+          violationFound = true;
+          nonAtomicSet.add(attr);
+          const desc = `Column '${attr}' contains complex nested object data.`;
+          const strObj = Object.assign(new String(desc), {
+            type: '1NF_NON_ATOMIC',
+            culprit: attr,
+            description: desc,
+            sampleValue: val
+          });
+          violations.push(strObj);
+          violationDetails.push({
+            type: '1NF_NON_ATOMIC',
+            culprit: attr,
+            description: desc,
+            sampleValue: val
+          });
+          break;
+        }
+
+        // Check 3: JSON serialized arrays/objects
+        if (typeof val === 'string') {
+          const trimmed = val.trim();
+          if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (Array.isArray(parsed) || (typeof parsed === 'object' && parsed !== null)) {
+                violationFound = true;
+                nonAtomicSet.add(attr);
+                const desc = `Column '${attr}' contains serialized JSON arrays/objects.`;
+                const strObj = Object.assign(new String(desc), {
+                  type: '1NF_NON_ATOMIC',
+                  culprit: attr,
+                  description: desc,
+                  sampleValue: val
+                });
+                violations.push(strObj);
+                violationDetails.push({
+                  type: '1NF_NON_ATOMIC',
+                  culprit: attr,
+                  description: desc,
+                  sampleValue: val
+                });
+                break;
+              }
+            } catch {
+              // Not JSON
+            }
+          }
+        }
+      }
+    }
+
+    const isNormalized = violationDetails.length === 0;
+    const nonAtomicAttributes = Array.from(nonAtomicSet).sort();
+    const atomicAttributes = attrs.filter(a => !nonAtomicSet.has(a)).sort();
+
+    return {
+      nf: '1NF',
+      isNormalized,
+      is1NF: isNormalized,
+      violations,
+      violationDetails,
+      totalAttributes: attrs.length,
+      atomicAttributes,
+      nonAtomicAttributes
+    };
+  }
+
+  /**
+   * 2NF Verification: Validates that no non-prime attribute is partially dependent
+   * on any candidate key.
+   */
+  public static is2NF(
+    attributes: string[], 
+    fds: FunctionalDependency[], 
+    candidateKeys?: string[][]
+  ): NormalFormResult {
+    const keys = candidateKeys ?? NormalizationEngine.findCandidateKeys(attributes, fds);
+    const { primeAttributes, nonPrimeAttributes, isPrime } = 
+      NormalizationEngine.classifyPrimeAttributes(attributes, keys);
+
+    const violations: any[] = [];
+    const violationDetails: NormalFormViolation[] = [];
+    const partialDependencies: any[] = [];
+
+    // If no non-prime attributes exist, or all keys have length 1, automatically in 2NF
+    const hasCompositeKey = keys.some(k => k.length > 1);
+    if (nonPrimeAttributes.length === 0 || !hasCompositeKey) {
+      return {
+        nf: '2NF',
+        isNormalized: true,
+        is2NF: true,
+        violations: [],
+        violationDetails: [],
+        partialDependencies: [],
+        primeAttributes,
+        candidateKeys: keys
+      };
+    }
+
+    // Filter valid non-trivial FDs
+    const validFDs: Array<{ lhs: string[]; rhs: string }> = [];
+    for (const fd of fds) {
+      if (!fd.lhs || fd.lhs.length === 0 || !fd.lhs.every(a => attributes.includes(a))) continue;
+      const rhsList = Array.isArray(fd.rhs)
+        ? fd.rhs
+        : typeof fd.rhs === 'string' && fd.rhs.includes(',')
+          ? fd.rhs.split(',').map(s => s.trim()).filter(Boolean)
+          : [fd.rhs];
+      for (const r of rhsList) {
+        if (r && attributes.includes(r) && !fd.lhs.includes(r)) {
+          validFDs.push({ lhs: fd.lhs, rhs: r });
+        }
+      }
+    }
+
+    for (const fd of validFDs) {
+      // If dependent attribute is prime, partial dependency is permitted in 2NF!
+      if (isPrime(fd.rhs)) continue;
+
+      // Check if LHS is a proper subset of ANY candidate key
+      for (const key of keys) {
+        const isProperSubset = 
+          fd.lhs.length > 0 && 
+          fd.lhs.length < key.length && 
+          fd.lhs.every(a => key.includes(a));
+
+        if (isProperSubset) {
+          const desc = `Partial dependency: Non-prime attribute '${fd.rhs}' depends on {${fd.lhs.join(', ')}}, which is a proper subset of candidate key {${key.join(', ')}}.`;
+          const strObj = Object.assign(new String(desc), {
+            lhs: fd.lhs,
+            rhs: fd.rhs,
+            candidateKey: key,
+            type: '2NF_PARTIAL_DEPENDENCY',
+            description: desc
+          });
+          violations.push(strObj);
+          violationDetails.push({
+            type: '2NF_PARTIAL_DEPENDENCY',
+            culprit: `{${fd.lhs.join(', ')}} -> ${fd.rhs}`,
+            description: desc,
+            culpritFD: { lhs: fd.lhs, rhs: fd.rhs },
+            candidateKey: key,
+            attributes: [fd.rhs]
+          });
+          partialDependencies.push({
+            lhs: fd.lhs,
+            rhs: fd.rhs,
+            candidateKey: key,
+            description: desc
+          });
+          break; // Record once per violating FD
+        }
+      }
+    }
+
+    const isNormalized = violationDetails.length === 0;
+
+    return {
+      nf: '2NF',
+      isNormalized,
+      is2NF: isNormalized,
+      violations,
+      violationDetails,
+      partialDependencies,
+      primeAttributes,
+      candidateKeys: keys
+    };
+  }
+
+  /**
+   * 3NF Verification: Validates that for every non-trivial FD X -> Y:
+   * Either X is a superkey OR every attribute in Y \ X is prime.
+   */
+  public static is3NF(
+    attributes: string[], 
+    fds: FunctionalDependency[], 
+    candidateKeys?: string[][]
+  ): NormalFormResult {
+    const keys = candidateKeys ?? NormalizationEngine.findCandidateKeys(attributes, fds);
+    const { primeAttributes, isPrime } = 
+      NormalizationEngine.classifyPrimeAttributes(attributes, keys);
+
+    // Check 2NF first
+    const res2NF = NormalizationEngine.is2NF(attributes, fds, keys);
+    if (!res2NF.isNormalized) {
+      return {
+        nf: '3NF',
+        isNormalized: false,
+        is3NF: false,
+        violations: ['Relation violates 2NF.', ...res2NF.violations],
+        violationDetails: res2NF.violationDetails,
+        transitiveDependencies: res2NF.partialDependencies || [],
+        primeAttributes,
+        candidateKeys: keys
+      };
+    }
+
+    const violations: any[] = [];
+    const violationDetails: NormalFormViolation[] = [];
+    const transitiveDependencies: any[] = [];
+
+    // Filter valid non-trivial FDs
+    const validFDs: Array<{ lhs: string[]; rhs: string }> = [];
+    for (const fd of fds) {
+      if (!fd.lhs || fd.lhs.length === 0 || !fd.lhs.every(a => attributes.includes(a))) continue;
+      const rhsList = Array.isArray(fd.rhs)
+        ? fd.rhs
+        : typeof fd.rhs === 'string' && fd.rhs.includes(',')
+          ? fd.rhs.split(',').map(s => s.trim()).filter(Boolean)
+          : [fd.rhs];
+      for (const r of rhsList) {
+        if (r && attributes.includes(r) && !fd.lhs.includes(r)) {
+          validFDs.push({ lhs: fd.lhs, rhs: r });
+        }
+      }
+    }
+
+    const isSuperkey = (lhs: string[]) => 
+      NormalizationEngine.computeClosure(lhs, validFDs).size === attributes.length;
+
+    for (const fd of validFDs) {
+      // Condition 1: LHS is a superkey
+      if (isSuperkey(fd.lhs)) continue;
+
+      // Condition 2: RHS is a prime attribute
+      if (isPrime(fd.rhs)) continue;
+
+      // Both conditions failed: Transitive dependency violation!
+      const desc = `Transitive dependency: {${fd.lhs.join(', ')}} -> ${fd.rhs} violates 3NF (determinant is not a superkey and '${fd.rhs}' is non-prime).`;
+      const strObj = Object.assign(new String(desc), {
+        lhs: fd.lhs,
+        rhs: fd.rhs,
+        type: '3NF_TRANSITIVE_DEPENDENCY',
+        description: desc
+      });
+      violations.push(strObj);
+      violationDetails.push({
+        type: '3NF_TRANSITIVE_DEPENDENCY',
+        culprit: `{${fd.lhs.join(', ')}} -> ${fd.rhs}`,
+        description: desc,
+        culpritFD: { lhs: fd.lhs, rhs: fd.rhs },
+        attributes: [fd.rhs]
+      });
+      transitiveDependencies.push({
+        lhs: fd.lhs,
+        rhs: fd.rhs,
+        description: desc
+      });
+    }
+
+    const isNormalized = violationDetails.length === 0;
+
+    return {
+      nf: '3NF',
+      isNormalized,
+      is3NF: isNormalized,
+      violations,
+      violationDetails,
+      transitiveDependencies,
+      primeAttributes,
+      candidateKeys: keys
+    };
+  }
+
+  /**
+   * BCNF Verification: Validates that for every non-trivial FD X -> Y,
+   * determinant X MUST be a superkey.
+   */
+  public static isBCNF(
+    attributes: string[], 
+    fds: FunctionalDependency[], 
+    candidateKeys?: string[][]
+  ): NormalFormResult {
+    const keys = candidateKeys ?? NormalizationEngine.findCandidateKeys(attributes, fds);
+    const { primeAttributes } = NormalizationEngine.classifyPrimeAttributes(attributes, keys);
+
+    const violations: any[] = [];
+    const violationDetails: NormalFormViolation[] = [];
+
+    // Filter valid non-trivial FDs
+    const validFDs: Array<{ lhs: string[]; rhs: string }> = [];
+    for (const fd of fds) {
+      if (!fd.lhs || fd.lhs.length === 0 || !fd.lhs.every(a => attributes.includes(a))) continue;
+      const rhsList = Array.isArray(fd.rhs)
+        ? fd.rhs
+        : typeof fd.rhs === 'string' && fd.rhs.includes(',')
+          ? fd.rhs.split(',').map(s => s.trim()).filter(Boolean)
+          : [fd.rhs];
+      for (const r of rhsList) {
+        if (r && attributes.includes(r) && !fd.lhs.includes(r)) {
+          validFDs.push({ lhs: fd.lhs, rhs: r });
+        }
+      }
+    }
+
+    const isSuperkey = (lhs: string[]) => 
+      NormalizationEngine.computeClosure(lhs, validFDs).size === attributes.length;
+
+    for (const fd of validFDs) {
+      if (!isSuperkey(fd.lhs)) {
+        const desc = `BCNF violation: {${fd.lhs.join(', ')}} -> ${fd.rhs} determinant is not a superkey.`;
+        const strObj = Object.assign(new String(desc), {
+          lhs: fd.lhs,
+          rhs: fd.rhs,
+          type: 'BCNF_NON_SUPERKEY_DETERMINANT',
+          description: desc
+        });
+        violations.push(strObj);
+        violationDetails.push({
+          type: 'BCNF_NON_SUPERKEY_DETERMINANT',
+          culprit: `{${fd.lhs.join(', ')}} -> ${fd.rhs}`,
+          description: desc,
+          culpritFD: { lhs: fd.lhs, rhs: fd.rhs },
+          attributes: [fd.rhs]
+        });
+      }
+    }
+
+    const isNormalized = violationDetails.length === 0;
+
+    return {
+      nf: 'BCNF',
+      isNormalized,
+      isBCNF: isNormalized,
+      violations,
+      violationDetails,
+      primeAttributes,
+      candidateKeys: keys
+    };
+  }
+
+  /**
+   * Evaluates the full Normal Form hierarchy for a relation.
+   */
+  public static determineNormalForm(
+    attributes: string[], 
+    fds: FunctionalDependency[], 
+    rows?: any[], 
+    candidateKeys?: string[][]
+  ): NormalFormAssessment {
+    const res1NF = NormalizationEngine.is1NF(rows || [], attributes);
+    const res2NF = NormalizationEngine.is2NF(attributes, fds, candidateKeys);
+    const res3NF = NormalizationEngine.is3NF(attributes, fds, candidateKeys);
+    const resBCNF = NormalizationEngine.isBCNF(attributes, fds, candidateKeys);
+
+    let highest: NormalFormAssessment['highestNormalForm'] = 'UNNORMALIZED';
+    if (res1NF.isNormalized) {
+      highest = '1NF';
+      if (res2NF.isNormalized) {
+        highest = '2NF';
+        if (res3NF.isNormalized) {
+          highest = '3NF';
+          if (resBCNF.isNormalized) {
+            highest = 'BCNF';
+          }
+        }
+      }
+    }
+
+    return {
+      highestNormalForm: highest,
+      details: {
+        '1NF': res1NF,
+        '2NF': res2NF,
+        '3NF': res3NF,
+        'BCNF': resBCNF
+      }
+    };
+  }
+
+  /**
+   * Non-Destructive First Normal Form (1NF) Application.
+   * Guarantees zero data loss: text fields are never truncated.
+   */
+  static async apply1NF(
+    data: any[], 
+    options?: { 
+      mode?: 'preserve_scalar' | 'unnest_repeating_groups'; 
+      multiValuedColumns?: string[]; 
+      delimiter?: RegExp | string 
+    }
+  ): Promise<any[]> {
+    this.logger.info('Applying non-destructive First Normal Form (1NF)...');
     
     if (!data || data.length === 0) {
       this.logger.warn('No data provided for 1NF application');
       return [];
     }
-    
-    const normalizedData: any[] = [];
-    
-    for (const row of data) {
-      const normalizedRow: any = {};
-      
-      Object.entries(row).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          const valueStr = value.toString().trim();
-          
-          // Check for atomic violations more rigorously
-          if (this.hasAtomicViolations(valueStr)) {
-            // For now, take first value - in production, this should create new rows
-            const atomicValue = this.extractAtomicValue(valueStr);
-            normalizedRow[key] = atomicValue;
-            this.logger.debug(`Normalized non-atomic value in ${key}: "${valueStr}" -> "${atomicValue}"`);
-          } else {
-            normalizedRow[key] = valueStr;
+
+    if (options?.mode === 'unnest_repeating_groups' && options.multiValuedColumns && options.multiValuedColumns.length > 0) {
+      let currentRows = [...data];
+      for (const col of options.multiValuedColumns) {
+        const nextRows: any[] = [];
+        for (const row of currentRows) {
+          const val = row[col];
+          let items: any[] = [];
+          if (Array.isArray(val)) {
+            items = val;
+          } else if (typeof val === 'string') {
+            try {
+              const parsed = JSON.parse(val);
+              if (Array.isArray(parsed)) items = parsed;
+            } catch {
+              items = val.split(options.delimiter || /[;|]/).map(s => s.trim()).filter(s => s.length > 0);
+            }
           }
-        } else {
-          normalizedRow[key] = '';
+          if (items.length > 1) {
+            for (const item of items) {
+              nextRows.push({ ...row, [col]: item });
+            }
+          } else {
+            nextRows.push({ ...row });
+          }
         }
-      });
-      
-      normalizedData.push(normalizedRow);
+        currentRows = nextRows;
+      }
+      return currentRows;
     }
-    
-    this.logger.success(`1NF applied: ${normalizedData.length} rows processed`);
-    return normalizedData;
+
+    // Default safe non-destructive behavior: clone rows with complete text preservation
+    return data.map(row => {
+      const copy: Record<string, any> = {};
+      for (const [k, v] of Object.entries(row)) {
+        copy[k] = v;
+      }
+      return copy;
+    });
   }
 
   /**
-   * UNCHANGED: Rigorous atomic violation detection
+   * Non-destructive atomic violation detection helper.
    */
-  private static hasAtomicViolations(value: string): boolean {
+  public static hasAtomicViolations(value: string): boolean {
     if (!value || value.length === 0) return false;
     
-    // Check for clear delimiters
-    if (/[,;|]/.test(value)) return true;
+    // Check for JSON-like array/object structures
+    if (/^\s*\[.*\]\s*$/.test(value) || /^\s*\{.*\}\s*$/.test(value)) {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed) || typeof parsed === 'object') return true;
+      } catch {
+        // Not valid JSON
+      }
+    }
     
-    // Check for multiple values with conjunctions
-    if (/\s+(and|or|&|\+)\s+/i.test(value)) return true;
-    
-    // Check for list-like structures
-    if (/^\s*[\[\{].*[\]\}]\s*$/.test(value)) return true;
-    
-    // Check for multiple sentences (likely multiple values)
-    const sentences = value.split(/[.!?]+/).filter(s => s.trim().length > 0);
-    if (sentences.length > 3) return true;
-    
+    // Explicit repeating group lists with semicolons or pipes
+    if (/;\s*[^;]/.test(value) || /\|\s*[^|]/.test(value)) return true;
+
     return false;
   }
 
   /**
-   * UNCHANGED: Extract atomic value from non-atomic value
+   * Non-destructive atomic value extraction helper.
    */
-  private static extractAtomicValue(value: string): string {
-    // Split by common delimiters and take first meaningful part
-    const parts = value.split(/[,;|]/).map(p => p.trim()).filter(p => p.length > 0);
-    if (parts.length > 0) return parts[0];
-    
-    // Split by conjunctions
-    const conjParts = value.split(/\s+(and|or|&|\+)\s+/i).map(p => p.trim()).filter(p => p.length > 0);
-    if (conjParts.length > 0) return conjParts[0];
-    
+  public static extractAtomicValue(value: string): string {
     return value;
   }
 
@@ -671,17 +1372,20 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     const primaryKey = candidateKeys[0];
     this.logger.info(`Using primary key: {${primaryKey.join(', ')}}`);
     
-    // FIXED: Find partial dependencies using ALL FDs (including low confidence ones)
+    // FIXED: Find partial dependencies using ALL FDs across all candidate keys
+    const { primeAttributes } = this.classifyPrimeAttributes(attributes, candidateKeys);
     const partialDependencies = fds.filter(fd => {
-      // Check if LHS is a proper subset of primary key
-      const isProperSubset = fd.lhs.length > 0 && 
-                            fd.lhs.length < primaryKey.length &&
-                            fd.lhs.every(attr => primaryKey.includes(attr));
+      // Check if LHS is a proper subset of any candidate key
+      const isProperSubset = candidateKeys.some(key =>
+        fd.lhs.length > 0 && 
+        fd.lhs.length < key.length && 
+        fd.lhs.every(attr => key.includes(attr))
+      );
       
-      // Check if RHS is not part of primary key
-      const rhsNotInPK = !primaryKey.includes(fd.rhs);
+      // Check if RHS is non-prime (not part of ANY candidate key)
+      const rhsNonPrime = !primeAttributes.includes(fd.rhs);
       
-      return isProperSubset && rhsNotInPK;
+      return isProperSubset && rhsNonPrime;
     });
     
     if (partialDependencies.length === 0) {
@@ -752,273 +1456,907 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
   }
 
   /**
-   * Apply 3NF decomposition on 2NF relations
+   * Apply 3NF decomposition on 2NF relations with lossless join determinant retention.
+   * When decomposing on X -> Y, decomposed relation is R1 = X U Y (PK = X),
+   * and residual relation is R2 = R \ Y (retaining X as a foreign key referencing R1).
    */
-  static async apply3NF(relations2NF: RelationSchema[], fds: FunctionalDependency[]): Promise<RelationSchema[]> {
+  static async apply3NF(
+    relations2NF: RelationSchema[], 
+    fds: FunctionalDependency[]
+  ): Promise<RelationSchema[]> {
     this.logger.info('Applying Third Normal Form (3NF) decomposition...');
     if (!relations2NF || relations2NF.length === 0) return [];
-    
-    // For each 2NF relation, check transitive dependencies
+
     const relations3NF: RelationSchema[] = [];
-    
+
     for (const rel of relations2NF) {
-      const relFds = fds.filter(fd => 
-        fd.lhs.every(attr => rel.attributes.includes(attr)) && rel.attributes.includes(fd.rhs)
+      const relAttrs = [...rel.attributes];
+      
+      // Filter FDs holding strictly within this relation
+      const relFds = fds.filter(fd =>
+        fd.lhs && fd.lhs.length > 0 &&
+        fd.lhs.every(attr => relAttrs.includes(attr)) &&
+        relAttrs.includes(fd.rhs)
       );
 
-      // Check transitive FDs (LHS is not a superkey of relation)
-      const transitiveFds = relFds.filter(fd => 
-        !fd.lhs.every(attr => rel.primaryKey.includes(attr))
-      );
+      // Compute candidate keys of this relation
+      let relKeys = NormalizationEngine.findCandidateKeys(relAttrs, relFds);
+      if (relKeys.length === 0 && rel.primaryKey && rel.primaryKey.length > 0) {
+        relKeys = [rel.primaryKey];
+      }
 
-      if (transitiveFds.length === 0) {
-        relations3NF.push(rel);
-      } else {
-        // Decompose: each transitive FD X → A forms relation {X, A}.
-        // Rows MUST be projected onto the relation's attributes — carrying the
-        // original wide rows produced schemas whose data didn't match their
-        // declared attributes.
-        const decomposedNames = new Set<string>();
-        for (const fd of transitiveFds) {
-          const relationAttrs = Array.from(new Set([...fd.lhs, fd.rhs]));
-          const name = `Rel3NF_${rel.name}_${fd.rhs}`;
-          if (decomposedNames.has(name)) continue;
-          decomposedNames.add(name);
-          const projectedRows = this.extractRelationData(rel.rows || [], relationAttrs);
-          relations3NF.push({
-            name,
-            attributes: relationAttrs,
-            primaryKey: fd.lhs,
-            foreignKeys: [],
-            rows: projectedRows,
-            sourceType: '3NF_Decomposed',
-            metadata: {
-              rowCount: projectedRows.length,
-              attributeTypes: this.inferAttributeTypes(projectedRows, relationAttrs)
-            }
-          });
+      // Classify prime attributes
+      const { isPrime } = NormalizationEngine.classifyPrimeAttributes(relAttrs, relKeys);
+
+      // Identify true 3NF violations:
+      // X -> A violates 3NF iff X is NOT a superkey AND A is non-prime.
+      const isSuperkey = (lhs: string[]) =>
+        NormalizationEngine.computeClosure(lhs, relFds).size === relAttrs.length;
+
+      const violationMap = new Map<string, { lhs: string[]; rhsAttrs: Set<string> }>();
+
+      for (const fd of relFds) {
+        if (fd.lhs.includes(fd.rhs)) continue; // trivial
+        if (isSuperkey(fd.lhs)) continue;     // condition 1: determinant is superkey
+        if (isPrime(fd.rhs)) continue;        // condition 2: dependent is prime
+
+        // 3NF violation
+        const lhsKey = [...fd.lhs].sort().join(',');
+        if (!violationMap.has(lhsKey)) {
+          violationMap.set(lhsKey, { lhs: [...fd.lhs].sort(), rhsAttrs: new Set<string>() });
         }
+        violationMap.get(lhsKey)!.rhsAttrs.add(fd.rhs);
+      }
 
-        // Keep a residual relation for attributes not covered by any
-        // decomposition so no column is silently dropped.
-        const covered = new Set(transitiveFds.flatMap(fd => [...fd.lhs, fd.rhs]));
-        const residualAttrs = rel.attributes.filter(attr => !covered.has(attr));
-        const pkAttrs = rel.primaryKey.filter(attr => !covered.has(attr));
-        const residualSet = Array.from(new Set([...pkAttrs, ...residualAttrs]));
-        if (residualSet.length >= 2) {
-          const residualRows = this.extractRelationData(rel.rows || [], residualSet);
-          relations3NF.push({
-            name: `${rel.name}_residual`,
-            attributes: residualSet,
-            primaryKey: rel.primaryKey.filter(attr => residualSet.includes(attr)),
-            foreignKeys: [],
-            rows: residualRows,
-            sourceType: '3NF_Residual',
-            metadata: {
-              rowCount: residualRows.length,
-              attributeTypes: this.inferAttributeTypes(residualRows, residualSet)
-            }
+      if (violationMap.size === 0) {
+        // Relation already satisfies 3NF
+        relations3NF.push(rel);
+        continue;
+      }
+
+      // Decompose relation
+      const decomposedRelations: RelationSchema[] = [];
+      const allViolatingRHS = new Set<string>();
+
+      for (const { lhs, rhsAttrs } of violationMap.values()) {
+        Array.from(rhsAttrs).forEach(attr => allViolatingRHS.add(attr));
+
+        const decompAttrs = Array.from(new Set([...lhs, ...Array.from(rhsAttrs)])).sort();
+        const decompName = `Rel3NF_${rel.name}_${lhs.join('_')}`;
+        const decompRows = this.extractRelationData(rel.rows || [], decompAttrs);
+
+        decomposedRelations.push({
+          name: decompName,
+          attributes: decompAttrs,
+          primaryKey: [...lhs],
+          foreignKeys: [],
+          rows: decompRows,
+          sourceType: '3NF_Decomposed',
+          metadata: {
+            rowCount: decompRows.length,
+            attributeTypes: this.inferAttributeTypes(decompRows, decompAttrs)
+          }
+        });
+      }
+
+      // Residual relation: R \ Y (retaining determinants lhs!)
+      const residualAttrs = relAttrs.filter(attr => !allViolatingRHS.has(attr));
+      const residualPK = rel.primaryKey.filter(attr => residualAttrs.includes(attr));
+      const effectivePK = residualPK.length > 0 ? residualPK : [...residualAttrs];
+
+      const residualRows = this.extractRelationData(rel.rows || [], residualAttrs);
+      const residualFKs: ForeignKey[] = [];
+
+      // Link residual relation to decomposed relations via retained determinant FKs
+      for (const decompRel of decomposedRelations) {
+        const fkAttrs = decompRel.primaryKey;
+        if (fkAttrs.every(attr => residualAttrs.includes(attr))) {
+          residualFKs.push({
+            attributes: [...fkAttrs],
+            references: decompRel.name,
+            referencedKey: [...fkAttrs],
+            cardinality: this.analyzeCardinality({ rows: residualRows } as any, decompRel)
           });
         }
       }
+
+      const residualRel: RelationSchema = {
+        name: `${rel.name}_residual`,
+        attributes: residualAttrs,
+        primaryKey: effectivePK,
+        foreignKeys: residualFKs,
+        rows: residualRows,
+        sourceType: '3NF_Residual',
+        metadata: {
+          rowCount: residualRows.length,
+          attributeTypes: this.inferAttributeTypes(residualRows, residualAttrs)
+        }
+      };
+
+      relations3NF.push(...decomposedRelations, residualRel);
     }
 
-    return relations3NF.length > 0 ? relations3NF : relations2NF;
+    this.logger.success(`3NF decomposition completed: ${relations3NF.length} relations created with retained join determinants`);
+    return relations3NF;
   }
 
   /**
-   * FIXED: Synthesize 3NF using Bernstein algorithm - ENSURES LOSSLESS JOIN
+   * Synthesize 3NF using Bernstein's algorithm:
+   * 1. Compute canonical cover Fc
+   * 2. Group FDs with identical LHS into relations R_i = X U Y
+   * 3. Remove redundant relations (R_j subset of R_i)
+   * 4. Ensure lossless join by adding candidate key relation if none exists
+   * 5. Ensure independent attribute completeness
+   * 6. Synthesize foreign keys based on PK inclusion
    */
   static async synthesize3NF(
     fds: FunctionalDependency[], 
     candidateKeys: string[][], 
-    data: any[]
+    data: any[],
+    allAttributes?: string[]
   ): Promise<RelationSchema[]> {
-    this.logger.info('Starting mathematically rigorous 3NF synthesis (LOSSLESS JOIN GUARANTEED)...');
-    
-    if (fds.length === 0) {
-      this.logger.warn('No functional dependencies provided for 3NF synthesis');
+    this.logger.info('Starting Bernstein 3NF synthesis (LOSSLESS JOIN & DEPENDENCY PRESERVING)...');
+
+    const attributes = allAttributes && allAttributes.length > 0
+      ? [...allAttributes]
+      : data && data.length > 0
+        ? Object.keys(data[0])
+        : Array.from(new Set([
+            ...fds.flatMap(fd => [...fd.lhs, fd.rhs]),
+            ...(candidateKeys ? candidateKeys.flat() : [])
+          ]));
+
+    if (attributes.length === 0) {
+      this.logger.warn('No attributes available for 3NF synthesis');
       return [];
     }
-    
-    try {
-      const relations: RelationSchema[] = [];
-      const relationNames = new Set<string>();
-      
-      // STEP 1: Create relations from ALL functional dependencies (including low confidence)
-      this.logger.info('Step 1: Creating relations from ALL functional dependencies...');
-      for (const fd of fds) {
-        const relationAttrs = Array.from(new Set([...fd.lhs, fd.rhs]));
-        const relationName = this.generateRelationName(relationAttrs);
-        
-        if (!relationNames.has(relationName)) {
-          const relationData = this.extractRelationData(data, relationAttrs);
-          
-          relations.push({
-            name: relationName,
-            attributes: relationAttrs,
-            primaryKey: fd.lhs,
-            foreignKeys: [],
-            rows: relationData,
-            sourceType: 'FunctionalDependency',
-            originalFD: {
-              lhs: fd.lhs,
-              rhs: fd.rhs,
-              confidence: fd.confidence
-            },
-            metadata: {
-              rowCount: relationData.length,
-              attributeTypes: this.inferAttributeTypes(relationData, relationAttrs)
-            }
-          });
-          relationNames.add(relationName);
-          
-          const confidenceLevel = fd.confidence >= 0.95 ? 'HIGH' : 
-                                fd.confidence >= 0.80 ? 'MEDIUM' : 'LOW';
-          this.logger.debug(`Created relation ${relationName} from FD [${confidenceLevel}]: {${fd.lhs.join(',')}} → ${fd.rhs}`);
+
+    if (!fds || fds.length === 0) {
+      this.logger.info('No functional dependencies: returning universal relation as candidate key');
+      return [{
+        name: 'MainRelation_3NF',
+        attributes: [...attributes],
+        primaryKey: candidateKeys && candidateKeys[0] ? [...candidateKeys[0]] : [...attributes],
+        foreignKeys: [],
+        rows: this.extractRelationData(data || [], attributes),
+        sourceType: '3NF_Universal',
+        metadata: {
+          rowCount: data?.length || 0,
+          attributeTypes: this.inferAttributeTypes(data || [], attributes)
         }
-      }
-      
-      // STEP 2: CRITICAL - Ensure candidate key coverage for LOSSLESS JOIN
-      this.logger.info('Step 2: Ensuring candidate key coverage for lossless join...');
-      this.ensureCandidateKeyCoverage(relations, candidateKeys, data, relationNames);
-      
-      // STEP 3: Remove redundant relations (but preserve lossless join)
-      this.logger.info('Step 3: Removing redundant relations while preserving lossless join...');
-      const nonRedundantRelations = this.removeRedundantRelationsPreservingLossless(relations, candidateKeys);
-      this.logger.info(`Removed ${relations.length - nonRedundantRelations.length} redundant relations`);
-      
-      // STEP 4: Establish foreign key relationships
-      this.logger.info('Step 4: Establishing foreign key relationships...');
-      await this.establishForeignKeys(nonRedundantRelations);
-      
-      // STEP 5: VERIFY LOSSLESS JOIN
-      this.logger.info('Step 5: Verifying lossless join property...');
-      const isLossless = await this.checkLosslessJoin(nonRedundantRelations, fds);
-      if (!isLossless) {
-        this.logger.warn('Decomposition is not lossless! Adding universal relation to ensure losslessness...');
-        // Add a universal relation if lossless join is not guaranteed
-        const allAttributes = Array.from(new Set(fds.flatMap(fd => [...fd.lhs, fd.rhs])));
-        if (allAttributes.length > 0) {
-          const universalRelation = {
-            name: 'Universal_Lossless_Relation',
-            attributes: allAttributes,
-            primaryKey: candidateKeys[0] || allAttributes.slice(0, 1),
-            foreignKeys: [],
-            rows: this.extractRelationData(data, allAttributes),
-            sourceType: 'LosslessJoin_Guarantee',
-            metadata: {
-              rowCount: data.length,
-              attributeTypes: this.inferAttributeTypes(data, allAttributes)
-            }
-          };
-          nonRedundantRelations.push(universalRelation);
-          this.logger.info('Added universal relation to guarantee lossless join');
-        }
-      }
-      
-      this.logger.success(`3NF synthesis completed: ${nonRedundantRelations.length} relations created (LOSSLESS JOIN GUARANTEED)`);
-      return nonRedundantRelations;
-      
-    } catch (error) {
-      this.logger.error('3NF synthesis failed', error);
-      throw error;
+      }];
     }
+
+    // Step 1: Compute canonical cover
+    const canonical = NormalizationEngine.computeCanonicalCover(fds);
+    const groupedFDs = canonical.groupedCover;
+    const singletonFDs = canonical.singletonCover;
+
+    // Step 2: Determine candidate keys
+    let keys = candidateKeys && candidateKeys.length > 0
+      ? candidateKeys
+      : NormalizationEngine.findCandidateKeys(attributes, singletonFDs);
+    if (keys.length === 0) {
+      keys = [attributes];
+    }
+
+    // Step 3: Create relations from grouped canonical dependencies
+    const synthesized: RelationSchema[] = [];
+    const relationNames = new Set<string>();
+
+    for (const g of groupedFDs) {
+      const relAttrs = Array.from(new Set([...g.lhs, ...g.rhs])).sort();
+      let relName = this.generateRelationName(relAttrs);
+      if (relationNames.has(relName)) {
+        relName = `${relName}_${synthesized.length + 1}`;
+      }
+      relationNames.add(relName);
+
+      const relRows = this.extractRelationData(data || [], relAttrs);
+      synthesized.push({
+        name: relName,
+        attributes: relAttrs,
+        primaryKey: [...g.lhs].sort(),
+        foreignKeys: [],
+        rows: relRows,
+        sourceType: '3NF_Synthesized',
+        originalFD: {
+          lhs: g.lhs,
+          rhs: g.rhs.join(', '),
+          confidence: 1.0
+        },
+        metadata: {
+          rowCount: relRows.length,
+          attributeTypes: this.inferAttributeTypes(relRows, relAttrs)
+        }
+      });
+    }
+
+    // Step 4: Eliminate redundant relations (proper subsets & duplicates)
+    const nonRedundant: RelationSchema[] = [];
+    for (let i = 0; i < synthesized.length; i++) {
+      const r1 = synthesized[i];
+      const isRedundant = synthesized.some((r2, j) => {
+        if (i === j) return false;
+        const r2Attrs = new Set(r2.attributes);
+        const isSubset = r1.attributes.every(a => r2Attrs.has(a));
+        if (!isSubset) return false;
+        // Strictly smaller relation is eliminated
+        if (r2.attributes.length > r1.attributes.length) return true;
+        // Equal length: tie-break by index to drop duplicates
+        if (r2.attributes.length === r1.attributes.length && j < i) return true;
+        return false;
+      });
+
+      if (!isRedundant) {
+        nonRedundant.push(r1);
+      }
+    }
+
+    // Step 5: Ensure Lossless Join (Candidate Key Preservation)
+    const hasCandidateKey = keys.some(key =>
+      nonRedundant.some(rel => key.every(attr => rel.attributes.includes(attr)))
+    );
+
+    if (!hasCandidateKey) {
+      // Pick shortest candidate key
+      const keyToAdd = keys.reduce((shortest, k) => k.length < shortest.length ? k : shortest, keys[0]);
+      let keyRelName = this.generateRelationName(keyToAdd, 'Key');
+      if (relationNames.has(keyRelName)) {
+        keyRelName = `${keyRelName}_CK`;
+      }
+      relationNames.add(keyRelName);
+
+      const keyRows = this.extractRelationData(data || [], keyToAdd);
+      nonRedundant.push({
+        name: keyRelName,
+        attributes: [...keyToAdd].sort(),
+        primaryKey: [...keyToAdd].sort(),
+        foreignKeys: [],
+        rows: keyRows,
+        sourceType: '3NF_CandidateKey_Lossless',
+        metadata: {
+          rowCount: keyRows.length,
+          attributeTypes: this.inferAttributeTypes(keyRows, keyToAdd)
+        }
+      });
+      this.logger.info(`Added candidate key relation {${keyToAdd.join(', ')}} to guarantee lossless join`);
+    }
+
+    // Step 6: Attribute Completeness (Independent Attributes)
+    const coveredAttrs = new Set(nonRedundant.flatMap(r => r.attributes));
+    const missingAttrs = attributes.filter(a => !coveredAttrs.has(a));
+    if (missingAttrs.length > 0) {
+      const indRows = this.extractRelationData(data || [], missingAttrs);
+      const indName = this.generateRelationName(missingAttrs, 'Independent');
+      nonRedundant.push({
+        name: indName,
+        attributes: [...missingAttrs].sort(),
+        primaryKey: [...missingAttrs].sort(),
+        foreignKeys: [],
+        rows: indRows,
+        sourceType: '3NF_IndependentAttributes',
+        metadata: {
+          rowCount: indRows.length,
+          attributeTypes: this.inferAttributeTypes(indRows, missingAttrs)
+        }
+      });
+      this.logger.info(`Added independent attributes relation {${missingAttrs.join(', ')}} for completeness`);
+    }
+
+    // Step 7: Synthesize Foreign Keys
+    await this.establishForeignKeys(nonRedundant);
+
+    this.logger.success(`Bernstein 3NF synthesis completed: ${nonRedundant.length} relations synthesized (LOSSLESS JOIN GUARANTEED)`);
+    return nonRedundant;
   }
 
   /**
-   * FIXED: Enhanced lossless join checking using Chase algorithm
+   * Decomposes a set of attributes or a relation into Boyce-Codd Normal Form.
+   * Guarantees Lossless Join decomposition.
    */
-  static async checkLosslessJoin(relations: RelationSchema[], fds: FunctionalDependency[]): Promise<boolean> {
-    this.logger.info('Checking lossless join using enhanced Chase algorithm...');
-    
-    if (relations.length <= 1) {
-      this.logger.info('Single relation - lossless join trivially satisfied');
-      return true;
+  public static async decomposeBCNF(
+    relationOrAttributes: RelationSchema | string[],
+    fds: FunctionalDependency[],
+    data: any[] = []
+  ): Promise<RelationSchema[]> {
+    NormalizationEngine.logger.info('Decomposing into Boyce-Codd Normal Form (BCNF)...');
+    const result = await NormalizationEngine.decomposeBCNFDetailed(relationOrAttributes, fds, data);
+    return result.relations;
+  }
+
+  /**
+   * Detailed BCNF decomposition returning relations, lossless join verdict,
+   * dependency preservation analysis, and step-by-step audit logs.
+   */
+  public static async decomposeBCNFDetailed(
+    relationOrAttributes: RelationSchema | string[],
+    fds: FunctionalDependency[],
+    data: any[] = []
+  ): Promise<BCNFDecompositionResult> {
+    const isRelation = !Array.isArray(relationOrAttributes) && typeof relationOrAttributes === 'object';
+    const attributes: string[] = isRelation
+      ? [...(relationOrAttributes as RelationSchema).attributes]
+      : [...(relationOrAttributes as string[])];
+    const relationData: any[] = isRelation
+      ? (relationOrAttributes as RelationSchema).rows || data || []
+      : data || [];
+    const baseName: string = isRelation
+      ? (relationOrAttributes as RelationSchema).name
+      : 'Rel_BCNF';
+
+    const validFDs: Array<{ lhs: string[]; rhs: string }> = [];
+    for (const fd of fds) {
+      if (!fd.lhs || fd.lhs.length === 0) continue;
+      const rhsList = Array.isArray(fd.rhs)
+        ? fd.rhs
+        : typeof fd.rhs === 'string' && fd.rhs.includes(',')
+          ? fd.rhs.split(',').map(s => s.trim()).filter(Boolean)
+          : [fd.rhs];
+      for (const r of rhsList) {
+        if (r && !fd.lhs.includes(r)) {
+          validFDs.push({ lhs: [...fd.lhs], rhs: r });
+        }
+      }
     }
-    
-    const allAttributes = Array.from(new Set(relations.flatMap(r => r.attributes)));
-    const tableau = this.initializeTableau(relations, allAttributes);
-    
+
+    interface PendingRelation {
+      name: string;
+      attributes: string[];
+      rows: any[];
+    }
+
+    const pendingQueue: PendingRelation[] = [
+      {
+        name: baseName,
+        attributes: Array.from(new Set(attributes)).sort(),
+        rows: relationData
+      }
+    ];
+
+    const completedRelations: RelationSchema[] = [];
+    const decompositionSteps: BCNFDecompositionStep[] = [];
+
+    while (pendingQueue.length > 0) {
+      const current = pendingQueue.shift()!;
+      const currentAttrs = current.attributes;
+
+      // Relations with <= 2 attributes trivially satisfy BCNF
+      if (currentAttrs.length <= 2) {
+        completedRelations.push(
+          NormalizationEngine.buildBCNFRelationSchema(current.name, currentAttrs, validFDs, current.rows)
+        );
+        continue;
+      }
+
+      // Check for BCNF violation: non-trivial X -> Y where X+ does not cover all currentAttrs
+      let violation: { lhs: string[]; rhs: string[] } | null = null;
+
+      // 1. First test determinants from known functional dependencies
+      for (const fd of validFDs) {
+        if (fd.lhs.every(a => currentAttrs.includes(a)) && currentAttrs.includes(fd.rhs)) {
+          const closure = NormalizationEngine.computeClosure(fd.lhs, validFDs);
+          const determinedInCurrent = Array.from(closure).filter(
+            a => currentAttrs.includes(a) && !fd.lhs.includes(a)
+          );
+
+          if (
+            determinedInCurrent.length > 0 &&
+            (fd.lhs.length + determinedInCurrent.length) < currentAttrs.length
+          ) {
+            violation = { lhs: fd.lhs, rhs: determinedInCurrent };
+            break;
+          }
+        }
+      }
+
+      // 2. If no direct FD determinant violated, test candidate sub-keys
+      if (!violation) {
+        const maxCheckSize = Math.min(currentAttrs.length - 1, 3);
+        for (let size = 1; size <= maxCheckSize && !violation; size++) {
+          for (const subset of NormalizationEngine.generateSubsetsIterative(currentAttrs, size)) {
+            const closure = NormalizationEngine.computeClosure(subset, validFDs);
+            const determinedInCurrent = Array.from(closure).filter(
+              a => currentAttrs.includes(a) && !subset.includes(a)
+            );
+
+            if (
+              determinedInCurrent.length > 0 &&
+              (subset.length + determinedInCurrent.length) < currentAttrs.length
+            ) {
+              violation = { lhs: subset, rhs: determinedInCurrent };
+              break;
+            }
+          }
+        }
+      }
+
+      if (!violation) {
+        // No BCNF violation: current relation is in BCNF
+        completedRelations.push(
+          NormalizationEngine.buildBCNFRelationSchema(current.name, currentAttrs, validFDs, current.rows)
+        );
+      } else {
+        // Decompose current on violation X -> Y:
+        // R1 = X ∪ Y
+        // R2 = currentAttrs \ Y (retaining X in R2 since X ∩ Y = ∅)
+        const X = violation.lhs;
+        const Y = violation.rhs;
+
+        const r1Attrs = Array.from(new Set([...X, ...Y])).sort();
+        const r2Attrs = currentAttrs.filter(a => !Y.includes(a)).sort();
+
+        const r1Name = `${current.name}_1_${X.join('_')}`;
+        const r2Name = `${current.name}_2_res`;
+
+        decompositionSteps.push({
+          sourceRelation: current.name,
+          violatingFD: violation,
+          decomposedRelations: [r1Name, r2Name]
+        });
+
+        const r1Rows = NormalizationEngine.extractRelationData(current.rows, r1Attrs);
+        const r2Rows = NormalizationEngine.extractRelationData(current.rows, r2Attrs);
+
+        pendingQueue.push({ name: r1Name, attributes: r1Attrs, rows: r1Rows });
+        pendingQueue.push({ name: r2Name, attributes: r2Attrs, rows: r2Rows });
+      }
+    }
+
+    // Post-process: remove redundant relations (subsets)
+    const finalRelations = NormalizationEngine.pruneRedundantBCNFRelations(completedRelations);
+
+    // Establish foreign keys between decomposed relations
+    await NormalizationEngine.establishForeignKeys(finalRelations);
+
+    // Verify Lossless Join and Dependency Preservation
+    const isLossless = await NormalizationEngine.checkLosslessJoin(finalRelations, fds);
+    const preservationDetails = NormalizationEngine.checkDependencyPreservationDetails(finalRelations, fds);
+
+    return {
+      relations: finalRelations,
+      isLossless,
+      isDependencyPreserving: preservationDetails.isPreserved,
+      preservationDetails,
+      decompositionSteps
+    };
+  }
+
+  /**
+   * Applies BCNF decomposition on an existing array of relations (e.g. 3NF relations).
+   */
+  public static async applyBCNF(
+    relations: RelationSchema[],
+    fds: FunctionalDependency[]
+  ): Promise<RelationSchema[]> {
+    NormalizationEngine.logger.info('Applying Boyce-Codd Normal Form (BCNF) decomposition on schema...');
+    if (!relations || relations.length === 0) return [];
+
+    const resultRelations: RelationSchema[] = [];
+
+    for (const rel of relations) {
+      const bcnfCheck = NormalizationEngine.isBCNF(rel.attributes, fds);
+      if (bcnfCheck.isNormalized) {
+        resultRelations.push(rel);
+      } else {
+        const decomposed = await NormalizationEngine.decomposeBCNF(rel, fds);
+        resultRelations.push(...decomposed);
+      }
+    }
+
+    const uniqueRelations = NormalizationEngine.pruneRedundantBCNFRelations(resultRelations);
+    await NormalizationEngine.establishForeignKeys(uniqueRelations);
+    return uniqueRelations;
+  }
+
+  private static buildBCNFRelationSchema(
+    name: string,
+    attributes: string[],
+    fds: Array<{ lhs: string[]; rhs: string }>,
+    rows: any[]
+  ): RelationSchema {
+    const candidateKeys = NormalizationEngine.findCandidateKeys(attributes, fds as any);
+    const primaryKey = candidateKeys[0] || [attributes[0]];
+    const projectedRows = NormalizationEngine.extractRelationData(rows || [], attributes);
+
+    return {
+      name,
+      attributes: [...attributes].sort(),
+      primaryKey: [...primaryKey].sort(),
+      foreignKeys: [],
+      rows: projectedRows,
+      sourceType: 'BCNF_Decomposed',
+      metadata: {
+        rowCount: projectedRows.length,
+        attributeTypes: NormalizationEngine.inferAttributeTypes(projectedRows, attributes)
+      }
+    };
+  }
+
+  private static pruneRedundantBCNFRelations(relations: RelationSchema[]): RelationSchema[] {
+    const sorted = [...relations].sort((a, b) => b.attributes.length - a.attributes.length);
+    const retained: RelationSchema[] = [];
+
+    for (const rel of sorted) {
+      const isSubset = retained.some(other => {
+        const otherSet = new Set(other.attributes);
+        return rel.attributes.every(attr => otherSet.has(attr));
+      });
+
+      if (!isSubset) {
+        retained.push(rel);
+      }
+    }
+
+    return retained.reverse();
+  }
+
+  /**
+   * Mathematically sound Chase Algorithm for lossless join verification.
+   * - Columns correspond to attributes A_0..A_{n-1}
+   * - Distinguished symbol for column j is 'a_' + j
+   * - Non-distinguished symbol for row i, column j is 'b_' + i + '_' + j
+   * - Equating preserves distinguished symbols with absolute priority
+   * - Substitutions are propagated column-wide to maintain equivalence classes
+   */
+  public static chaseAlgorithm(
+    relations: RelationSchema[],
+    fds: FunctionalDependency[]
+  ): ChaseResult {
+    if (!relations || relations.length === 0) {
+      return {
+        isLossless: false,
+        tableau: [],
+        attributes: [],
+        iterations: 0,
+        fullyDistinguishedRowIndex: -1,
+        steps: []
+      };
+    }
+
+    // Collect and deterministically sort all attributes across relations
+    const allAttributes = Array.from(
+      new Set(relations.flatMap(r => r.attributes))
+    ).sort();
+
+    if (relations.length === 1) {
+      const singleRow = allAttributes.map((_, j) => `a_${j}`);
+      return {
+        isLossless: true,
+        tableau: [singleRow],
+        attributes: allAttributes,
+        iterations: 0,
+        fullyDistinguishedRowIndex: 0,
+        steps: []
+      };
+    }
+
+    // Step 1: Initialize tableau matrix
+    const tableau: string[][] = [];
+    for (let i = 0; i < relations.length; i++) {
+      const row: string[] = [];
+      const relAttrs = new Set(relations[i].attributes);
+      for (let j = 0; j < allAttributes.length; j++) {
+        if (relAttrs.has(allAttributes[j])) {
+          row.push(`a_${j}`);
+        } else {
+          row.push(`b_${i}_${j}`);
+        }
+      }
+      tableau.push(row);
+    }
+
+    // Early exit if initial tableau already contains a fully distinguished row
+    let fullyDistinguishedRow = NormalizationEngine.findFullyDistinguishedRow(tableau, allAttributes.length);
+    if (fullyDistinguishedRow !== -1) {
+      return {
+        isLossless: true,
+        tableau: tableau.map(r => [...r]),
+        attributes: allAttributes,
+        iterations: 0,
+        fullyDistinguishedRowIndex: fullyDistinguishedRow,
+        steps: []
+      };
+    }
+
+    // Normalize FDs into singleton RHS dependencies
+    const validFDs: Array<{ lhs: string[]; rhs: string }> = [];
+    for (const fd of fds) {
+      if (!fd.lhs || fd.lhs.length === 0) continue;
+      if (!fd.lhs.every(a => allAttributes.includes(a))) continue;
+
+      const rhsList = Array.isArray(fd.rhs)
+        ? fd.rhs
+        : typeof fd.rhs === 'string' && fd.rhs.includes(',')
+          ? fd.rhs.split(',').map(s => s.trim()).filter(Boolean)
+          : [fd.rhs];
+
+      for (const r of rhsList) {
+        if (r && allAttributes.includes(r) && !fd.lhs.includes(r)) {
+          validFDs.push({ lhs: [...fd.lhs], rhs: r });
+        }
+      }
+    }
+
     let changed = true;
     let iterations = 0;
-    const maxIterations = Math.max(fds.length * allAttributes.length, 100);
-    
+    const maxIterations = Math.max(validFDs.length * allAttributes.length * relations.length, 100);
+    const steps: ChaseStepLog[] = [];
+
     while (changed && iterations < maxIterations) {
       changed = false;
       iterations++;
-      
-      for (const fd of fds) {
-        const newTableau = this.applyFDToTableau(tableau, fd, allAttributes);
-        if (this.tableauChanged(tableau, newTableau)) {
-          tableau.splice(0, tableau.length, ...newTableau);
-          changed = true;
+
+      for (const fd of validFDs) {
+        const lhsIndices = fd.lhs.map(a => allAttributes.indexOf(a));
+        const rhsIndex = allAttributes.indexOf(fd.rhs);
+        if (rhsIndex === -1) continue;
+
+        // Group rows that agree on all LHS columns
+        const groups = new Map<string, number[]>();
+        for (let i = 0; i < tableau.length; i++) {
+          const lhsKey = lhsIndices.map(col => tableau[i][col]).join('||');
+          if (!groups.has(lhsKey)) {
+            groups.set(lhsKey, []);
+          }
+          groups.get(lhsKey)!.push(i);
+        }
+
+        for (const rowIndices of groups.values()) {
+          if (rowIndices.length <= 1) continue;
+
+          // Check current symbols in rhsIndex across these rows
+          const currentSymbols = new Set<string>();
+          for (const rIdx of rowIndices) {
+            currentSymbols.add(tableau[rIdx][rhsIndex]);
+          }
+
+          if (currentSymbols.size <= 1) continue;
+
+          // Target symbol priority:
+          // 1. Distinguished symbol for this column: 'a_' + rhsIndex
+          // 2. Lexicographically smallest non-distinguished symbol
+          const distinguished = `a_${rhsIndex}`;
+          const targetSymbol = currentSymbols.has(distinguished)
+            ? distinguished
+            : Array.from(currentSymbols).sort()[0];
+
+          // Equate across entire column rhsIndex
+          for (const oldSymbol of currentSymbols) {
+            if (oldSymbol !== targetSymbol) {
+              const affectedRows: number[] = [];
+              for (let r = 0; r < tableau.length; r++) {
+                if (tableau[r][rhsIndex] === oldSymbol) {
+                  tableau[r][rhsIndex] = targetSymbol;
+                  affectedRows.push(r);
+                  changed = true;
+                }
+              }
+              steps.push({
+                iteration: iterations,
+                fd,
+                equatedSymbol: targetSymbol,
+                replacedSymbol: oldSymbol,
+                affectedRows
+              });
+            }
+          }
+
+          // Check if any row has now become fully distinguished
+          fullyDistinguishedRow = NormalizationEngine.findFullyDistinguishedRow(tableau, allAttributes.length);
+          if (fullyDistinguishedRow !== -1) {
+            return {
+              isLossless: true,
+              tableau: tableau.map(r => [...r]),
+              attributes: allAttributes,
+              iterations,
+              fullyDistinguishedRowIndex: fullyDistinguishedRow,
+              steps
+            };
+          }
         }
       }
     }
-    
-    const isLossless = this.hasAllEqualRow(tableau);
-    
-    if (isLossless) {
-      this.logger.success('Decomposition is LOSSLESS');
-    } else {
-      this.logger.warn('Decomposition is LOSSY - will add universal relation');
+
+    fullyDistinguishedRow = NormalizationEngine.findFullyDistinguishedRow(tableau, allAttributes.length);
+    return {
+      isLossless: fullyDistinguishedRow !== -1,
+      tableau: tableau.map(r => [...r]),
+      attributes: allAttributes,
+      iterations,
+      fullyDistinguishedRowIndex: fullyDistinguishedRow,
+      steps
+    };
+  }
+
+  private static findFullyDistinguishedRow(tableau: string[][], colCount: number): number {
+    for (let i = 0; i < tableau.length; i++) {
+      let isFullyDistinguished = true;
+      for (let j = 0; j < colCount; j++) {
+        if (tableau[i][j] !== `a_${j}`) {
+          isFullyDistinguished = false;
+          break;
+        }
+      }
+      if (isFullyDistinguished) return i;
     }
-    
-    return isLossless;
+    return -1;
   }
 
   /**
-   * FIXED: Check dependency preservation - considers ALL FDs
+   * Drop-in replacement for checkLosslessJoin ensuring lossless verdict correctness.
    */
-  static async checkDependencyPreservation(relations: RelationSchema[], originalFDs: FunctionalDependency[]): Promise<boolean> {
-    this.logger.info('Checking dependency preservation for ALL functional dependencies...');
-    
-    let preservedCount = 0;
-    let highConfidencePreserved = 0;
-    let mediumConfidencePreserved = 0;
-    let lowConfidencePreserved = 0;
-    
-    const totalFDs = originalFDs.length;
-    const highConfidenceFDs = originalFDs.filter(fd => fd.confidence >= 0.95).length;
-    const mediumConfidenceFDs = originalFDs.filter(fd => fd.confidence >= 0.80 && fd.confidence < 0.95).length;
-    const lowConfidenceFDs = originalFDs.filter(fd => fd.confidence < 0.80).length;
-    
-    for (const fd of originalFDs) {
-      const isPreserved = relations.some(relation => {
-        const hasAllLHS = fd.lhs.every(attr => relation.attributes.includes(attr));
-        const hasRHS = relation.attributes.includes(fd.rhs);
-        return hasAllLHS && hasRHS;
-      });
-      
-      if (isPreserved) {
-        preservedCount++;
-        if (fd.confidence >= 0.95) highConfidencePreserved++;
-        else if (fd.confidence >= 0.80) mediumConfidencePreserved++;
-        else lowConfidencePreserved++;
-      } else {
-        const confidenceLevel = fd.confidence >= 0.95 ? 'HIGH' : 
-                              fd.confidence >= 0.80 ? 'MEDIUM' : 'LOW';
-        this.logger.debug(`FD not preserved [${confidenceLevel}]: {${fd.lhs.join(',')}} → ${fd.rhs} (${(fd.confidence * 100).toFixed(1)}%)`);
+  public static async checkLosslessJoin(
+    relations: RelationSchema[],
+    fds: FunctionalDependency[]
+  ): Promise<boolean> {
+    NormalizationEngine.logger.info('Checking lossless join using mathematically sound Chase algorithm...');
+    const result = NormalizationEngine.chaseAlgorithm(relations, fds);
+    if (result.isLossless) {
+      NormalizationEngine.logger.success(`Decomposition is LOSSLESS (Row ${result.fullyDistinguishedRowIndex} fully distinguished in ${result.iterations} iterations)`);
+    } else {
+      NormalizationEngine.logger.warn(`Decomposition is LOSSY (Chase tableau converged without fully distinguished row after ${result.iterations} iterations)`);
+    }
+    return result.isLossless;
+  }
+
+  /**
+   * Computes attribute closure of X under projected dependencies F' = ∪ π_{R_i}(F)
+   * in polynomial time O(|U|^2 * k * |F|) without exponential powerset enumeration.
+   * Reference: Ullman (1988), Principles of Database and Knowledge-Base Systems.
+   */
+  public static computeProjectedClosure(
+    X: string[],
+    relations: RelationSchema[],
+    allFDs: FunctionalDependency[]
+  ): Set<string> {
+    const result = new Set<string>(X);
+    let changed = true;
+
+    const normalizedFDs: Array<{ lhs: string[]; rhs: string[] }> = [];
+    for (const fd of allFDs) {
+      if (!fd.lhs || fd.lhs.length === 0) continue;
+      const rhsList = Array.isArray(fd.rhs)
+        ? fd.rhs
+        : typeof fd.rhs === 'string' && fd.rhs.includes(',')
+          ? fd.rhs.split(',').map(s => s.trim()).filter(Boolean)
+          : [fd.rhs];
+      normalizedFDs.push({ lhs: fd.lhs, rhs: rhsList });
+    }
+
+    while (changed) {
+      changed = false;
+      for (const rel of relations) {
+        const commonAttrs = rel.attributes.filter(attr => result.has(attr));
+        if (commonAttrs.length === 0) continue;
+
+        // Compute standard closure under all original FDs
+        const commonClosure = NormalizationEngine.computeClosure(commonAttrs, normalizedFDs);
+
+        // Add attributes in (commonClosure ∩ rel.attributes) to result
+        for (const attr of rel.attributes) {
+          if (commonClosure.has(attr) && !result.has(attr)) {
+            result.add(attr);
+            changed = true;
+          }
+        }
       }
     }
-    
-    const preservationRatio = preservedCount / totalFDs;
-    const isFullyPreserved = preservationRatio === 1.0;
-    
-    this.logger.info(`Dependency preservation summary:`);
-    this.logger.info(`  Total: ${preservedCount}/${totalFDs} (${(preservationRatio * 100).toFixed(1)}%)`);
-    this.logger.info(`  HIGH confidence: ${highConfidencePreserved}/${highConfidenceFDs}`);
-    this.logger.info(`  MEDIUM confidence: ${mediumConfidencePreserved}/${mediumConfidenceFDs}`);
-    this.logger.info(`  LOW confidence: ${lowConfidencePreserved}/${lowConfidenceFDs}`);
-    
-    if (isFullyPreserved) {
-      this.logger.success('ALL functional dependencies are preserved');
-    } else {
-      this.logger.warn(`Dependency preservation: ${(preservationRatio * 100).toFixed(1)}% (${preservedCount}/${totalFDs})`);
+
+    return result;
+  }
+
+  /**
+   * Detailed dependency preservation analysis.
+   */
+  public static checkDependencyPreservationDetails(
+    relations: RelationSchema[],
+    originalFDs: FunctionalDependency[]
+  ): DependencyPreservationResult {
+    if (!originalFDs || originalFDs.length === 0) {
+      return {
+        isPreserved: true,
+        preservationRatio: 1.0,
+        preserved: [],
+        lost: [],
+        totalDependencies: 0,
+        details: []
+      };
     }
-    
-    return isFullyPreserved;
+
+    const preserved: FunctionalDependency[] = [];
+    const lost: FunctionalDependency[] = [];
+    const details: DependencyPreservationResult['details'] = [];
+
+    for (const fd of originalFDs) {
+      const rhsList = Array.isArray(fd.rhs)
+        ? fd.rhs
+        : typeof fd.rhs === 'string' && fd.rhs.includes(',')
+          ? fd.rhs.split(',').map(s => s.trim()).filter(Boolean)
+          : [fd.rhs];
+
+      // Fast path: direct containment in single relation
+      const singleRelMatch = relations.some(rel => {
+        const hasAllLHS = fd.lhs.every(a => rel.attributes.includes(a));
+        const hasAllRHS = rhsList.every(a => rel.attributes.includes(a));
+        return hasAllLHS && hasAllRHS;
+      });
+
+      if (singleRelMatch) {
+        preserved.push(fd);
+        details.push({
+          fd,
+          isPreserved: true,
+          reason: 'single_relation',
+          derivedClosure: Array.from(new Set([...fd.lhs, ...rhsList]))
+        });
+        continue;
+      }
+
+      // Projected closure evaluation
+      const projectedClosure = NormalizationEngine.computeProjectedClosure(
+        fd.lhs,
+        relations,
+        originalFDs
+      );
+
+      const allRhsCovered = rhsList.every(r => projectedClosure.has(r));
+
+      if (allRhsCovered) {
+        preserved.push(fd);
+        details.push({
+          fd,
+          isPreserved: true,
+          reason: 'projected_closure',
+          derivedClosure: Array.from(projectedClosure)
+        });
+      } else {
+        lost.push(fd);
+        details.push({
+          fd,
+          isPreserved: false,
+          reason: 'not_preserved',
+          derivedClosure: Array.from(projectedClosure)
+        });
+      }
+    }
+
+    const total = originalFDs.length;
+    const ratio = total > 0 ? preserved.length / total : 1.0;
+    const isPreserved = lost.length === 0;
+
+    return {
+      isPreserved,
+      preservationRatio: ratio,
+      preserved,
+      lost,
+      totalDependencies: total,
+      details
+    };
+  }
+
+  /**
+   * Drop-in replacement for checkDependencyPreservation.
+   */
+  public static async checkDependencyPreservation(
+    relations: RelationSchema[],
+    originalFDs: FunctionalDependency[]
+  ): Promise<boolean> {
+    NormalizationEngine.logger.info('Checking dependency preservation across projected closures...');
+    const result = NormalizationEngine.checkDependencyPreservationDetails(relations, originalFDs);
+
+    NormalizationEngine.logger.info(`Dependency preservation summary:`);
+    NormalizationEngine.logger.info(`  Total: ${result.preserved.length}/${result.totalDependencies} (${(result.preservationRatio * 100).toFixed(1)}%)`);
+    if (result.lost.length > 0) {
+      NormalizationEngine.logger.warn(`  Lost FDs (${result.lost.length}):`);
+      for (const fd of result.lost) {
+        NormalizationEngine.logger.warn(`    {${fd.lhs.join(', ')}} -> ${fd.rhs}`);
+      }
+    } else {
+      NormalizationEngine.logger.success('ALL functional dependencies are preserved in decomposition');
+    }
+
+    return result.isPreserved;
   }
 
   /**
@@ -1068,16 +2406,16 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     return suffix ? `${baseName}_${suffix}` : baseName;
   }
 
-  private static extractRelationData(data: any[], attributes: string[]): any[] {
+  public static extractRelationData(data: any[], attributes: string[]): any[] {
     const seen = new Set<string>();
     const result: any[] = [];
     
     for (const row of data) {
-      const key = attributes.map(attr => (row[attr] || '').toString()).join('||');
+      const key = attributes.map(attr => (row[attr] ?? '').toString()).join('||');
       if (!seen.has(key)) {
         const newRow: any = {};
         attributes.forEach(attr => {
-          newRow[attr] = row[attr] || '';
+          newRow[attr] = row[attr] ?? '';
         });
         result.push(newRow);
         seen.add(key);
@@ -1128,7 +2466,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
   /**
    * FIXED: Ensure candidate key coverage for lossless join
    */
-  private static ensureCandidateKeyCoverage(
+  public static ensureCandidateKeyCoverage(
     relations: RelationSchema[], 
     candidateKeys: string[][], 
     data: any[], 
@@ -1180,7 +2518,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
   /**
    * FIXED: Remove redundant relations while preserving lossless join
    */
-  private static removeRedundantRelationsPreservingLossless(
+  public static removeRedundantRelationsPreservingLossless(
     relations: RelationSchema[], 
     candidateKeys: string[][]
   ): RelationSchema[] {
@@ -1311,78 +2649,27 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
   }
 
   // Chase algorithm helpers
-  private static initializeTableau(relations: RelationSchema[], allAttributes: string[]): string[][] {
+  public static initializeTableau(relations: RelationSchema[], allAttributes: string[]): string[][] {
     const tableau: string[][] = [];
-    
     for (let i = 0; i < relations.length; i++) {
       const row: string[] = [];
-      for (const attr of allAttributes) {
-        if (relations[i].attributes.includes(attr)) {
-          row.push(`a${i}`);
+      const relAttrs = new Set(relations[i].attributes);
+      for (let j = 0; j < allAttributes.length; j++) {
+        if (relAttrs.has(allAttributes[j])) {
+          row.push(`a_${j}`);
         } else {
-          row.push(`b${i}${attr}`);
+          row.push(`b_${i}_${j}`);
         }
       }
       tableau.push(row);
     }
-    
     return tableau;
   }
 
-  private static applyFDToTableau(tableau: string[][], fd: FunctionalDependency, allAttributes: string[]): string[][] {
-    const newTableau = tableau.map(row => [...row]);
-    
-    const lhsIndices = fd.lhs.map(attr => allAttributes.indexOf(attr)).filter(idx => idx !== -1);
-    const rhsIndex = allAttributes.indexOf(fd.rhs);
-    
-    if (rhsIndex === -1) return newTableau;
-    
-    const groups = new Map<string, number[]>();
-    
-    for (let i = 0; i < newTableau.length; i++) {
-      const lhsKey = lhsIndices.map(idx => newTableau[i][idx]).join('||');
-      if (!groups.has(lhsKey)) {
-        groups.set(lhsKey, []);
-      }
-      groups.get(lhsKey)!.push(i);
-    }
-    
-    for (const rowIndices of groups.values()) {
-      if (rowIndices.length > 1) {
-        const firstValue = newTableau[rowIndices[0]][rhsIndex];
-        for (let i = 1; i < rowIndices.length; i++) {
-          newTableau[rowIndices[i]][rhsIndex] = firstValue;
-        }
-      }
-    }
-    
-    return newTableau;
-  }
-
-  private static tableauChanged(tableau1: string[][], tableau2: string[][]): boolean {
-    if (tableau1.length !== tableau2.length) return true;
-    
-    for (let i = 0; i < tableau1.length; i++) {
-      if (tableau1[i].length !== tableau2[i].length) return true;
-      for (let j = 0; j < tableau1[i].length; j++) {
-        if (tableau1[i][j] !== tableau2[i][j]) return true;
-      }
-    }
-    
-    return false;
-  }
-
-  private static hasAllEqualRow(tableau: string[][]): boolean {
+  public static hasAllEqualRow(tableau: string[][]): boolean {
     if (tableau.length === 0) return false;
-    
-    for (const row of tableau) {
-      const allSameType = row.every(symbol => symbol.startsWith('a') || row[0].startsWith('a'));
-      if (allSameType && row.every(symbol => symbol.startsWith('a'))) {
-        return true;
-      }
-    }
-    
-    return false;
+    const colCount = tableau[0].length;
+    return NormalizationEngine.findFullyDistinguishedRow(tableau, colCount) !== -1;
   }
 
   private static determineSuccessfulStrategy(phases: Array<{ name: string; success: boolean }>): string {

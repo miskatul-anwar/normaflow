@@ -8,14 +8,16 @@ import { DataUtils } from '../utils/dataUtils';
 
 export class DataProcessor {
   static async clean(data: any[]): Promise<any[]> {
-    if (!data || data.length === 0) return [];
+    if (!data || !Array.isArray(data) || data.length === 0) return [];
     
     // Remove empty rows and clean values
     const cleaned = data
       .filter(row => {
-        const hasValidData = Object.values(row).some(value => 
-          value !== null && value !== undefined && value.toString().trim() !== ''
-        );
+        if (!row || typeof row !== 'object') return false;
+        const hasValidData = Object.values(row).some(value => {
+          if (value === null || value === undefined) return false;
+          return DataUtils.cleanValue(value) !== '';
+        });
         return hasValidData;
       })
       .map(row => {
@@ -28,13 +30,13 @@ export class DataProcessor {
         });
         return cleanedRow;
       })
-      .filter(row => Object.keys(row).length > 0);
+      .filter(row => Object.keys(row).length > 0 && Object.values(row).some(val => val !== ''));
     
     return cleaned;
   }
 
   static async checkAtomicity(data: any[]): Promise<any> {
-    if (!data || data.length === 0) {
+    if (!data || !Array.isArray(data) || data.length === 0) {
       return { atomicity: {}, violations: {} };
     }
     
@@ -46,9 +48,10 @@ export class DataProcessor {
       const nonAtomicRows: any[] = [];
       const sample = data.slice(0, Math.min(data.length, 100));
       
-      const isAtomic = sample.every((row, index) => {
+      for (let index = 0; index < sample.length; index++) {
+        const row = sample[index];
         const value = row[attr];
-        if (!value || value.toString().trim() === '') return true;
+        if (value === null || value === undefined || value.toString().trim() === '') continue;
         
         const isAtomicValue = DataUtils.isAtomic(value);
         if (!isAtomicValue) {
@@ -56,11 +59,10 @@ export class DataProcessor {
             row: index + 1,
             value: value.toString().substring(0, 100)
           });
-          return false;
         }
-        return true;
-      });
+      }
       
+      const isAtomic = nonAtomicRows.length === 0;
       atomicity[attr] = isAtomic;
       if (!isAtomic) {
         violations[attr] = nonAtomicRows.slice(0, 5);
@@ -71,13 +73,15 @@ export class DataProcessor {
   }
 
   static async profileDataTypes(data: any[]): Promise<any> {
-    if (!data || data.length === 0) return {};
+    if (!data || !Array.isArray(data) || data.length === 0) return {};
     
     const attributes = Object.keys(data[0] || {});
     const types: any = {};
     
     for (const attr of attributes) {
-      const values = data.map(row => row[attr]).filter(v => v && v.toString().trim() !== '');
+      const values = data
+        .map(row => row[attr])
+        .filter(v => v !== null && v !== undefined && String(v).trim() !== '');
       types[attr] = DataUtils.inferDataType(values);
     }
     

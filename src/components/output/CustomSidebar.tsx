@@ -30,7 +30,7 @@ export function CustomSidebar({ items, activeTab, onTabChange }: CustomSidebarPr
                 ? 'text-gray-700 hover:bg-gray-100/80 hover:text-teal-700 border border-transparent'
                 : 'text-gray-400 cursor-not-allowed opacity-50 border border-transparent'
             }`}
-            style={{ fontFamily: "'CMU Serif Roman', serif" }}
+            style={{ fontFamily: "'Inter', sans-serif" }}
           >
             <span className={`${activeTab === item.id ? 'text-teal-600' : item.hasData ? 'text-gray-500' : 'text-gray-300'}`}>
               {item.icon}

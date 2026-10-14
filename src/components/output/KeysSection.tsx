@@ -9,7 +9,7 @@ export function KeysSection({ keyData }: KeysSectionProps) {
     return (
       <div className="text-center py-12 text-gray-500">
         <Key className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-        <p style={{ fontFamily: "'CMU Serif Roman', serif" }}>No keys discovered</p>
+        <p style={{ fontFamily: "'Inter', sans-serif" }}>No keys discovered</p>
         <p className="text-sm text-gray-400 mt-2">Key discovery requires functional dependencies</p>
       </div>
     );
@@ -26,7 +26,7 @@ export function KeysSection({ keyData }: KeysSectionProps) {
             <div className="p-2 bg-yellow-100 rounded-lg">
               <Key className="w-5 h-5 text-yellow-600" />
             </div>
-            <h4 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+            <h4 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
               Candidate Keys
             </h4>
           </div>
@@ -69,7 +69,7 @@ export function KeysSection({ keyData }: KeysSectionProps) {
             <div className="p-2 bg-purple-100 rounded-lg">
               <Database className="w-5 h-5 text-purple-600" />
             </div>
-            <h4 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+            <h4 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
               Super Keys
             </h4>
           </div>
@@ -118,7 +118,7 @@ export function KeysSection({ keyData }: KeysSectionProps) {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h5 className="font-semibold text-gray-900 mb-4 flex items-center gap-2" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+        <h5 className="font-semibold text-gray-900 mb-4 flex items-center gap-2" style={{ fontFamily: "'Inter', sans-serif" }}>
           <Target className="w-5 h-5" />
           Recommendations
         </h5>

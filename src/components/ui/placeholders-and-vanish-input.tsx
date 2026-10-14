@@ -59,7 +59,7 @@ export function PlaceholdersAndVanishInput({
     canvas.height = 800;
     ctx.clearRect(0, 0, 800, 800);
 
-    ctx.font = `32px 'CMU Serif Roman', serif`;
+    ctx.font = `32px 'Inter', sans-serif`;
     ctx.fillStyle = "#374151"; // gray-700
     ctx.fillText(value, 16, 40);
 
@@ -192,7 +192,7 @@ export function PlaceholdersAndVanishInput({
           : "drop-shadow-sm hover:drop-shadow-md"
           }`}
         onSubmit={handleSubmit}
-        style={{ fontFamily: "'CMU Serif Roman', serif" }}
+        style={{ fontFamily: "'Inter', sans-serif" }}
       >
         <canvas
           className={`absolute pointer-events-none text-base transform scale-50 top-[20%] left-2 origin-top-left transition-opacity duration-300 ${!animating ? "opacity-0" : "opacity-100"
@@ -218,7 +218,7 @@ export function PlaceholdersAndVanishInput({
               className={`w-full bg-transparent text-gray-700 h-14 px-6 rounded-l-full focus:outline-none transition-all duration-200 text-base placeholder-transparent ${animating ? "text-transparent" : ""
                 }`}
               style={{
-                fontFamily: "'CMU Serif Roman', serif",
+                fontFamily: "'Inter', sans-serif",
               }}
               disabled={animating}
             />
@@ -232,7 +232,7 @@ export function PlaceholdersAndVanishInput({
                     key={`placeholder-${currentPlaceholder}`}
                     className="transition-all duration-500 ease-in-out"
                     style={{
-                      fontFamily: "'CMU Serif Roman', serif",
+                      fontFamily: "'Inter', sans-serif",
                       animation: "fadeInOut 3s infinite"
                     }}
                   >
@@ -284,7 +284,7 @@ export function PlaceholdersAndVanishInput({
           <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 flex items-center text-sm text-gray-600 z-20">
             <div className="flex items-center space-x-2 bg-white px-3 py-1 rounded-full shadow-md border border-teal-200">
               <div className="w-2 h-2 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full animate-pulse"></div>
-              <span style={{ fontFamily: "'CMU Serif Roman', serif" }}>
+              <span style={{ fontFamily: "'Inter', sans-serif" }}>
                 Processing request...
               </span>
             </div>

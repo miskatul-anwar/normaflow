@@ -1,26 +1,27 @@
 /**
  * OperationPalette — circular icon rail for pipeline node creation.
  *
- * Buttons show only the operation logo; hovering reveals the full label and
- * description in a slide-out card. The card is rendered through a portal with
- * fixed positioning so the palette's scroll containers can never clip it.
- * Operations are grouped by phase and support click-to-append and
- * drag-onto-canvas placement.
+ * Supports dynamic multi-column layout adapting smoothly to the sidebar width,
+ * full collapse/expand capability, and rich hover tooltips.
  */
 
 import { useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check } from 'lucide-react';
+import { Check, ChevronLeft, RotateCcw } from 'lucide-react';
 import { OPERATIONS } from '../../config/operations';
 import { getOperationVisual, PHASE_ACCENTS } from '../../config/operationVisuals';
 import type { OperationDefinition, PhaseType } from '../../types';
-
-export const OPERATION_DND_MIME = 'application/normaflow-operation';
 
 interface OperationPaletteProps {
   /** Present operations already on the canvas (shown as added). */
   activeOperations?: string[];
   onAdd: (label: string) => void;
+  /** Current palette width in pixels (for dynamic responsive styling). */
+  width?: number;
+  /** Callback to collapse the sidebar */
+  onCollapse?: () => void;
+  /** Callback to reset sidebar width to default (84px) */
+  onResetWidth?: () => void;
 }
 
 interface TooltipState {
@@ -28,20 +29,30 @@ interface TooltipState {
   description: string;
   hint: string;
   accent: string;
-  /** Fixed-viewport anchor: tooltip sits right of (x, y) on wide screens. */
+  /** Fixed-viewport anchor: tooltip sits right or left of (x, y). */
   x: number;
   y: number;
   below: boolean;
+  isLeft: boolean;
 }
 
-export function OperationPalette({ activeOperations = [], onAdd }: OperationPaletteProps) {
+export function OperationPalette({
+  activeOperations = [],
+  onAdd,
+  width = 84,
+  onCollapse,
+  onResetWidth,
+}: OperationPaletteProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const isWide = width >= 120;
 
   const showTooltip = useCallback(
     (event: React.SyntheticEvent<HTMLButtonElement>, label: string, config: OperationDefinition) => {
       const meta = PHASE_ACCENTS[config.phase];
       const rect = event.currentTarget.getBoundingClientRect();
       const below = window.innerWidth <= 768;
+      const fitsRight = rect.right + 260 < window.innerWidth;
+
       setTooltip({
         name: label,
         description: config.description,
@@ -51,9 +62,10 @@ export function OperationPalette({ activeOperations = [], onAdd }: OperationPale
             ? `Requires: ${config.dependencies.join(', ')}`
             : 'No dependencies',
         accent: meta.accent,
-        x: below ? rect.left + rect.width / 2 : rect.right + 12,
+        x: below ? rect.left + rect.width / 2 : fitsRight ? rect.right + 12 : rect.left - 12,
         y: below ? rect.top - 10 : rect.top + rect.height / 2,
         below,
+        isLeft: !below && !fitsRight,
       });
     },
     [activeOperations],
@@ -75,12 +87,67 @@ export function OperationPalette({ activeOperations = [], onAdd }: OperationPale
 
   return (
     <nav className="nf-rail" data-testid="operation-palette" aria-label="Operation palette">
+      {onCollapse && (
+        <div className={`nf-rail-header${isWide ? ' nf-rail-header--wide' : ''}`}>
+          {isWide ? (
+            <div className="nf-rail-header-title-box">
+              <span className="nf-rail-header-title">Operations</span>
+              <span className="nf-rail-header-badge">{Math.round(width)}px</span>
+            </div>
+          ) : (
+            <div className="nf-rail-header-spacer" />
+          )}
+
+          <div className="nf-rail-header-actions">
+            {isWide && onResetWidth && Math.abs(width - 84) > 2 && (
+              <button
+                type="button"
+                onClick={onResetWidth}
+                className="nf-rail-header-btn"
+                title="Reset width to default (84px)"
+                aria-label="Reset sidebar width"
+              >
+                <RotateCcw size={13} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onCollapse}
+              className="nf-rail-header-btn nf-rail-header-collapse"
+              title="Collapse sidebar"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="nf-rail-scroll">
         {grouped.map(([phase, operations]) => {
           const meta = PHASE_ACCENTS[phase];
           return (
             <section className="nf-rail-group" key={phase} title={`${meta.label} — ${meta.description}`}>
-              <span className="nf-rail-divider" style={{ color: meta.accent }} aria-hidden />
+              <div className={`nf-rail-group-header${isWide ? ' nf-rail-group-header--wide' : ''}`}>
+                {isWide ? (
+                  <>
+                    <span
+                      className="nf-rail-phase-tag"
+                      style={{ color: meta.accent, backgroundColor: meta.soft }}
+                    >
+                      {meta.label}
+                    </span>
+                    <span
+                      className="nf-rail-group-line"
+                      style={{ backgroundColor: meta.accent }}
+                      aria-hidden
+                    />
+                  </>
+                ) : (
+                  <span className="nf-rail-divider" style={{ color: meta.accent }} aria-hidden />
+                )}
+              </div>
+
               <ul className="nf-rail-list">
                 {operations.map(([label, config]) => {
                   const isActive = activeOperations.includes(label);
@@ -90,11 +157,6 @@ export function OperationPalette({ activeOperations = [], onAdd }: OperationPale
                     <li className="nf-rail-item" key={label}>
                       <button
                         type="button"
-                        draggable
-                        onDragStart={event => {
-                          event.dataTransfer.setData(OPERATION_DND_MIME, label);
-                          event.dataTransfer.effectAllowed = 'copy';
-                        }}
                         onClick={() => onAdd(label)}
                         onMouseEnter={event => showTooltip(event, label, config)}
                         onMouseLeave={hideTooltip}
@@ -127,12 +189,10 @@ export function OperationPalette({ activeOperations = [], onAdd }: OperationPale
         })}
       </div>
 
-      <p className="nf-rail-footer">Click or drag onto canvas</p>
-
       {tooltip &&
         createPortal(
           <div
-            className={`nf-rail-tooltip${tooltip.below ? ' nf-rail-tooltip--below' : ''}`}
+            className={`nf-rail-tooltip${tooltip.below ? ' nf-rail-tooltip--below' : ''}${tooltip.isLeft ? ' nf-rail-tooltip--left' : ''}`}
             role="tooltip"
             style={{
               left: tooltip.x,

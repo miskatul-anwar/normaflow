@@ -41,19 +41,25 @@ export class FileUtils {
     }
 
     const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => 
-        headers.map(header => {
-          const value = (row[header] || '').toString();
-          // Escape quotes and wrap in quotes if contains comma or quote
-          if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-            return `"${value.replace(/"/g, '""')}"`;
-          }
-          return value;
-        }).join(',')
-      )
-    ].join('\n');
+    const headerLine = headers.map(h => {
+      const str = String(h ?? '');
+      return str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')
+        ? `"${str.replace(/"/g, '""')}"`
+        : str;
+    }).join(',');
+
+    const rows = data.map(row =>
+      headers.map(header => {
+        const val = row[header];
+        if (val === null || val === undefined) return '';
+        const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
+        return str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')
+          ? `"${str.replace(/"/g, '""')}"`
+          : str;
+      }).join(',')
+    );
+
+    const csvContent = [headerLine, ...rows].join('\n');
 
     this.downloadAsFile(csvContent, filename, 'text/csv');
   }

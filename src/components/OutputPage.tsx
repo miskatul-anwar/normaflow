@@ -4,7 +4,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
   CheckCircle, ArrowLeft, Copy, Download, Layers, GitBranch,
-  Code, Activity, Database, FileText, BarChart3, Shield, Key, Sparkles, Cpu, Table
+  Code, Activity, Database, FileText, BarChart3, Shield, Key, Cpu, Table
 } from 'lucide-react';
 import 'github-markdown-css/github-markdown-light.css';
 
@@ -53,7 +53,6 @@ export default function OutputPage() {
   const isMultiTable = safeResults?.isMultiTable || false;
   const multiTables = safeResults?.tables || [];
   const crossTableRelationships = safeResults?.crossTableRelationships || [];
-  const ollamaInsights = safeResults?.ollamaInsights || [];
 
   const relationData = useMemo(() => {
     if (safeResults?.relations && safeResults.relations.length > 0) return safeResults.relations;
@@ -215,10 +214,10 @@ export default function OutputPage() {
           <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600 mx-auto mb-4">
             <Activity className="w-6 h-6" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+          <h3 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', sans-serif" }}>
             No Output Available
           </h3>
-          <p className="text-gray-600 mb-6" style={{ fontFamily: "'CMU Serif Roman', serif" }}>
+          <p className="text-gray-600 mb-6" style={{ fontFamily: "'Inter', sans-serif" }}>
             Please execute a normalization workflow from the main application before viewing outputs.
           </p>
           <button
@@ -247,7 +246,7 @@ export default function OutputPage() {
             <ArrowLeft className="w-4.5 h-4.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-gray-900" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+            <h1 className="text-xl font-bold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
               NormaFlow Analysis Results {isMultiTable && '(Multi-CSV Dataset)'}
             </h1>
             <p className="text-xs text-gray-500 font-mono">
@@ -297,37 +296,12 @@ export default function OutputPage() {
                 </div>
               </div>
 
-              {/* Ollama AI Insights Cards */}
-              {ollamaInsights.length > 0 && (
-                <div className="bg-gradient-to-r from-teal-50 to-emerald-50 rounded-xl border border-teal-200 p-5 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="w-5 h-5 text-teal-600" />
-                    <h3 className="text-lg font-bold text-teal-900" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
-                      Ollama AI Model Schema Insights
-                    </h3>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {ollamaInsights.map((insight: any, idx: number) => (
-                      <div key={idx} className="bg-white/80 backdrop-blur rounded-lg p-4 border border-teal-100 shadow-xs">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-semibold text-teal-950 text-sm">{insight.title}</span>
-                          <span className="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full font-mono">
-                            {(insight.confidence * 100).toFixed(0)}% Match
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-700 leading-relaxed">{insight.summary}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Multi-Table NER Tags & Relational Overview */}
               {isMultiTable && multiTables.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                   <div className="flex items-center gap-2 mb-4">
                     <Cpu className="w-5 h-5 text-teal-600" />
-                    <h3 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+                    <h3 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
                       Named Entity Recognition (NER) & Schema Classification
                     </h3>
                   </div>
@@ -398,7 +372,7 @@ export default function OutputPage() {
           {activeTab === 'sql' && sqlFile?.content && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h4 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+                <h4 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
                   SQL Data Definition Language (DDL) {isMultiTable && '(Consolidated Multi-Table)'}
                 </h4>
                 <div className="flex gap-2">

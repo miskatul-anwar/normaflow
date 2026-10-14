@@ -4,16 +4,19 @@ import { AnimatePresence } from 'framer-motion';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import type { Node } from '@xyflow/react';
 
+import { PanelLeftOpen } from 'lucide-react';
 import Heading from './components/heading';
 import OutputPage from './components/OutputPage';
 import { OperationPalette } from './components/workflow/OperationPalette';
 import { FlowCanvas } from './components/workflow/FlowCanvas';
 import { useNormalization } from './hooks/useNormalization';
+import { usePaletteResize } from './hooks/usePaletteResize';
 import { useWorkflowGraph, type WorkflowSnapshot } from './hooks/useWorkflowGraph';
 import { Logger } from './services/utils/logger';
 import { OPERATIONS } from './config/operations';
 import { validateSequence } from './utils/workflowValidation';
 import { loadCachedResult, saveCachedResult } from './utils/resultCache';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import './styles/App.css';
 
 const logger = new Logger();
@@ -120,8 +123,18 @@ function Workspace() {
       logMessage('error', 'Workflow is empty — add operations from the palette.', 'EXECUTION');
       return;
     }
+
+    const validation = validateSequence(graph.nodes, graph.edges);
+    if (!validation.isValid) {
+      logMessage('error', `Workflow validation failed: ${validation.errors.join('; ')}`, 'EXECUTION');
+      return;
+    }
+    if (validation.warnings.length > 0) {
+      validation.warnings.forEach(w => logMessage('warning', w, 'EXECUTION'));
+    }
+
     void executePipeline(uploadedFiles, graph.operationLabels);
-  }, [executePipeline, graph.operationLabels, hasFiles, logMessage, operationCount, uploadedFiles]);
+  }, [executePipeline, graph.edges, graph.nodes, graph.operationLabels, hasFiles, logMessage, operationCount, uploadedFiles]);
 
   const handleRunAll = useCallback(async () => {
     const files = hasFiles ? uploadedFiles : [createSampleFile()];
@@ -206,8 +219,15 @@ function Workspace() {
     [graph, logMessage],
   );
 
+  const palette = usePaletteResize();
+
   return (
-    <div className="nf-shell">
+    <div
+      className={`nf-shell${palette.isCollapsed ? ' is-palette-collapsed' : ''}${palette.isDragging ? ' is-dragging' : ''}`}
+      style={{
+        ['--nf-palette-width' as string]: palette.isCollapsed ? '0px' : `${palette.width}px`,
+      }}
+    >
       <header className="nf-header">
         <Heading
           onUndo={graph.undo}
@@ -226,11 +246,42 @@ function Workspace() {
         />
       </header>
 
-      <aside className="nf-palette" aria-label="Operation palette">
-        <OperationPalette activeOperations={graph.operationLabels} onAdd={graph.tryAddOperation} />
+      <aside
+        className={`nf-palette${palette.isCollapsed ? ' is-collapsed' : ''}`}
+        aria-label="Operation palette"
+      >
+        <OperationPalette
+          activeOperations={graph.operationLabels}
+          onAdd={graph.tryAddOperation}
+          width={palette.width}
+          onCollapse={palette.toggleCollapse}
+          onResetWidth={palette.resetWidth}
+        />
+        <div
+          className={`nf-palette-resizer${palette.isDragging ? ' is-active' : ''}`}
+          onMouseDown={palette.handleResizeStart}
+          onDoubleClick={palette.resetWidth}
+          title="Drag to resize sidebar (double-click to reset)"
+          role="separator"
+          aria-orientation="vertical"
+        />
       </aside>
 
       <main className="nf-canvas-panel">
+        {palette.isCollapsed && (
+          <button
+            type="button"
+            className="nf-palette-expand-tab"
+            onClick={palette.toggleCollapse}
+            onMouseDown={e => palette.handleResizeStart(e, true)}
+            title="Expand operations sidebar (click or drag to expand)"
+            aria-label="Expand operations sidebar"
+          >
+            <PanelLeftOpen size={15} />
+            <span>Operations</span>
+          </button>
+        )}
+
         <div className="nf-canvas">
           <FlowCanvas
             nodes={graph.nodes}
@@ -238,10 +289,6 @@ function Workspace() {
             onNodesChange={graph.onNodesChange}
             onEdgesChange={graph.onEdgesChange}
             onConnect={graph.onConnect}
-            onDropOperation={label => {
-              logMessage('info', `Added "${label}" to canvas`, 'WORKFLOW');
-              return graph.tryAddOperation(label);
-            }}
           />
         </div>
 
@@ -264,20 +311,22 @@ export default function App() {
   }, []);
 
   return (
-    <Router>
-      <AnimatePresence mode="wait">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <ReactFlowProvider>
-                <Workspace />
-              </ReactFlowProvider>
-            }
-          />
-          <Route path="/output" element={<OutputPage />} />
-        </Routes>
-      </AnimatePresence>
-    </Router>
+    <ErrorBoundary componentName="Application Root">
+      <Router>
+        <AnimatePresence mode="wait">
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <ReactFlowProvider>
+                  <Workspace />
+                </ReactFlowProvider>
+              }
+            />
+            <Route path="/output" element={<OutputPage />} />
+          </Routes>
+        </AnimatePresence>
+      </Router>
+    </ErrorBoundary>
   );
 }

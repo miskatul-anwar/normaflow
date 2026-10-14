@@ -10,7 +10,7 @@ export function FunctionalDependenciesSection({ fdData }: { fdData: FunctionalDe
     return (
       <div className="text-center py-12 text-gray-500">
         <GitBranch className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-        <p style={{ fontFamily: "'CMU Serif Roman', serif" }}>No functional dependencies discovered</p>
+        <p style={{ fontFamily: "'Inter', sans-serif" }}>No functional dependencies discovered</p>
         <p className="text-sm text-gray-400 mt-2">This could indicate data is already normalized or lacks patterns</p>
       </div>
     );
@@ -26,33 +26,33 @@ export function FunctionalDependenciesSection({ fdData }: { fdData: FunctionalDe
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <TrendingUp className="w-5 h-5 text-green-600" />
-            <div className="text-2xl font-bold text-green-600" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+            <div className="text-2xl font-bold text-green-600" style={{ fontFamily: "'Inter', sans-serif" }}>
               {highConfFDs.length}
             </div>
           </div>
-          <div className="text-sm text-green-700" style={{ fontFamily: "'CMU Serif Roman', serif" }}>
+          <div className="text-sm text-green-700" style={{ fontFamily: "'Inter', sans-serif" }}>
             High Confidence ({'>'}98%)
           </div>
         </div>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <BarChart3 className="w-5 h-5 text-yellow-600" />
-            <div className="text-2xl font-bold text-yellow-600" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+            <div className="text-2xl font-bold text-yellow-600" style={{ fontFamily: "'Inter', sans-serif" }}>
               {mediumConfFDs.length}
             </div>
           </div>
-          <div className="text-sm text-yellow-700" style={{ fontFamily: "'CMU Serif Roman', serif" }}>
+          <div className="text-sm text-yellow-700" style={{ fontFamily: "'Inter', sans-serif" }}>
             Medium Confidence (90-98%)
           </div>
         </div>
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <TrendingDown className="w-5 h-5 text-red-600" />
-            <div className="text-2xl font-bold text-red-600" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+            <div className="text-2xl font-bold text-red-600" style={{ fontFamily: "'Inter', sans-serif" }}>
               {lowConfFDs.length}
             </div>
           </div>
-          <div className="text-sm text-red-700" style={{ fontFamily: "'CMU Serif Roman', serif" }}>
+          <div className="text-sm text-red-700" style={{ fontFamily: "'Inter', sans-serif" }}>
             Low Confidence ({'<'}90%)
           </div>
         </div>
@@ -60,7 +60,7 @@ export function FunctionalDependenciesSection({ fdData }: { fdData: FunctionalDe
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-          <h5 className="font-semibold text-gray-900" style={{ fontFamily: "'CMU Serif Bold', serif" }}>
+          <h5 className="font-semibold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
             Discovered Dependencies ({fdData.length})
           </h5>
         </div>

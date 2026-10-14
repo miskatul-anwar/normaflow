@@ -197,17 +197,17 @@ export function mineFunctionalDependencies(
     partitionCache.set(keyOf([a]), basePartitions[a]);
   }
 
-  const fdExistsForSubset = (subsetKey: string, rhsIdx: number): boolean =>
-    results.some(fd => {
-      if (fd.rhs !== attributes[rhsIdx]) return false;
-      const subset = fd.lhs.map(a => attributes.indexOf(a)).sort((x, y) => x - y);
-      return keyOf(subset) === subsetKey && subset.length > 0;
-    });
-
-  const lhsSetKeys = new Set<string>();
+  const knownSuperkeys: number[][] = [];
+  const minedLhsByRhs = new Map<number, Array<{ combo: number[]; confidence: number }>>();
 
   for (let level = 1; level <= maxLhsSize; level++) {
     for (const combo of combinations(attributes.length, level)) {
+      // Key pruning: if a strict subset of combo is already a known superkey,
+      // no superset can yield minimal functional dependencies.
+      if (level > 1 && knownSuperkeys.some(k => k.every(attr => combo.includes(attr)))) {
+        continue;
+      }
+
       const cacheKey = keyOf(combo);
 
       // Build this node's partition from its parent (combo without last attr).
@@ -217,75 +217,96 @@ export function mineFunctionalDependencies(
         const parent = partitionCache.get(parentKey) ?? EMPTY_PARTITION;
         partition = refinePartition(parent, encoded[combo[combo.length - 1]]).refined;
         partitionCache.set(cacheKey, partition);
-
-        if (level > 1) {
-          // Parent partitions of non-key nodes can be dropped once children exist.
-          // Keep parents that are prefixes of later combos at same level.
-          lhsSetKeys.add(parentKey);
-        }
       }
 
-      // Key pruning: if X determines everything, no superset yields minimal FDs.
-      if (level > 1 && partition.classCount === rowCount) {
-        lhsSetKeys.add(cacheKey);
-        continue;
-      }
+      const base = partition!;
+      const baseCount = base.classCount;
+      if (baseCount === 0) continue;
+
+      // Identify whether combo uniquely determines all tuples (superkey)
+      const isSuperkey = baseCount === rowCount;
+      const comboNames = combo.map(i => attributes[i]);
 
       for (let rhs = 0; rhs < attributes.length; rhs++) {
         if (combo.includes(rhs)) continue;
 
-        evaluated++;
-        const base = partition!;
-        const baseCount = base.classCount;
-        if (baseCount === 0) continue;
-
-        const { refined, splitRows } = refinePartition(base, encoded[rhs]);
-        const holdsExactly = refined.classCount === baseCount;
-
-        if (!holdsExactly && minConfidence >= 1) continue;
-
-        // Confidence: rows not violating / rows considered.
-        // splitRows counts rows in split groups beyond majority vote.
-        const confidence = holdsExactly ? 1 : 1 - splitRows / rowCount;
-        if (confidence < minConfidence) continue;
-
-        // Minimality pruning: skip if any strict subset already implies RHS.
-        let minimal = true;
-        if (level > 1) {
-          for (let drop = 0; drop < level && minimal; drop++) {
-            const subset = combo.filter((_, i) => i !== drop);
-            if (fdExistsForSubset(keyOf(subset), rhs)) minimal = false;
-          }
-        } else {
-          minimal = true;
+        // Minimality check across all prior levels for exact determinants:
+        // Skip if any strict subset already implies RHS with confidence 1.0.
+        const existingList = minedLhsByRhs.get(rhs);
+        if (
+          existingList &&
+          existingList.some(prev => prev.confidence === 1 && prev.combo.every(attr => combo.includes(attr)))
+        ) {
+          continue;
         }
-        if (!minimal) continue;
 
-        const lhsNames = combo.map(i => attributes[i]);
+        evaluated++;
+
+        let holdsExactly = false;
+        let splitRows = 0;
+        let confidence = 1;
+
+        if (isSuperkey) {
+          // If combo is a superkey, every tuple is distinct; hence X -> Y holds with 0 violations.
+          holdsExactly = true;
+          splitRows = 0;
+          confidence = 1;
+        } else {
+          const { refined, splitRows: sr } = refinePartition(base, encoded[rhs]);
+          splitRows = sr;
+          holdsExactly = refined.classCount === baseCount;
+
+          if (!holdsExactly && minConfidence >= 1) continue;
+
+          // Confidence: rows not violating / rows considered.
+          confidence = holdsExactly ? 1 : 1 - splitRows / rowCount;
+          if (confidence < minConfidence) continue;
+        }
+
+        // For approximate dependencies, skip if an existing subset already has equal or higher confidence.
+        if (
+          !holdsExactly &&
+          existingList &&
+          existingList.some(prev => prev.confidence >= confidence && prev.combo.every(attr => combo.includes(attr)))
+        ) {
+          continue;
+        }
+
         const rhsName = attributes[rhs];
 
-        if (holdsExactly) exactCount++;
-        else {
+        if (holdsExactly) {
+          exactCount++;
+          results.push({
+            lhs: comboNames,
+            rhs: rhsName,
+            confidence: 1,
+            coverage: baseCount / rowCount,
+            violations: 0,
+            uniqueGroups: baseCount,
+          });
+        } else {
           // Approximate FD: record violation stats for transparency.
           results.push({
-            lhs: lhsNames,
+            lhs: comboNames,
             rhs: rhsName,
             confidence,
             coverage: baseCount / rowCount,
             violations: splitRows,
             uniqueGroups: baseCount,
           });
-          continue;
         }
 
-        results.push({
-          lhs: lhsNames,
-          rhs: rhsName,
-          confidence: 1,
-          coverage: baseCount / rowCount,
-          violations: 0,
-          uniqueGroups: baseCount,
-        });
+        let list = minedLhsByRhs.get(rhs);
+        if (!list) {
+          list = [];
+          minedLhsByRhs.set(rhs, list);
+        }
+        list.push({ combo: [...combo], confidence });
+      }
+
+      // Record as known superkey AFTER evaluating RHS attributes so supersets are pruned at higher levels
+      if (isSuperkey) {
+        knownSuperkeys.push([...combo]);
       }
 
       if (options.onProgress) options.onProgress(level, results.length);

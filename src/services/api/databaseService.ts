@@ -7,7 +7,6 @@
 
 import { CSVProcessor, DataProcessor, NormalizationEngine } from '../processors';
 import { RelationDetectorService } from '../processors/relationDetector';
-import { OllamaWrapper } from '../ollama-wrapper';
 import { Logger } from '../utils/logger';
 import { FileUtils } from '../utils/fileUtils';
 import { TableData } from '../../types';
@@ -62,7 +61,6 @@ export interface ProcessingResult {
   tables?: TableData[];
   crossTableRelationships?: any[];
   nerResults?: any;
-  ollamaInsights?: any[];
   error?: string;
   qualityAssessment?: {
     score: number;
@@ -89,7 +87,108 @@ export interface ProcessingState {
   memoryUsage?: number;
 }
 
-class DatabaseService {
+export type SQLDialect = 'postgresql' | 'mysql' | 'sqlite' | 'ansi';
+
+export interface DecomposedRelation {
+  name: string;
+  attributes: string[];
+  primaryKey: string[];
+  foreignKeys?: {
+    attributes: string[];
+    references: string;
+    referencedKey: string[];
+    cardinality?: string;
+  }[];
+  fds?: any[];
+  columnTypes?: Record<string, string>;
+}
+
+export const SQL_RESERVED_KEYWORDS = new Set([
+  'ADD', 'ALL', 'ALTER', 'AND', 'AS', 'ASC', 'BETWEEN', 'BY', 'CASE', 'CAST',
+  'CHECK', 'COLUMN', 'CONSTRAINT', 'CREATE', 'CROSS', 'CURRENT_DATE', 'CURRENT_TIME',
+  'CURRENT_TIMESTAMP', 'DATABASE', 'DATE', 'DAY', 'DEFAULT', 'DELETE', 'DESC',
+  'DISTINCT', 'DROP', 'ELSE', 'END', 'EXISTS', 'FOREIGN', 'FROM', 'FULL', 'GRANT',
+  'GROUP', 'HAVING', 'IN', 'INDEX', 'INNER', 'INSERT', 'INTO', 'IS', 'JOIN', 'KEY',
+  'LEFT', 'LIKE', 'LIMIT', 'MONTH', 'NOT', 'NULL', 'OFFSET', 'ON', 'OR', 'ORDER',
+  'OUTER', 'PRIMARY', 'REFERENCES', 'REVOKE', 'RIGHT', 'ROW', 'ROWS', 'SCHEMA',
+  'SELECT', 'SET', 'TABLE', 'THEN', 'TIME', 'TIMESTAMP', 'TO', 'TRIGGER', 'UNION',
+  'UNIQUE', 'UPDATE', 'USER', 'VALUE', 'VALUES', 'VIEW', 'WHEN', 'WHERE', 'WITH',
+  'YEAR'
+]);
+
+export function quoteIdentifier(ident: string, dialect: SQLDialect = 'ansi'): string {
+  if (!ident) return '""';
+  const sanitized = ident.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^(\d)/, '_$1');
+  switch (dialect) {
+    case 'mysql':
+      return `\`${sanitized.replace(/`/g, '``')}\``;
+    case 'postgresql':
+    case 'sqlite':
+    case 'ansi':
+    default:
+      return `"${sanitized.replace(/"/g, '""')}"`;
+  }
+}
+
+export function mapDataTypeToDialect(inferredType: string, dialect: SQLDialect = 'ansi'): string {
+  const upper = (inferredType || 'VARCHAR(255)').toUpperCase();
+  
+  if (upper.includes('INT')) {
+    if (dialect === 'postgresql' || dialect === 'ansi' || dialect === 'sqlite') {
+      if (upper.includes('BIGINT')) return 'BIGINT';
+      if (upper.includes('SMALLINT')) return 'SMALLINT';
+      return 'INTEGER';
+    }
+    return 'INT';
+  }
+
+  if (upper.includes('BOOL')) {
+    if (dialect === 'sqlite') return 'INTEGER';
+    if (dialect === 'mysql') return 'TINYINT(1)';
+    return 'BOOLEAN';
+  }
+
+  if (upper.includes('DECIMAL') || upper.includes('NUMERIC')) {
+    return upper;
+  }
+
+  if (upper.includes('FLOAT') || upper.includes('DOUBLE') || upper.includes('REAL')) {
+    if (dialect === 'sqlite') return 'REAL';
+    if (dialect === 'postgresql' || dialect === 'ansi') return 'DOUBLE PRECISION';
+    return 'DOUBLE';
+  }
+
+  if (upper.includes('DATE') && !upper.includes('TIME')) {
+    if (dialect === 'sqlite') return 'TEXT';
+    return 'DATE';
+  }
+
+  if (upper.includes('TIME') || upper.includes('DATETIME')) {
+    if (dialect === 'sqlite') return 'TEXT';
+    if (dialect === 'postgresql' || dialect === 'ansi') return 'TIMESTAMP';
+    return 'DATETIME';
+  }
+
+  if (upper.includes('JSON')) {
+    if (dialect === 'postgresql') return 'JSONB';
+    if (dialect === 'mysql') return 'JSON';
+    return 'TEXT';
+  }
+
+  if (upper.includes('TEXT') || upper.includes('LONGTEXT') || upper.includes('CLOB')) {
+    if (dialect === 'mysql') return upper.includes('LONG') ? 'LONGTEXT' : 'TEXT';
+    return 'TEXT';
+  }
+
+  if (upper.startsWith('VARCHAR')) {
+    if (dialect === 'sqlite') return 'TEXT';
+    return upper;
+  }
+
+  return dialect === 'sqlite' ? 'TEXT' : 'VARCHAR(255)';
+}
+
+export class DatabaseService {
   private logger: Logger;
   private abortController: AbortController | null = null;
   private processingCache: Map<string, any> = new Map();
@@ -100,6 +199,146 @@ class DatabaseService {
 
   constructor() {
     this.logger = new Logger();
+  }
+
+  public formatCSVCell(val: any): string {
+    return DatabaseService.formatCSVCell(val);
+  }
+
+  public formatCSVHeader(header: string): string {
+    return DatabaseService.formatCSVHeader(header);
+  }
+
+  /**
+   * RFC 4180 compliant CSV cell formatting
+   * Preserves integer 0, boolean false, and correctly escapes commas, quotes, CRLF.
+   */
+  public static formatCSVCell(val: any): string {
+    if (val === null || val === undefined) return '';
+    const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  }
+
+  public static formatCSVHeader(header: string): string {
+    const str = String(header ?? '');
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  }
+
+  /**
+   * Generates standard DDL for a single decomposed relation.
+   */
+  public static generateTableDDL(relation: DecomposedRelation, dialect: SQLDialect = 'mysql'): string {
+    const tableName = quoteIdentifier(relation.name, dialect);
+    const colDefs: string[] = [];
+    const pk = relation.primaryKey || [];
+    const isCompositePk = pk.length > 1;
+
+    // 1. Column definitions
+    for (const attr of relation.attributes) {
+      const colName = quoteIdentifier(attr, dialect);
+      const rawType = relation.columnTypes?.[attr] || 'VARCHAR(255)';
+      const colType = mapDataTypeToDialect(rawType, dialect);
+      const isPk = pk.includes(attr);
+
+      if (isPk && !isCompositePk) {
+        colDefs.push(`  ${colName} ${colType} PRIMARY KEY`);
+      } else if (isPk && isCompositePk) {
+        colDefs.push(`  ${colName} ${colType} NOT NULL`);
+      } else {
+        colDefs.push(`  ${colName} ${colType}`);
+      }
+    }
+
+    // 2. Table-level Composite Primary Key Constraint
+    if (isCompositePk) {
+      const pkCols = pk.map(k => quoteIdentifier(k, dialect)).join(', ');
+      colDefs.push(`  PRIMARY KEY (${pkCols})`);
+    }
+
+    // 3. Foreign Key Constraints (embedded within CREATE TABLE for SQLite and standard portability)
+    if (relation.foreignKeys && relation.foreignKeys.length > 0) {
+      for (const fk of relation.foreignKeys) {
+        const sourceCols = fk.attributes.map(a => quoteIdentifier(a, dialect)).join(', ');
+        const targetTable = quoteIdentifier(fk.references, dialect);
+        const targetCols = fk.referencedKey.map(a => quoteIdentifier(a, dialect)).join(', ');
+        const constraintName = quoteIdentifier(`fk_${relation.name}_${fk.attributes.join('_')}`.slice(0, 64), dialect);
+        colDefs.push(`  CONSTRAINT ${constraintName} FOREIGN KEY (${sourceCols}) REFERENCES ${targetTable}(${targetCols}) ON DELETE CASCADE ON UPDATE CASCADE`);
+      }
+    }
+
+    let sql = `CREATE TABLE ${tableName} (\n`;
+    sql += colDefs.join(',\n');
+    sql += '\n)';
+
+    if (dialect === 'mysql') {
+      sql += ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+    }
+    sql += ';\n\n';
+
+    return sql;
+  }
+
+  /**
+   * Generates complete, dialect-portable DDL schema script for all relations.
+   */
+  public static generateDDL(relations: DecomposedRelation[], dialect: SQLDialect = 'mysql'): string {
+    let out = `-- NormaFlow Relational Schema DDL\n`;
+    out += `-- Dialect: ${dialect.toUpperCase()}\n`;
+    out += `-- Generated: ${new Date().toISOString()}\n\n`;
+
+    // Dialect-specific Preamble
+    switch (dialect) {
+      case 'mysql':
+        out += `SET FOREIGN_KEY_CHECKS = 0;\nSET UNIQUE_CHECKS = 0;\nSET AUTOCOMMIT = 0;\nSTART TRANSACTION;\n\n`;
+        break;
+      case 'postgresql':
+        out += `BEGIN;\n\n`;
+        break;
+      case 'sqlite':
+        out += `PRAGMA foreign_keys = OFF;\nBEGIN TRANSACTION;\n\n`;
+        break;
+      case 'ansi':
+      default:
+        break;
+    }
+
+    // Table definitions
+    for (const rel of relations) {
+      out += DatabaseService.generateTableDDL(rel, dialect);
+    }
+
+    // Dialect-specific Postamble
+    switch (dialect) {
+      case 'mysql':
+        out += `COMMIT;\nSET FOREIGN_KEY_CHECKS = 1;\nSET UNIQUE_CHECKS = 1;\nSET AUTOCOMMIT = 1;\n`;
+        break;
+      case 'postgresql':
+        out += `COMMIT;\n`;
+        break;
+      case 'sqlite':
+        out += `COMMIT;\nPRAGMA foreign_keys = ON;\n`;
+        break;
+      case 'ansi':
+      default:
+        out += `COMMIT;\n`;
+        break;
+    }
+
+    return out;
+  }
+
+  public generateDDL(relations: DecomposedRelation[], dialect: SQLDialect = 'mysql'): string {
+    return DatabaseService.generateDDL(relations, dialect);
+  }
+
+  public generateTableDDL(relation: DecomposedRelation, dialect: SQLDialect = 'mysql'): string {
+    return DatabaseService.generateTableDDL(relation, dialect);
   }
 
   async processFile(
@@ -721,49 +960,55 @@ class DatabaseService {
   /**
    * Streaming CSV processing for large files
    */
-  private async streamCSVProcessing(file: File, maxRows: number): Promise<{ data: any[] }> {
+  private async streamCSVProcessing(file: File, maxRows: number): Promise<{ data: any[]; metadata?: any }> {
     const reader = file.stream().getReader();
     const decoder = new TextDecoder();
-    let buffer = '';
-    let rows: any[] = [];
+    const rows: Record<string, any>[] = [];
     let headers: string[] = [];
-    let rowCount = 0;
-    
+
+    const parser = new CSVProcessor.StreamingParser({
+      maxRows,
+      onHeaders: (h) => {
+        headers = h;
+      },
+      onRow: (row) => {
+        rows.push(row);
+      }
+    });
+
     try {
       while (true) {
         const { done, value } = await reader.read();
-        
-        if (done) break;
-        
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        
-        for (const line of lines) {
-          if (rowCount >= maxRows) break;
-          
-          if (rowCount === 0) {
-            headers = line.split(',').map(h => h.trim().replace(/"/g, ''));
-          } else {
-            const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-            if (values.length === headers.length) {
-              const row: any = {};
-              headers.forEach((header, index) => {
-                row[header] = values[index] || '';
-              });
-              rows.push(row);
-            }
+        if (done) {
+          const finalChunk = decoder.decode(undefined, { stream: false });
+          if (finalChunk) {
+            parser.feed(finalChunk);
           }
-          rowCount++;
+          parser.finish();
+          break;
         }
-        
-        if (rowCount >= maxRows) break;
+
+        const chunkText = decoder.decode(value, { stream: true });
+        const shouldContinue = parser.feed(chunkText);
+        if (!shouldContinue) {
+          break;
+        }
       }
     } finally {
       reader.releaseLock();
     }
-    
-    return { data: rows };
+
+    return {
+      data: rows,
+      metadata: {
+        originalRows: rows.length,
+        finalRows: rows.length,
+        originalColumns: headers.length,
+        finalColumns: headers.length,
+        fileName: file.name,
+        delimiter: parser.getDelimiter()
+      }
+    };
   }
 
   /**
@@ -965,7 +1210,7 @@ class DatabaseService {
     const sampleSize = Math.min(data.length, 50); // Reduced sample size
     
     for (const attr of attributes) {
-      const values = data.slice(0, sampleSize).map(row => row[attr]).filter(v => v && v.toString().trim() !== '');
+      const values = data.slice(0, sampleSize).map(row => row[attr]).filter(v => v !== null && v !== undefined && v !== '' && String(v).trim() !== '');
       types[attr] = this.inferDataTypeOptimized(values);
     }
     
@@ -2128,11 +2373,11 @@ class DatabaseService {
       
       // Draw LHS node
       svg += `<circle cx="${x - 80}" cy="${y}" r="${nodeRadius}" class="${confClass}" stroke-width="2"/>`;
-      svg += `<text x="${x - 80}" y="${y}" text-anchor="middle" font-size="10" font-family="Arial">${lhsLabel}</text>`;
+      svg += `<text x="${x - 80}" y="${y}" text-anchor="middle" font-size="10" font-family="Inter, sans-serif">${lhsLabel}</text>`;
       
       // Draw RHS node
       svg += `<circle cx="${x + 80}" cy="${y}" r="${nodeRadius}" class="${confClass}" stroke-width="2"/>`;
-      svg += `<text x="${x + 80}" y="${y}" text-anchor="middle" font-size="10" font-family="Arial">${fd.rhs}</text>`;
+      svg += `<text x="${x + 80}" y="${y}" text-anchor="middle" font-size="10" font-family="Inter, sans-serif">${fd.rhs}</text>`;
       
       // Draw arrow
       svg += `<line x1="${x - 40}" y1="${y}" x2="${x + 40}" y2="${y}" stroke="#374151" stroke-width="2" marker-end="url(#arrow)"/>`;
@@ -2638,22 +2883,20 @@ class DatabaseService {
   }
 
   private arrayToCSV(data: any[]): string {
-    if (!data || data.length === 0) return '';
+    if (!Array.isArray(data) || data.length === 0) return '';
+    const first = data[0];
+    if (typeof first !== 'object' || first === null) return String(data.join('\n'));
     
-    const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => 
-        headers.map(header => {
-          const value = (row[header] || '').toString();
-          return value.includes(',') || value.includes('"') || value.includes('\n') 
-            ? `"${value.replace(/"/g, '""')}"` 
-            : value;
-        }).join(',')
-      )
-    ].join('\n');
-    
-    return csvContent;
+    const headers = Object.keys(first);
+    if (headers.length === 0) return '';
+
+    const headerLine = headers.map(h => DatabaseService.formatCSVHeader(h)).join(',');
+    const rows = data.map(row => {
+      if (!row || typeof row !== 'object') return '';
+      return headers.map(header => DatabaseService.formatCSVCell(row[header])).join(',');
+    });
+
+    return [headerLine, ...rows].join('\n');
   }
 
   private getMimeType(fileType: string): string {
@@ -2855,7 +3098,7 @@ class DatabaseService {
   }
 
   /**
-   * Multi-CSV Pipeline Processing with NER, Relation Detection, and Ollama AI Integration
+   * Multi-CSV Pipeline Processing with NER, Relation Detection, and Consolidated Schema Generation
    */
   async processFiles(
     files: File[],
@@ -2934,7 +3177,6 @@ class DatabaseService {
                 detectedBy: r.detected_by
               })),
               nerResults: {},
-              ollamaInsights: rustResult.ollama_insights,
               stats: {
                 originalRows: rustResult.tables.reduce((acc: number, t: any) => acc + t.row_count, 0),
                 cleanedRows: rustResult.tables.reduce((acc: number, t: any) => acc + t.row_count, 0),
@@ -2968,10 +3210,6 @@ class DatabaseService {
 
       const tables: TableData[] = [];
       const logs: string[] = [`[INFO] Multi-CSV Pipeline initiated for ${files.length} dataset files.`];
-
-      // Initialize Ollama Wrapper for AI enrichment
-      const ollama = new OllamaWrapper();
-      await ollama.initializeOllama();
 
       // 1. Process Each CSV File
       for (let idx = 0; idx < files.length; idx++) {
@@ -3052,18 +3290,7 @@ class DatabaseService {
       const crossTableRelationships = RelationDetectorService.detectCrossTableRelationships(tables);
       logs.push(`[SUCCESS] Relation Detector identified ${crossTableRelationships.length} foreign key relationships.`);
 
-      // 4. Ollama AI Model Enrichment
-      onProgress?.({
-        phase: 'ANALYZE',
-        operation: 'ollama-ai-analyst',
-        progress: 80,
-        message: 'Enriching multi-table schema with Ollama AI model...'
-      });
-
-      const ollamaInsights = await RelationDetectorService.enrichWithOllama(tables, crossTableRelationships, ollama);
-      logs.push(`[SUCCESS] Ollama AI generated ${ollamaInsights.length} schema optimization insights.`);
-
-      // 5. Generate Multi-Table Mermaid ERD
+      // 4. Generate Multi-Table Mermaid ERD
       let erdContent = 'erDiagram\n';
       tables.forEach(t => {
         erdContent += `  ${t.tableName} {\n`;
@@ -3079,26 +3306,24 @@ class DatabaseService {
         erdContent += `  ${r.sourceTable} ${cardSymbol} ${r.targetTable} : "${r.sourceColumn}->${r.targetColumn}"\n`;
       });
 
-      // 6. Generate Consolidated Multi-Table SQL DDL
-      let sqlDDL = `-- NormaFlow Multi-CSV Consolidated Relational Schema DDL\n-- Generated for ${files.length} tables\n\n`;
-      tables.forEach(t => {
-        sqlDDL += `CREATE TABLE ${t.tableName} (\n`;
-        const colDefs = t.headers.map(h => {
-          const isPk = t.primaryKey.includes(h);
-          return `  ${h} VARCHAR(255)${isPk ? ' PRIMARY KEY' : ''}`;
-        });
+      // 5. Generate Consolidated Multi-Table SQL DDL
+      const dialect: SQLDialect = (options as any).sqlDialect || 'sqlite';
+      const decomposedRelations: DecomposedRelation[] = tables.map(t => ({
+        name: t.tableName,
+        attributes: t.headers,
+        primaryKey: t.primaryKey,
+        foreignKeys: crossTableRelationships
+          .filter(r => r.sourceTable === t.tableName)
+          .map(r => ({
+            attributes: [r.sourceColumn],
+            references: r.targetTable,
+            referencedKey: [r.targetColumn],
+            cardinality: r.cardinality
+          }))
+      }));
+      const sqlDDL = DatabaseService.generateDDL(decomposedRelations, dialect);
 
-        // Add Foreign Key constraints
-        const tableFks = crossTableRelationships.filter(r => r.sourceTable === t.tableName);
-        tableFks.forEach(fk => {
-          colDefs.push(`  CONSTRAINT fk_${t.tableName}_${fk.sourceColumn} FOREIGN KEY (${fk.sourceColumn}) REFERENCES ${fk.targetTable}(${fk.targetColumn})`);
-        });
-
-        sqlDDL += colDefs.join(',\n');
-        sqlDDL += `\n);\n\n`;
-      });
-
-      // 7. Multi-Table Markdown Report
+      // 6. Multi-Table Markdown Report
       let reportMarkdown = `# Multi-CSV Database Normalization Report\n\n`;
       reportMarkdown += `**Processed Files**: ${files.map(f => f.name).join(', ')}\n`;
       reportMarkdown += `**Total Tables**: ${tables.length}\n`;
@@ -3122,11 +3347,6 @@ class DatabaseService {
       } else {
         reportMarkdown += `*No direct cross-table foreign key relationships detected automatically.*\n`;
       }
-
-      reportMarkdown += `\n## 3. Ollama AI Model Insights\n\n`;
-      ollamaInsights.forEach(insight => {
-        reportMarkdown += `### ${insight.title}\n${insight.summary}\n\n`;
-      });
 
       const outputFiles: OutputFile[] = [
         {
@@ -3170,7 +3390,6 @@ class DatabaseService {
         tables,
         crossTableRelationships,
         nerResults,
-        ollamaInsights,
         stats: {
           originalRows: tables.reduce((acc, t) => acc + t.rowCount, 0),
           cleanedRows: tables.reduce((acc, t) => acc + t.rowCount, 0),
@@ -3230,29 +3449,14 @@ class DatabaseService {
   }
 
   private objectsToCSV(rows: any[]): string {
-    if (!Array.isArray(rows) || rows.length === 0) return '';
-    const first = rows[0];
-    if (typeof first !== 'object' || first === null) return String(rows.join('\n'));
-
-    const headers = Object.keys(first);
-    if (headers.length === 0) return '';
-
-    const lines: string[] = [];
-    lines.push(headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(','));
-
-    rows.forEach(row => {
-      if (!row || typeof row !== 'object') return;
-      const values = headers.map(h => {
-        const val = row[h];
-        if (val === null || val === undefined) return '""';
-        const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
-        return `"${str.replace(/"/g, '""')}"`;
-      });
-      lines.push(values.join(','));
-    });
-
-    return lines.join('\n');
+    return this.arrayToCSV(rows);
   }
 }
 
-export default new DatabaseService();
+const databaseServiceInstance = new DatabaseService();
+(databaseServiceInstance as any).formatCSVCell = DatabaseService.formatCSVCell;
+(databaseServiceInstance as any).formatCSVHeader = DatabaseService.formatCSVHeader;
+(databaseServiceInstance as any).generateDDL = DatabaseService.generateDDL;
+(databaseServiceInstance as any).generateTableDDL = DatabaseService.generateTableDDL;
+
+export default databaseServiceInstance;

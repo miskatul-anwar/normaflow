@@ -10,7 +10,7 @@ pub mod fk;
 pub mod report;
 pub mod sql;
 
-use crate::types::{InputFile, OllamaInsight, PipelineResult};
+use crate::types::{InputFile, PipelineResult};
 use std::time::Instant;
 
 /// Upper bound on file size we accept per CSV (32 MiB) to avoid OOM.
@@ -112,22 +112,11 @@ pub fn process_files(files: &[InputFile]) -> Result<PipelineResult, String> {
         },
     ];
 
-    let insights = vec![OllamaInsight {
-        insight_type: "RUST_ENGINE".into(),
-        title: "Native engine summary".into(),
-        summary: format!(
-            "Parsed {} table(s), inferred column types from sampled values and verified foreign keys via value overlap.",
-            tables.len()
-        ),
-        confidence: 0.99,
-    }];
-
     Ok(PipelineResult {
         success: true,
         is_multi_table: tables.len() > 1,
         tables,
         cross_table_relationships: relationships,
-        ollama_insights: insights,
         output_files,
         erd_diagram,
         sql_statements,

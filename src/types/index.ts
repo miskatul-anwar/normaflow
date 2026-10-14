@@ -107,15 +107,7 @@ export interface CrossTableRelationship {
   cardinality: '1:1' | '1:N' | 'N:M';
   confidence: number;
   matchRatio: number;
-  detectedBy: 'NER_PATTERN' | 'VALUE_OVERLAP' | 'OLLAMA_AI' | 'HEURISTIC';
-}
-
-export interface OllamaAIInsight {
-  type: 'FD_ENHANCEMENT' | 'RELATION_DETECTION' | 'NER_TAGGING' | 'SCHEMA_OPTIMIZATION';
-  tableName?: string;
-  title: string;
-  summary: string;
-  confidence: number;
+  detectedBy: 'NER_PATTERN' | 'VALUE_OVERLAP' | 'HEURISTIC';
 }
 
 export interface TableData {
@@ -151,8 +143,6 @@ export interface ProcessingOptions {
   maxFdLhsSize?: number;
   enableNER?: boolean;
   enableRelationDetection?: boolean;
-  enableOllamaAI?: boolean;
-  ollamaModel?: string;
 }
 
 export interface ProcessingProgress {
@@ -178,7 +168,6 @@ export interface ProcessingResults {
   tables?: TableData[];
   crossTableRelationships?: CrossTableRelationship[];
   nerResults?: { [tableName: string]: EntityTag[] };
-  ollamaInsights?: OllamaAIInsight[];
   cleanedData?: any[];
   atomicityResult?: any;
   typeProfile?: any;
