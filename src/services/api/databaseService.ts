@@ -33,6 +33,7 @@ export interface ProcessingResult {
     relations1NF?: number;
     relations2NF?: number;
     relations3NF?: number;
+    relationsBCNF?: number;
     connectedEntities?: number;
     relationships?: number;
     cardinalityMappings?: number;
@@ -47,6 +48,9 @@ export interface ProcessingResult {
   relations?: any[];
   relations1NF?: any[];
   relations2NF?: any[];
+  relations3NF?: any[];
+  relationsBCNF?: any[];
+  bcnf?: any[];
   relationships?: any[];
   erdContent?: string;
   erdDiagram?: string;
@@ -379,6 +383,7 @@ export class DatabaseService {
       let relations1NF: any[] = [];
       let relations2NF: any[] = [];
       let relations3NF: any[] = [];
+      let relationsBCNF: any[] = [];
       let erdContent = '';
       let relationSchemas = '';
       let sqlDDL = '';
@@ -661,6 +666,42 @@ export class DatabaseService {
         }
       }
 
+      // Step 9.5: Boyce-Codd Normal Form (BCNF) Decomposition
+      if (selectedOperations.includes('BCNF')) {
+        onProgress?.({ 
+          phase: 'NORMAL', 
+          operation: 'bcnf', 
+          progress: 78, 
+          message: 'Decomposing schema into Boyce-Codd Normal Form (BCNF)...',
+          estimatedTimeRemaining: this.estimateTimeRemaining(0.78, startTime),
+          memoryUsage: this.getMemoryUsage()
+        });
+        
+        try {
+          const sourceRels = relations3NF.length > 0
+            ? relations3NF
+            : relations2NF.length > 0
+              ? relations2NF
+              : [{
+                  name: 'MainRelation',
+                  attributes,
+                  primaryKey: keyResult.candidateKeys[0] || [attributes[0] || 'id'],
+                  foreignKeys: [],
+                  rows: processedData,
+                  metadata: { rowCount: processedData.length, attributeTypes: {} }
+                }];
+
+          relationsBCNF = await NormalizationEngine.applyBCNF(sourceRels, functionalDependencies);
+          // Propagate BCNF relations to downstream steps (Lossless, Relation Gen, ERD, SQL)
+          relations3NF = relationsBCNF;
+          this.addPerformanceCheckpoint('BCNF Decomposition Complete');
+          this.logger.success(`BCNF decomposition completed: ${relationsBCNF.length} relations created`);
+        } catch (error) {
+          this.logger.error('BCNF decomposition failed', error);
+          throw new Error(`BCNF decomposition failed: ${(error as Error).message}`);
+        }
+      }
+
       // Step 10: Enhanced Lossless Check
       if (selectedOperations.includes('Lossless Check')) {
         onProgress?.({ 
@@ -864,6 +905,7 @@ export class DatabaseService {
           relations1NF: relations1NF.length,
           relations2NF: relations2NF.length,
           relations3NF: relations3NF.length,
+          relationsBCNF: relationsBCNF.length,
           connectedEntities: relations3NF.filter(r => r.foreignKeys?.length > 0).length,
           relationships: relations3NF.reduce((sum, r) => sum + (r.foreignKeys?.length || 0), 0),
           cardinalityMappings: Object.keys(cardinalityAnalysis).length,
@@ -895,6 +937,7 @@ export class DatabaseService {
         relations: relations3NF,
         relations1NF,
         relations2NF,
+        bcnf: relationsBCNF,
         relationships: relations3NF.flatMap(r => 
           r.foreignKeys?.map((fk: any) => ({
             source: r.name,
@@ -1553,6 +1596,32 @@ export class DatabaseService {
             content: relation.rows,
             size: JSON.stringify(relation.rows).length,
             category: 'Third Normal Form'
+          });
+        }
+      });
+    }
+
+    // BCNF Relations
+    if (selectedOperations.includes('BCNF') && relations3NF.length > 0) {
+      files.push({
+        name: 'relations_bcnf.json',
+        type: 'json',
+        description: 'Boyce-Codd Normal Form relations',
+        content: relations3NF.map(r => ({ ...r, rows: undefined })),
+        size: 0,
+        category: 'Boyce-Codd Normal Form'
+      });
+
+      relations3NF.forEach((relation) => {
+        if (relation.rows && relation.rows.length > 0) {
+          const csvText = this.objectsToCSV(relation.rows);
+          files.push({
+            name: `relation_bcnf_${relation.name}.csv`,
+            type: 'csv',
+            description: `BCNF data for relation: ${relation.name}`,
+            content: csvText,
+            size: csvText.length,
+            category: 'Boyce-Codd Normal Form'
           });
         }
       });
@@ -3236,7 +3305,12 @@ export class DatabaseService {
         // Decompositions for this table
         const res1NFData = await NormalizationEngine.apply1NF(cleanedRows);
         const res2NF = await NormalizationEngine.apply2NF(res1NFData, fds);
-        const res3NF = await NormalizationEngine.apply3NF(res2NF, fds);
+        let res3NF = await NormalizationEngine.apply3NF(res2NF, fds);
+        let resBCNF: any[] = [];
+        if (selectedOperations.includes('BCNF')) {
+          resBCNF = await NormalizationEngine.applyBCNF(res3NF, fds);
+          res3NF = resBCNF;
+        }
 
         const relation1NFSchema = [{
           name: `${tableName}_1NF`,
@@ -3259,7 +3333,8 @@ export class DatabaseService {
           primaryKey,
           firstNormalForm: relation1NFSchema,
           secondNormalForm: res2NF,
-          thirdNormalForm: res3NF
+          thirdNormalForm: res3NF,
+          bcnf: resBCNF
         });
 
         logs.push(`[SUCCESS] Table '${tableName}' (${file.name}): ${cleanedRows.length} rows, ${headers.length} columns, ${fds.length} FDs.`);

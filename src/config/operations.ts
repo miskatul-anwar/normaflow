@@ -85,45 +85,52 @@ export const OPERATIONS: Record<string, OperationDefinition> = {
     dependencies: ['2NF'],
     description: 'Enforces Third Normal Form'
   },
+  'BCNF': {
+    phase: 'NORMAL',
+    id: 'bcnf',
+    order: 13,
+    dependencies: ['3NF'],
+    description: 'Enforces Boyce-Codd Normal Form'
+  },
   'Lossless Check': {
     phase: 'NORMAL',
     id: 'lossless-check',
-    order: 13,
+    order: 14,
     dependencies: ['2NF'],
     description: 'Validates lossless join'
   },
   'Dependency Preservation': {
     phase: 'NORMAL',
     id: 'dependency-preservation',
-    order: 14,
+    order: 15,
     dependencies: ['2NF', 'FD Miner'],
     description: 'Verifies dependency preservation'
   },
   'ERD Generator': {
     phase: 'OUTPUT',
     id: 'erd-generator',
-    order: 15,
+    order: 16,
     dependencies: ['Key Discovery'],
     description: 'Generates Mermaid ERD'
   },
   'Relation Generator': {
     phase: 'OUTPUT',
     id: 'relation-generator',
-    order: 16,
+    order: 17,
     dependencies: ['3NF'],
     description: 'Builds relation schemas'
   },
   'SQL Generator': {
     phase: 'OUTPUT',
     id: 'sql-generator',
-    order: 17,
+    order: 18,
     dependencies: ['Relation Generator'],
     description: 'Generates SQL DDL'
   },
   'Report Generator': {
     phase: 'OUTPUT',
     id: 'report-generator',
-    order: 18,
+    order: 19,
     dependencies: ['Lossless Check', 'Dependency Preservation'],
     description: 'Generates summary report'
   },

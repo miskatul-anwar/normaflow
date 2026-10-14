@@ -28,9 +28,10 @@ describe('Pipeline Edge Connection Rules (validateEdgeConnection)', () => {
   const keyDiscovery = createMockNode('8', 'Key Discovery', 'ANALYZE', 8);
   const nf2 = createMockNode('11', '2NF', 'NORMAL', 11);
   const nf3 = createMockNode('12', '3NF', 'NORMAL', 12);
-  const relationGen = createMockNode('16', 'Relation Generator', 'OUTPUT', 16);
-  const sqlGen = createMockNode('17', 'SQL Generator', 'OUTPUT', 17);
-  const reportGen = createMockNode('18', 'Report Generator', 'OUTPUT', 18);
+  const bcnf = createMockNode('13', 'BCNF', 'NORMAL', 13);
+  const relationGen = createMockNode('17', 'Relation Generator', 'OUTPUT', 17);
+  const sqlGen = createMockNode('18', 'SQL Generator', 'OUTPUT', 18);
+  const reportGen = createMockNode('19', 'Report Generator', 'OUTPUT', 19);
 
   const defaultNodes = [
     startNode,
@@ -42,6 +43,7 @@ describe('Pipeline Edge Connection Rules (validateEdgeConnection)', () => {
     keyDiscovery,
     nf2,
     nf3,
+    bcnf,
     relationGen,
     sqlGen,
     reportGen,
@@ -94,7 +96,7 @@ describe('Pipeline Edge Connection Rules (validateEdgeConnection)', () => {
 
   describe('Terminal node rules', () => {
     it('disallows Report Generator from having outgoing connections', () => {
-      const res = validateEdgeConnection({ source: '18', target: '17' }, defaultNodes, []);
+      const res = validateEdgeConnection({ source: '19', target: '18' }, defaultNodes, []);
       expect(res.isValid).toBe(false);
       expect(res.error).toContain('terminal output operation and cannot have outgoing connections');
     });
@@ -121,23 +123,33 @@ describe('Pipeline Edge Connection Rules (validateEdgeConnection)', () => {
       expect(validateEdgeConnection({ source: '7', target: '11' }, defaultNodes, []).isValid).toBe(true);
       // 2NF -> 3NF
       expect(validateEdgeConnection({ source: '11', target: '12' }, defaultNodes, []).isValid).toBe(true);
+      // 3NF -> BCNF
+      expect(validateEdgeConnection({ source: '12', target: '13' }, defaultNodes, []).isValid).toBe(true);
       // 3NF -> Relation Generator
-      expect(validateEdgeConnection({ source: '12', target: '16' }, defaultNodes, []).isValid).toBe(true);
+      expect(validateEdgeConnection({ source: '12', target: '17' }, defaultNodes, []).isValid).toBe(true);
+      // BCNF -> Relation Generator
+      expect(validateEdgeConnection({ source: '13', target: '17' }, defaultNodes, []).isValid).toBe(true);
+      // BCNF -> SQL Generator
+      expect(validateEdgeConnection({ source: '13', target: '18' }, defaultNodes, []).isValid).toBe(true);
       // Relation Generator -> SQL Generator
-      expect(validateEdgeConnection({ source: '16', target: '17' }, defaultNodes, []).isValid).toBe(true);
+      expect(validateEdgeConnection({ source: '17', target: '18' }, defaultNodes, []).isValid).toBe(true);
     });
 
     it('rejects backward connections in pipeline order', () => {
       // SQL Generator backwards to Data Cleaner
-      const res = validateEdgeConnection({ source: '17', target: '2' }, defaultNodes, []);
+      const res = validateEdgeConnection({ source: '18', target: '2' }, defaultNodes, []);
       expect(res.isValid).toBe(false);
       expect(res.error).toContain('Pipeline connections must flow forward');
     });
 
-    it('rejects backward connections between normalization forms (e.g. 3NF -> 1NF)', () => {
+    it('rejects backward connections between normalization forms (e.g. 3NF -> 1NF, BCNF -> 3NF)', () => {
       const res = validateEdgeConnection({ source: '12', target: '6' }, defaultNodes, []);
       expect(res.isValid).toBe(false);
-      expect(res.error).toContain('Normalization forms must proceed in forward order: 1NF → 2NF → 3NF');
+      expect(res.error).toContain('Normalization forms must proceed in forward order: 1NF → 2NF → 3NF → BCNF');
+
+      const resBcnf = validateEdgeConnection({ source: '13', target: '12' }, defaultNodes, []);
+      expect(resBcnf.isValid).toBe(false);
+      expect(resBcnf.error).toContain('Normalization forms must proceed in forward order: 1NF → 2NF → 3NF → BCNF');
     });
 
     it('rejects 3NF -> 2NF backward connection', () => {
@@ -155,10 +167,26 @@ describe('Pipeline Edge Connection Rules (validateEdgeConnection)', () => {
       expect(res.error).toContain("'3NF' requires direct input from '2NF'");
     });
 
-    it('enforces that SQL Generator requires input from Relation Generator or 3NF', () => {
-      const res = validateEdgeConnection({ source: '8', target: '17' }, defaultNodes, []);
+    it('enforces that BCNF requires direct input from 3NF', () => {
+      // Direct connection from 2NF to BCNF is invalid
+      const res = validateEdgeConnection({ source: '11', target: '13' }, defaultNodes, []);
       expect(res.isValid).toBe(false);
-      expect(res.error).toContain("'SQL Generator' must receive input from 'Relation Generator' or '3NF'");
+      expect(res.error).toContain("'BCNF' requires direct input from '3NF'");
+
+      // Connection from 3NF to BCNF is valid
+      const validRes = validateEdgeConnection({ source: '12', target: '13' }, defaultNodes, []);
+      expect(validRes.isValid).toBe(true);
+    });
+
+    it('enforces that SQL Generator requires input from Relation Generator, BCNF, or 3NF', () => {
+      const res = validateEdgeConnection({ source: '8', target: '18' }, defaultNodes, []);
+      expect(res.isValid).toBe(false);
+      expect(res.error).toContain("'SQL Generator' must receive input from 'Relation Generator', 'BCNF', or '3NF'");
+
+      // Valid source connections
+      expect(validateEdgeConnection({ source: '17', target: '18' }, defaultNodes, []).isValid).toBe(true);
+      expect(validateEdgeConnection({ source: '12', target: '18' }, defaultNodes, []).isValid).toBe(true);
+      expect(validateEdgeConnection({ source: '13', target: '18' }, defaultNodes, []).isValid).toBe(true);
     });
   });
 

@@ -12,7 +12,7 @@ export const TERMINAL_OPERATIONS = new Set<string>([
   'Report Generator',
 ]);
 
-const NORMALIZATION_NODES = new Set<string>(['1NF', '2NF', '3NF']);
+const NORMALIZATION_NODES = new Set<string>(['1NF', '2NF', '3NF', 'BCNF']);
 
 export type EdgeConnectionCandidate =
   | Connection
@@ -115,7 +115,7 @@ export function validateEdgeConnection(
         if (NORMALIZATION_NODES.has(sourceLabel) && NORMALIZATION_NODES.has(targetLabel)) {
           return {
             isValid: false,
-            error: `Normalization forms must proceed in forward order: 1NF → 2NF → 3NF (cannot connect '${sourceLabel}' backwards to '${targetLabel}').`,
+            error: `Normalization forms must proceed in forward order: 1NF → 2NF → 3NF → BCNF (cannot connect '${sourceLabel}' backwards to '${targetLabel}').`,
           };
         }
         return {
@@ -138,10 +138,10 @@ export function validateEdgeConnection(
 
   // 8. Specific prerequisite / dependency rules
   if (targetLabel === 'SQL Generator') {
-    if (sourceLabel !== 'Relation Generator' && sourceLabel !== '3NF') {
+    if (sourceLabel !== 'Relation Generator' && sourceLabel !== '3NF' && sourceLabel !== 'BCNF') {
       return {
         isValid: false,
-        error: `'SQL Generator' must receive input from 'Relation Generator' or '3NF'.`,
+        error: `'SQL Generator' must receive input from 'Relation Generator', 'BCNF', or '3NF'.`,
       };
     }
   }
@@ -151,6 +151,15 @@ export function validateEdgeConnection(
       return {
         isValid: false,
         error: `'3NF' requires direct input from '2NF'.`,
+      };
+    }
+  }
+
+  if (targetLabel === 'BCNF') {
+    if (sourceLabel !== '3NF') {
+      return {
+        isValid: false,
+        error: `'BCNF' requires direct input from '3NF'.`,
       };
     }
   }

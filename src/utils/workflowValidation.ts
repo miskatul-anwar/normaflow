@@ -250,13 +250,13 @@ export function validateSequence(nodes: Node[], edges?: Edge[]): ValidationResul
   }
 
   // Check normalization form order
-  const nfOperations = ['1NF', '2NF', '3NF'];
+  const nfOperations = ['1NF', '2NF', '3NF', 'BCNF'];
   const nfIndices = nfOperations.map(nf => operationLabels.indexOf(nf)).filter(idx => idx !== -1);
 
   for (let i = 1; i < nfIndices.length; i++) {
     if (nfIndices[i] < nfIndices[i - 1]) {
       result.isValid = false;
-      result.errors.push(`Normalization forms must be applied in order: 1NF → 2NF → 3NF`);
+      result.errors.push(`Normalization forms must be applied in order: 1NF → 2NF → 3NF → BCNF`);
       break;
     }
   }
@@ -291,6 +291,11 @@ export function validateSequence(nodes: Node[], edges?: Edge[]): ValidationResul
   if (operationLabels.includes('3NF') && !operationLabels.includes('2NF')) {
     result.isValid = false;
     result.errors.push("3NF requires 2NF to be applied first");
+  }
+
+  if (operationLabels.includes('BCNF') && !operationLabels.includes('3NF')) {
+    result.isValid = false;
+    result.errors.push("BCNF requires 3NF to be applied first");
   }
 
   // Check output generation prerequisites

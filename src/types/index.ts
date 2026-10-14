@@ -123,6 +123,7 @@ export interface TableData {
   firstNormalForm: RelationSchema[];
   secondNormalForm: RelationSchema[];
   thirdNormalForm: RelationSchema[];
+  bcnf?: RelationSchema[];
 }
 
 export interface ValidationResult {
@@ -178,6 +179,7 @@ export interface ProcessingResults {
   firstNormalForm?: RelationSchema[];
   secondNormalForm?: RelationSchema[];
   thirdNormalForm?: RelationSchema[];
+  bcnf?: RelationSchema[];
   losslessCheck?: any;
   dependencyPreservation?: any;
   erdDiagram?: string;

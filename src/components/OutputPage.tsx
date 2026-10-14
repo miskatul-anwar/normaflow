@@ -78,6 +78,14 @@ export default function OutputPage() {
     return [];
   }, [safeResults, multiTables]);
 
+  const relationsBCNF = useMemo(() => {
+    if (safeResults?.bcnf && safeResults.bcnf.length > 0) return safeResults.bcnf;
+    if (multiTables.length > 0) {
+      return multiTables.flatMap((t: any) => t.bcnf || []);
+    }
+    return [];
+  }, [safeResults, multiTables]);
+
   const erdContent = safeResults?.erdContent || safeResults?.erdDiagram || '';
   const cardinalityAnalysis = safeResults?.cardinalityAnalysis || {};
   const losslessCheck = safeResults?.losslessCheck || null;
@@ -151,8 +159,8 @@ export default function OutputPage() {
       id: "normal-forms",
       label: "Normal Forms",
       icon: <Layers className="w-4 h-4" />,
-      count: (relations1NF.length || 0) + (relations2NF.length || 0) + (relationData.length || 0),
-      hasData: relations1NF.length > 0 || relations2NF.length > 0 || relationData.length > 0
+      count: (relations1NF.length || 0) + (relations2NF.length || 0) + (relationData.length || 0) + (relationsBCNF.length || 0),
+      hasData: relations1NF.length > 0 || relations2NF.length > 0 || relationData.length > 0 || relationsBCNF.length > 0
     },
     {
       id: "functional-dependencies",
@@ -346,6 +354,7 @@ export default function OutputPage() {
               relations1NF={relations1NF}
               relations2NF={relations2NF}
               relations3NF={relationData}
+              relationsBCNF={relationsBCNF}
             />
           )}
 

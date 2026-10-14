@@ -6,22 +6,25 @@ interface NormalFormSectionProps {
   relations1NF?: RelationSchema[];
   relations2NF?: RelationSchema[];
   relations3NF?: RelationSchema[];
+  relationsBCNF?: RelationSchema[];
 }
 
-export function NormalFormSection({ relations1NF, relations2NF, relations3NF }: NormalFormSectionProps) {
-  const [activeNF, setActiveNF] = useState<'1nf' | '2nf' | '3nf'>('1nf');
+export function NormalFormSection({ relations1NF, relations2NF, relations3NF, relationsBCNF }: NormalFormSectionProps) {
+  const [activeNF, setActiveNF] = useState<'1nf' | '2nf' | '3nf' | 'bcnf'>('1nf');
 
   const has1NF = Boolean(relations1NF && relations1NF.length > 0);
   const has2NF = Boolean(relations2NF && relations2NF.length > 0);
   const has3NF = Boolean(relations3NF && relations3NF.length > 0);
+  const hasBCNF = Boolean(relationsBCNF && relationsBCNF.length > 0);
 
   useEffect(() => {
-    if (has1NF) setActiveNF('1nf');
-    else if (has2NF) setActiveNF('2nf');
+    if (hasBCNF) setActiveNF('bcnf');
     else if (has3NF) setActiveNF('3nf');
-  }, [has1NF, has2NF, has3NF]);
+    else if (has2NF) setActiveNF('2nf');
+    else if (has1NF) setActiveNF('1nf');
+  }, [has1NF, has2NF, has3NF, hasBCNF]);
 
-  if (!has1NF && !has2NF && !has3NF) {
+  if (!has1NF && !has2NF && !has3NF && !hasBCNF) {
     return (
       <div className="text-center py-12 text-gray-500">
         <Table className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -36,6 +39,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF }: 
       case '1nf': return relations1NF || [];
       case '2nf': return relations2NF || [];
       case '3nf': return relations3NF || [];
+      case 'bcnf': return relationsBCNF || [];
       default: return [];
     }
   };
@@ -101,6 +105,25 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF }: 
               {has3NF && (
                 <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
                   {relations3NF?.length || 0}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveNF('bcnf')}
+              disabled={!hasBCNF}
+              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                activeNF === 'bcnf'
+                  ? 'border-teal-500 text-teal-600'
+                  : hasBCNF
+                  ? 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-gray-300 cursor-not-allowed'
+              }`}
+            >
+              <GitBranch className="w-4 h-4" />
+              Boyce-Codd Normal Form (BCNF)
+              {hasBCNF && (
+                <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
+                  {relationsBCNF?.length || 0}
                 </span>
               )}
             </button>
