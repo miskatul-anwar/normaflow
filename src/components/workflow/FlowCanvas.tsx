@@ -12,6 +12,8 @@ import {
   type OnNodesChange,
   type OnEdgesChange,
   type OnConnect,
+  type OnConnectEnd,
+  type IsValidConnection,
 } from '@xyflow/react';
 import { StartNode, TealNode } from '../flow/CustomNodes';
 import { FlowEdge } from '../flow/FlowEdge';
@@ -51,6 +53,8 @@ interface FlowCanvasProps {
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
+  onConnectEnd?: OnConnectEnd;
+  isValidConnection?: IsValidConnection;
 }
 
 export function FlowCanvas({
@@ -59,6 +63,8 @@ export function FlowCanvas({
   onNodesChange,
   onEdgesChange,
   onConnect,
+  onConnectEnd,
+  isValidConnection,
 }: FlowCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -73,6 +79,8 @@ export function FlowCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onConnectEnd={onConnectEnd}
+        isValidConnection={isValidConnection}
         proOptions={proOptions}
         fitView
         minZoom={0.2}

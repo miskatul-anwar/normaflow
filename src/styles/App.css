@@ -97,6 +97,16 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   animation: nf-edge-march 0.7s linear infinite;
 }
 
+.react-flow__connection-path.invalid {
+  stroke: #ef4444 !important;
+  stroke-dasharray: 4 4 !important;
+  animation: none !important;
+}
+
+.react-flow__connection-path.valid {
+  stroke: #10b981 !important;
+}
+
 /* Handles — small glossy dots that invite connecting. */
 .react-flow__handle.nf-handle {
   width: 13px;
@@ -111,6 +121,16 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 .react-flow__handle.nf-handle:hover {
   transform: scale(1.35);
   box-shadow: 0 0 0 5px rgba(20, 184, 166, 0.22), 0 1px 4px rgba(15, 23, 42, 0.35);
+}
+
+.react-flow__handle.invalid {
+  background: radial-gradient(circle at 30% 30%, #fca5a5 0%, #ef4444 60%) !important;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.35), 0 1px 4px rgba(15, 23, 42, 0.35) !important;
+}
+
+.react-flow__handle.valid {
+  background: radial-gradient(circle at 30% 30%, #86efac 0%, #10b981 60%) !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.35), 0 1px 4px rgba(15, 23, 42, 0.35) !important;
 }
 
 /* ---- Edge life: marching gradient dashes + travelling pulse ------------- */

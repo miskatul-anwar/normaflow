@@ -11,7 +11,7 @@ import { OperationPalette } from './components/workflow/OperationPalette';
 import { FlowCanvas } from './components/workflow/FlowCanvas';
 import { useNormalization } from './hooks/useNormalization';
 import { usePaletteResize } from './hooks/usePaletteResize';
-import { useWorkflowGraph, type WorkflowSnapshot } from './hooks/useWorkflowGraph';
+import { useWorkflowGraph, type WorkflowSnapshot, buildChainEdges } from './hooks/useWorkflowGraph';
 import { Logger } from './services/utils/logger';
 import { OPERATIONS } from './config/operations';
 import { validateSequence } from './utils/workflowValidation';
@@ -163,7 +163,7 @@ function Workspace() {
     }
 
     // replaceGraph derives the sequential chain edges when none are given.
-    graph.replaceGraph(builtNodes);
+    graph.replaceGraph(builtNodes, buildChainEdges(builtNodes));
     // Frame the freshly built chain once React Flow has laid it out.
     requestAnimationFrame(() => void fitView({ padding: 0.15, duration: 500 }));
     return executePipeline(files, ALL_OPERATIONS);
@@ -251,7 +251,7 @@ function Workspace() {
         aria-label="Operation palette"
       >
         <OperationPalette
-          activeOperations={graph.operationLabels}
+          activeOperations={graph.placedOperationLabels}
           onAdd={graph.tryAddOperation}
           width={palette.width}
           onCollapse={palette.toggleCollapse}
@@ -289,6 +289,8 @@ function Workspace() {
             onNodesChange={graph.onNodesChange}
             onEdgesChange={graph.onEdgesChange}
             onConnect={graph.onConnect}
+            onConnectEnd={graph.onConnectEnd}
+            isValidConnection={graph.isValidConnection}
           />
         </div>
 

@@ -26,6 +26,7 @@ import {
 import { MarkerType } from '@xyflow/react';
 import { OPERATIONS } from '../config/operations';
 import { topologicalSortWorkflow, validateSequence } from '../utils/workflowValidation';
+import { validateEdgeConnection } from '../utils/edgeRules';
 import { ValidationResult } from '../types';
 
 export const START_NODE_ID = '0';
@@ -86,7 +87,7 @@ function buildEdge(source: Node, target: Node): Edge {
 }
 
 /** Rebuild sequential edges for the full chain (used after batch mutations). */
-function buildChainEdges(nodes: Node[]): Edge[] {
+export function buildChainEdges(nodes: Node[]): Edge[] {
   const edges: Edge[] = [];
   for (let i = 1; i < nodes.length; i++) {
     edges.push(buildEdge(nodes[i - 1], nodes[i]));
@@ -113,6 +114,7 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
   const [edges, setEdges] = useState<Edge[]>([]);
   const [redoStack, setRedoStack] = useState<Node[]>([]);
   const nextIdRef = useRef(1);
+  const lastValidationErrorRef = useRef<string | null>(null);
 
   // Eager mirrors — mutated synchronously alongside setState so consecutive
   // calls in one tick (e.g. batch adds) always observe fresh state.
@@ -167,26 +169,17 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      if (connection.source === connection.target) {
-        log?.('error', 'Cannot connect a node to itself.');
+      const result = validateEdgeConnection(connection, nodesRef.current, edgesRef.current);
+      if (!result.isValid) {
+        log?.('error', result.error || 'Invalid connection');
         return;
       }
 
-      // Test whether adding this edge creates a cycle
-      const candidateEdge = {
-        id: `e${connection.source}-${connection.target}`,
-        source: connection.source,
-        target: connection.target,
-        sourceHandle: connection.sourceHandle,
-        targetHandle: connection.targetHandle
-      } as Edge;
-
-      const testEdges = [...edgesRef.current, candidateEdge];
-      const topo = topologicalSortWorkflow(nodesRef.current, testEdges);
-      if (topo.hasCycle) {
-        log?.('error', `Cannot connect: this connection creates a cyclic dependency (${topo.cycleNodeLabels.join(' ↔ ')})`);
-        return;
-      }
+      const nodeMap = new Map<string, Node>(nodesRef.current.map(n => [n.id, n]));
+      const sourceNode = nodeMap.get(connection.source || '');
+      const targetNode = nodeMap.get(connection.target || '');
+      const sourceLabel = String(sourceNode?.data?.label || (connection.source === START_NODE_ID ? 'Start' : connection.source));
+      const targetLabel = String(targetNode?.data?.label || (connection.target === START_NODE_ID ? 'Start' : connection.target));
 
       setEdges(current =>
         addEdge(
@@ -199,15 +192,42 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
           current,
         ),
       );
-      log?.('info', `Connected nodes: ${connection.source} → ${connection.target}`);
+      log?.('success', `Connected: ${sourceLabel} → ${targetLabel}`);
     },
     [log],
   );
 
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge): boolean => {
+      const result = validateEdgeConnection(connection, nodesRef.current, edgesRef.current);
+      if (!result.isValid && result.error) {
+        lastValidationErrorRef.current = result.error;
+      }
+      return result.isValid;
+    },
+    [],
+  );
+
+  const onConnectEnd = useCallback(
+    (_event: MouseEvent | TouchEvent, connectionState: any) => {
+      if (connectionState?.toNode && connectionState?.isValid === false) {
+        if (lastValidationErrorRef.current) {
+          log?.('error', lastValidationErrorRef.current);
+        }
+      }
+    },
+    [log],
+  );
+
+  const placedOperationLabels = useCallback((): string[] => {
+    return nodesRef.current
+      .filter(n => n.id !== START_NODE_ID)
+      .map(n => String(n.data?.label || ''));
+  }, []);
+
   /**
-   * Validate + append one operation node. Returns false when blocked.
-   * Validation is performed synchronously against the mirrored state so no
-   * side effects ever run inside an updater.
+   * Append one operation node to canvas WITHOUT automatically creating edges.
+   * The user explicitly draws edges between handles according to pipeline rules.
    */
   const tryAddOperation = useCallback(
     (label: string): boolean => {
@@ -217,45 +237,30 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
         return false;
       }
 
-      const currentOperations = operationLabels();
-      if (currentOperations.includes(label)) {
-        log?.('warning', `${label} is already in the workflow`);
+      const currentPlaced = placedOperationLabels();
+      if (currentPlaced.includes(label)) {
+        log?.('warning', `'${label}' is already on the canvas`);
         return false;
       }
 
-      const missing = operation.dependencies.filter(dep => !currentOperations.includes(dep));
-      if (missing.length > 0) {
-        log?.('error', `Cannot add ${label}. Missing dependencies: ${missing.join(', ')}`);
-        return false;
-      }
-
-      const sequenceResult = validateSequence([
-        ...nodesRef.current,
-        createOperationNode('candidate', label, currentOperations.length),
-      ]);
-      if (!sequenceResult.isValid) {
-        log?.('error', `Sequence validation failed: ${sequenceResult.errors[0]}`);
-        return false;
-      }
-      sequenceResult.warnings.forEach(warning => log?.('warning', warning));
+      const index = currentPlaced.length;
+      const col = index % 4;
+      const row = Math.floor(index / 4);
+      const x = INITIAL_X + (col + 1) * NODE_SPACING;
+      const y = INITIAL_Y + row * 130;
 
       const id = String(nextIdRef.current++);
-      const newNode = createOperationNode(id, label, currentOperations.length);
+      const newNode = createOperationNode(id, label, index);
+      newNode.position = { x, y };
 
       commitNodes(current => [...current, newNode]);
       commitRedoStack([]);
 
-      const lastNode = nodesRef.current[nodesRef.current.length - 2];
-      if (lastNode) {
-        const newEdge = buildEdge(lastNode, newNode);
-        setEdges(current => [...current.filter(edge => edge.target !== newNode.id), newEdge]);
-      }
-
-      log?.('success', `Added: ${label} — ${operation.description}`);
-      log?.('info', `Workflow: ${[...currentOperations, label].join(' → ')}`);
+      // Intentionally do NOT auto-generate edges: user wires nodes manually.
+      log?.('info', `Added '${label}' to canvas. Connect handles to wire it into the pipeline.`);
       return true;
     },
-    [log, operationLabels],
+    [log, placedOperationLabels, commitNodes, commitRedoStack],
   );
 
   /** Append multiple operations, skipping duplicates/unknowns. */
@@ -265,7 +270,6 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
         log?.('warning', 'No operations provided');
         return;
       }
-      // tryAddOperation re-validates dependencies per item against live state.
       for (const label of labels) {
         if (OPERATIONS[label]) {
           tryAddOperation(label);
@@ -298,18 +302,12 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
     }
     const [node, ...rest] = stack;
 
-    // Re-append at the end of the current chain (pure updaters only).
     const current = nodesRef.current;
     const reattached: Node = {
       ...node,
       position: { x: INITIAL_X + current.length * NODE_SPACING, y: INITIAL_Y },
     };
     commitNodes(currentNodes => [...currentNodes, reattached]);
-    const last = nodesRef.current[nodesRef.current.length - 2];
-    if (last) {
-      const edge = buildEdge(last, reattached);
-      setEdges(edgesSoFar => [...edgesSoFar.filter(e => e.target !== reattached.id), edge]);
-    }
     commitRedoStack(rest);
     log?.('success', `Restored operation: ${node.data?.label}`);
   }, [commitNodes, commitRedoStack, log]);
@@ -325,7 +323,7 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
     const normalized = nextNodes.length > 0 ? nextNodes : [createStartNode()];
     nodesRef.current = normalized;
     setNodes(normalized);
-    setEdges(nextEdges ?? buildChainEdges(normalized));
+    setEdges(nextEdges ?? []);
     nextIdRef.current = nextId ?? Math.max(normalized.length + 1, 1);
     commitRedoStack([]);
   }, [commitRedoStack]);
@@ -378,6 +376,7 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
     canUndo: nodes.length > 1,
     canRedo: redoStack.length > 0,
     operationLabels: operationLabels(),
+    placedOperationLabels: placedOperationLabels(),
     validateWorkflow,
     getExecutionPlan,
     tryAddOperation,
@@ -391,5 +390,7 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
     onNodesChange,
     onEdgesChange,
     onConnect,
+    onConnectEnd,
+    isValidConnection,
   };
 }
