@@ -226,8 +226,8 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
   }, []);
 
   /**
-   * Append one operation node to canvas WITHOUT automatically creating edges.
-   * The user explicitly draws edges between handles according to pipeline rules.
+   * Validate + append one operation node and automatically wire the connecting edge.
+   * Also allows manual edge manipulation and adheres to edge validation rules.
    */
   const tryAddOperation = useCallback(
     (label: string): boolean => {
@@ -237,27 +237,43 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
         return false;
       }
 
-      const currentPlaced = placedOperationLabels();
-      if (currentPlaced.includes(label)) {
-        log?.('warning', `'${label}' is already on the canvas`);
+      const currentOperations = placedOperationLabels();
+      if (currentOperations.includes(label)) {
+        log?.('warning', `'${label}' is already in the workflow`);
         return false;
       }
 
-      const index = currentPlaced.length;
-      const col = index % 4;
-      const row = Math.floor(index / 4);
-      const x = INITIAL_X + (col + 1) * NODE_SPACING;
-      const y = INITIAL_Y + row * 130;
+      const missing = operation.dependencies.filter(dep => !currentOperations.includes(dep));
+      if (missing.length > 0) {
+        log?.('error', `Cannot add ${label}. Missing dependencies: ${missing.join(', ')}`);
+        return false;
+      }
 
+      const sequenceResult = validateSequence([
+        ...nodesRef.current,
+        createOperationNode('candidate', label, currentOperations.length),
+      ]);
+      if (!sequenceResult.isValid) {
+        log?.('error', `Sequence validation failed: ${sequenceResult.errors[0]}`);
+        return false;
+      }
+      sequenceResult.warnings.forEach(warning => log?.('warning', warning));
+
+      const lastNode = nodesRef.current[nodesRef.current.length - 1];
+      const index = currentOperations.length;
       const id = String(nextIdRef.current++);
       const newNode = createOperationNode(id, label, index);
-      newNode.position = { x, y };
 
       commitNodes(current => [...current, newNode]);
       commitRedoStack([]);
 
-      // Intentionally do NOT auto-generate edges: user wires nodes manually.
-      log?.('info', `Added '${label}' to canvas. Connect handles to wire it into the pipeline.`);
+      if (lastNode) {
+        const newEdge = buildEdge(lastNode, newNode);
+        setEdges(current => [...current.filter(edge => edge.target !== newNode.id), newEdge]);
+      }
+
+      log?.('success', `Added: ${label} — ${operation.description}`);
+      log?.('info', `Workflow: ${[...currentOperations, label].join(' → ')}`);
       return true;
     },
     [log, placedOperationLabels, commitNodes, commitRedoStack],
@@ -308,6 +324,11 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
       position: { x: INITIAL_X + current.length * NODE_SPACING, y: INITIAL_Y },
     };
     commitNodes(currentNodes => [...currentNodes, reattached]);
+    const last = nodesRef.current[nodesRef.current.length - 2];
+    if (last) {
+      const edge = buildEdge(last, reattached);
+      setEdges(edgesSoFar => [...edgesSoFar.filter(e => e.target !== reattached.id), edge]);
+    }
     commitRedoStack(rest);
     log?.('success', `Restored operation: ${node.data?.label}`);
   }, [commitNodes, commitRedoStack, log]);
@@ -323,7 +344,7 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
     const normalized = nextNodes.length > 0 ? nextNodes : [createStartNode()];
     nodesRef.current = normalized;
     setNodes(normalized);
-    setEdges(nextEdges ?? []);
+    setEdges(nextEdges ?? buildChainEdges(normalized));
     nextIdRef.current = nextId ?? Math.max(normalized.length + 1, 1);
     commitRedoStack([]);
   }, [commitRedoStack]);
