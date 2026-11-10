@@ -28,15 +28,6 @@ const logger = new Logger();
 
 type LogLevel = 'info' | 'success' | 'error' | 'warning';
 
-const SAMPLE_CSV = `order_id,customer_id,customer_name,email,product_name,price,order_date
-101,1,Alice Smith,alice@example.com,Laptop,1200.00,2025-01-15
-102,2,Bob Jones,bob@example.com,Mouse,25.00,2025-01-16
-103,1,Alice Smith,alice@example.com,Keyboard,75.00,2025-01-17
-104,3,Charlie Brown,charlie@example.com,Monitor,300.00,2025-01-18`;
-
-const createSampleFile = (): File =>
-  new File([SAMPLE_CSV], 'sample_orders.csv', { type: 'text/csv' });
-
 const ALL_OPERATIONS = Object.keys(OPERATIONS);
 
 function downloadJson(snapshot: WorkflowSnapshot): void {
@@ -63,9 +54,8 @@ interface WorkspaceProps {
 function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) {
   const navigate = useNavigate();
   const { fitView } = useReactFlow();
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>(() => [createSampleFile()]);
-  // The bundled sample is preloaded so Run works immediately; it is not an upload and gets no badge.
-  const [usingSample, setUsingSample] = useState(true);
+  // No dataset is preloaded: results always come from files the user uploaded.
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [processedResults, setProcessedResults] = useState<any>(() => loadCachedResult(tabId));
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -96,7 +86,6 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
       );
       if (valid.length > 0) {
         setUploadedFiles(valid);
-        setUsingSample(false);
         onSuggestTitle(tabId, valid[0].name.replace(/\.[^.]+$/, ''));
         logMessage('success', `Loaded ${valid.length} dataset file(s): ${valid.map(f => f.name).join(', ')}`, 'FILE');
       } else {
@@ -154,10 +143,11 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
   }, [executePipeline, graph.edges, graph.nodes, graph.operationLabels, hasFiles, logMessage, operationCount, uploadedFiles]);
 
   const handleRunAll = useCallback(async () => {
-    const files = hasFiles ? uploadedFiles : [createSampleFile()];
     if (!hasFiles) {
-      logMessage('info', 'Running with bundled sample dataset.', 'EXECUTION');
+      logMessage('error', 'Upload at least one CSV file before running the pipeline.', 'EXECUTION');
+      return null;
     }
+    const files = uploadedFiles;
 
     // Build the canonical full pipeline on the canvas.
     const start = graph.nodes[0];
@@ -210,11 +200,15 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
       navigateToOutput(active);
       return;
     }
+    if (!hasFiles) {
+      logMessage('error', 'Nothing to show yet. Upload a CSV file and run the pipeline first.', 'NAVIGATION');
+      return;
+    }
     logMessage('info', 'Synthesizing pipeline to generate output…', 'NAVIGATION');
     const fresh = await handleRunAll();
     if (fresh?.success) navigateToOutput(fresh);
     else logMessage('error', 'Could not generate outputs.', 'NAVIGATION');
-  }, [handleRunAll, logMessage, navigateToOutput, processedResults]);
+  }, [handleRunAll, hasFiles, logMessage, navigateToOutput, processedResults, tabId]);
 
   // ----- snapshot save/load ----------------------------------------------------
 
@@ -262,8 +256,7 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
           onRun={handleRun}
           onRunAll={() => void handleRunAll()}
           onFileUpload={handleFileUpload}
-          uploadedFileCount={usingSample ? 0 : uploadedFiles.length}
-          usingSample={usingSample}
+          uploadedFileCount={uploadedFiles.length}
           onViewOutput={() => void handleViewOutput()}
           onSaveState={handleSaveState}
           onLoadState={handleLoadState}
