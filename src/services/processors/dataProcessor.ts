@@ -93,7 +93,7 @@ export class DataProcessor {
    * `null` for ordinary scalar text. Words such as "and"/"or", ampersands,
    * plus signs and parentheses are not list evidence on their own.
    */
-  private static listTokens(text: string): string[] | null {
+  static listTokens(text: string): string[] | null {
     if (/^\[.*\]$/.test(text)) {
       try {
         const parsed = JSON.parse(text);

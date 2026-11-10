@@ -8,6 +8,7 @@
 import { CSVProcessor, DataProcessor, NormalizationEngine } from '../processors';
 import { RelationDetectorService } from '../processors/relationDetector';
 import { chooseKey, type KeyChoice } from '../processors/keySelection';
+import { splitMultiValuedColumns } from '../processors/atomicSplit';
 import { verifyLosslessOnData } from '../processors/instanceVerification';
 import { buildSchema, emitMermaidErd, toDecomposedRelations } from '../processors/schemaGraph';
 import { buildMultiTableReport } from '../processors/multiTableReport';
@@ -16,9 +17,14 @@ import { Logger } from '../utils/logger';
 import { FileUtils } from '../utils/fileUtils';
 import { TableData } from '../../types';
 
+/** Upper bound on rows held in memory for one file; the whole file is read up to this. */
+const HARD_ROW_LIMIT = 1_000_000;
+
 export interface ProcessingOptions {
   maxLhsSize?: number;
   maxSampleSize?: number;
+  /** Rows used to propose dependencies; every reported one is verified on all rows. */
+  fdSampleSize?: number;
   /** Time budget for functional-dependency mining, in milliseconds (default 30 000). */
   timeout?: number;
   enableParallelProcessing?: boolean;
@@ -771,10 +777,29 @@ export class DatabaseService {
       nerTags = ner[tableName] || [];
     }
 
+    // Child tables created by 1NF for multi-valued columns; appended to the final relation sets.
+    let atomicChildren: any[] = [];
+
     if (has('1NF')) {
       this.throwIfAborted();
       report('NORMAL', '1nf', 40, `${tableName}: applying First Normal Form…`);
       data = await NormalizationEngine.apply1NF(data);
+
+      const atomicity =
+        Object.keys(atomicityResult?.atomicity ?? {}).length > 0
+          ? atomicityResult
+          : await DataProcessor.checkAtomicity(this.getProgressiveSample(data, 5000));
+      const multiValued = Object.keys(atomicity.atomicity ?? {}).filter(c => atomicity.atomicity[c] === false);
+      const split = multiValued.length > 0 ? splitMultiValuedColumns(data, multiValued, tableName) : null;
+      if (split) {
+        data = split.parentRows;
+        attributes = Object.keys(data[0] || {});
+        atomicChildren = split.children;
+        notes.push(
+          `${tableName}: multi-valued column${split.moved.length === 1 ? '' : 's'} ${split.moved.join(', ')} ` +
+            `moved to child table${split.moved.length === 1 ? '' : 's'} ${split.children.map(c => c.name).join(', ')} (1NF).`,
+        );
+      }
       relations1NF = [
         {
           name: `${tableName}_1NF`,
@@ -788,6 +813,7 @@ export class DatabaseService {
             attributeTypes: this.inferAttributeTypesOptimized(data, attributes),
           },
         },
+        ...atomicChildren,
       ];
     }
 
@@ -797,8 +823,18 @@ export class DatabaseService {
       const mined = await NormalizationEngine.mineFunctionalDependenciesDetailed(data, options.maxLhsSize || 4, {
         signal: this.abortController?.signal,
         timeBudgetMs: options.timeout ?? 30_000,
+        sampleSize: options.fdSampleSize ?? 10_000,
       });
       functionalDependencies = mined.fds;
+      if (mined.sampling) {
+        notes.push(
+          `${tableName}: dependencies were mined on a ${mined.sampling.sampleSize.toLocaleString()}-row sample and then ` +
+            `checked against all ${mined.sampling.totalRows.toLocaleString()} rows` +
+            (mined.sampling.refuted > 0
+              ? ` (${mined.sampling.refuted} candidate${mined.sampling.refuted === 1 ? ' was' : 's were'} refuted by the full data).`
+              : '.'),
+        );
+      }
       const exact = NormalizationEngine.exactFDs(functionalDependencies);
       usedFDs = options.acceptApproximateFDs ? [...functionalDependencies] : exact;
       fdSearch = {
@@ -935,6 +971,30 @@ export class DatabaseService {
 
     attributes = Object.keys(data[0] || {});
 
+    if (atomicChildren.length > 0) {
+      // Add the 1NF child tables to every normal-form set that exists, linked to the relation holding the key.
+      const withChildren = (set: any[]): any[] => {
+        if (set.length === 0) return set;
+        const extra = atomicChildren.map(child => {
+          const linkKey = child.primaryKey.slice(0, -1);
+          const parent =
+            set.find(r => linkKey.every((k: string) => r.primaryKey?.includes(k)) && r.primaryKey.length === linkKey.length) ??
+            set.find(r => linkKey.every((k: string) => r.attributes.includes(k)));
+          return {
+            ...child,
+            foreignKeys: parent
+              ? [{ attributes: linkKey, references: parent.name, referencedKey: linkKey, cardinality: '1:N' }]
+              : [],
+          };
+        });
+        return [...set, ...extra];
+      };
+      const bcnfIsFinal = relations3NF === relationsBCNF;
+      relations2NF = withChildren(relations2NF);
+      relations3NF = withChildren(relations3NF);
+      relationsBCNF = bcnfIsFinal ? relations3NF : withChildren(relationsBCNF);
+    }
+
     return {
       rows: data,
       attributes,
@@ -962,9 +1022,9 @@ export class DatabaseService {
   /**
    * Enhanced CSV processing with streaming capabilities
    */
-  private async processCSVWithStreaming(file: File, options: ProcessingOptions): Promise<{ data: any[] }> {
+  private async processCSVWithStreaming(file: File, _options: ProcessingOptions): Promise<{ data: any[] }> {
     const chunkSize = 1024 * 1024; // 1MB chunks
-    const maxRows = options.maxSampleSize || 50000;
+    const maxRows = HARD_ROW_LIMIT;
     
     // Use streaming for large files
     if (file.size > chunkSize * 10) {
@@ -1011,7 +1071,7 @@ export class DatabaseService {
         const shouldContinue = parser.feed(chunkText);
         if (!shouldContinue) {
           this.logger.warn(
-            `${file.name}: row limit reached — analysing the first ${rows.length} rows only; dependencies found may not hold on the rest of the file.`
+            `${file.name}: more than ${rows.length.toLocaleString()} rows — only the first ${rows.length.toLocaleString()} are analysed.`
           );
           break;
         }

@@ -243,7 +243,7 @@ export function detectForeignKeys(
     chosen.push(c);
   }
 
-  return chosen
+  const single = chosen
     .sort((a, b) => b.score - a.score || a.src.table.localeCompare(b.src.table))
     .map(c => {
       const optional = c.src.nonNull < c.src.total;
@@ -262,4 +262,93 @@ export function detectForeignKeys(
         nameScore: c.nameScore,
       } satisfies CrossTableRelationship;
     });
+
+  const composite = detectCompositeForeignKeys(profiles, minContainment);
+  // A composite link supersedes single-column links from the same table to the same target.
+  const compositeKeys = new Set(composite.map(c => `${c.sourceTable}->${c.targetTable}`));
+  return [...composite, ...single.filter(s => !compositeKeys.has(`${s.sourceTable}->${s.targetTable}`))];
+}
+
+const TUPLE_SEP = '\u0001';
+
+/**
+ * Multi-column foreign keys: a tuple of columns whose combined values are
+ * contained in a composite primary key of another table. Each component must
+ * have name evidence for its key column (otherwise the search space explodes
+ * and accidental matches dominate).
+ */
+function detectCompositeForeignKeys(
+  profiles: Array<{ table: DetectorTable; columns: ColumnInfo[] }>,
+  minContainment: number,
+): CrossTableRelationship[] {
+  const out: CrossTableRelationship[] = [];
+  for (const tgtSide of profiles) {
+    const key = tgtSide.table.primaryKey ?? [];
+    if (key.length < 2 || key.length > 4) continue;
+    const keyInfos = key.map(k => tgtSide.columns.find(c => c.column === k));
+    if (keyInfos.some(k => !k)) continue;
+    const targetTuples = new Set<string>();
+    for (const row of tgtSide.table.rows) {
+      if (key.some(k => MISSING(row[k]))) continue;
+      targetTuples.add(key.map(k => String(row[k]).trim()).join(TUPLE_SEP));
+    }
+    if (targetTuples.size === 0) continue;
+
+    for (const srcSide of profiles) {
+      if (srcSide.table.tableName === tgtSide.table.tableName) continue;
+      const options = (keyInfos as ColumnInfo[]).map(k =>
+        srcSide.columns.filter(
+          c => c.nonNull > 0 && typesCompatible(c, k) && (c.nameKey === k.nameKey || nameEvidence(c, k) >= 0.5),
+        ),
+      );
+      if (options.some(o => o.length === 0)) continue;
+
+      // Cartesian product of per-component options (small after name filtering).
+      let combos: ColumnInfo[][] = [[]];
+      for (const opts of options) {
+        const next: ColumnInfo[][] = [];
+        for (const prefix of combos) {
+          for (const o of opts) if (!prefix.includes(o)) next.push([...prefix, o]);
+        }
+        combos = next.slice(0, 50);
+      }
+
+      let best: { cols: ColumnInfo[]; containment: number; coverage: number; distinct: number; nonNull: number } | null = null;
+      for (const cols of combos) {
+        const seen = new Set<string>();
+        let nonNull = 0;
+        for (const row of srcSide.table.rows) {
+          if (cols.some(c => MISSING(row[c.column]))) continue;
+          nonNull++;
+          seen.add(cols.map(c => String(row[c.column]).trim()).join(TUPLE_SEP));
+        }
+        if (seen.size < 2) continue;
+        let hits = 0;
+        for (const t of seen) if (targetTuples.has(t)) hits++;
+        const containment = hits / seen.size;
+        if (containment < minContainment) continue;
+        const candidate = { cols, containment, coverage: hits / targetTuples.size, distinct: seen.size, nonNull };
+        if (!best || candidate.containment > best.containment) best = candidate;
+      }
+      if (!best) continue;
+
+      const optional = best.nonNull < srcSide.table.rows.length;
+      out.push({
+        sourceTable: srcSide.table.tableName,
+        sourceColumn: best.cols[0].column,
+        targetTable: tgtSide.table.tableName,
+        targetColumn: key[0],
+        sourceColumns: best.cols.map(c => c.column),
+        targetColumns: [...key],
+        cardinality: best.distinct === best.nonNull ? '1:1' : '1:N',
+        confidence: Math.min(0.99, 0.55 + 0.4 * best.containment),
+        matchRatio: best.containment,
+        detectedBy: 'HEURISTIC',
+        optional,
+        coverage: best.coverage,
+        nameScore: 1,
+      });
+    }
+  }
+  return out;
 }

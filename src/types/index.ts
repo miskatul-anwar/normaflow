@@ -104,6 +104,10 @@ export interface CrossTableRelationship {
   sourceColumn: string;
   targetTable: string;
   targetColumn: string;
+  /** Composite foreign key: all referencing columns, in key order (first equals `sourceColumn`). */
+  sourceColumns?: string[];
+  /** Composite foreign key: all referenced key columns, aligned with `sourceColumns`. */
+  targetColumns?: string[];
   cardinality: '1:1' | '1:N' | 'N:M';
   confidence: number;
   matchRatio: number;

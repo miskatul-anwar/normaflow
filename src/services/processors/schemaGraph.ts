@@ -31,6 +31,14 @@ export interface BuiltSchema {
   referencedUnique: Set<string>;
   /** Cross-file links that could not be placed on a relation, with the reason. */
   unplaced: Array<{ link: CrossTableRelationship; reason: string }>;
+  /** Association tables that realise many-to-many relationships. */
+  junctions: JunctionTable[];
+}
+
+export interface JunctionTable {
+  relation: string;
+  /** The parent relations the junction connects. */
+  between: string[];
 }
 
 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every(x => b.includes(x));
@@ -101,51 +109,71 @@ export function buildSchema(tables: TableSchemaInput[], cross: CrossTableRelatio
   const unplaced: BuiltSchema['unplaced'] = [];
 
   for (const link of cross) {
+    const srcCols = link.sourceColumns ?? [link.sourceColumn];
+    const tgtCols = link.targetColumns ?? [link.targetColumn];
+    const label = (t: string, cols: string[]) => `${t}.${cols.join('+')}`;
     const srcRels = byTable.get(link.sourceTable) ?? [];
     const tgtRels = byTable.get(link.targetTable) ?? [];
 
-    const holdingSrc = srcRels.filter(r => r.attributes.includes(link.sourceColumn));
+    const holdingSrc = srcRels.filter(r => srcCols.every(c => r.attributes.includes(c)));
     if (holdingSrc.length === 0) {
-      unplaced.push({ link, reason: `column ${link.sourceTable}.${link.sourceColumn} is not in any normalized relation` });
+      unplaced.push({ link, reason: `column ${label(link.sourceTable, srcCols)} is not in any normalized relation` });
       continue;
     }
-    // Prefer the relation where the column is an ordinary attribute, not its key.
+    // Prefer the relation where the columns are ordinary attributes, not its key.
     const src =
       [...holdingSrc].sort(
         (a, b) =>
-          Number(a.primaryKey.includes(link.sourceColumn)) - Number(b.primaryKey.includes(link.sourceColumn)) ||
+          Number(srcCols.every(c => a.primaryKey.includes(c))) - Number(srcCols.every(c => b.primaryKey.includes(c))) ||
           b.attributes.length - a.attributes.length,
       )[0];
 
-    const holdingTgt = tgtRels.filter(r => r.attributes.includes(link.targetColumn));
+    const holdingTgt = tgtRels.filter(r => tgtCols.every(c => r.attributes.includes(c)));
     if (holdingTgt.length === 0) {
-      unplaced.push({ link, reason: `column ${link.targetTable}.${link.targetColumn} is not in any normalized relation` });
+      unplaced.push({ link, reason: `column ${label(link.targetTable, tgtCols)} is not in any normalized relation` });
       continue;
     }
     const tgt =
       [...holdingTgt].sort(
         (a, b) =>
-          Number(sameSet(b.primaryKey, [link.targetColumn])) - Number(sameSet(a.primaryKey, [link.targetColumn])) ||
-          Number(b.primaryKey.includes(link.targetColumn)) - Number(a.primaryKey.includes(link.targetColumn)) ||
+          Number(sameSet(b.primaryKey, tgtCols)) - Number(sameSet(a.primaryKey, tgtCols)) ||
+          Number(tgtCols.every(c => b.primaryKey.includes(c))) - Number(tgtCols.every(c => a.primaryKey.includes(c))) ||
           a.attributes.length - b.attributes.length,
       )[0];
 
-    const duplicate = src.foreignKeys.some(
-      fk => fk.references === tgt.name && sameSet(fk.attributes, [link.sourceColumn]),
-    );
+    const duplicate = src.foreignKeys.some(fk => fk.references === tgt.name && sameSet(fk.attributes, srcCols));
     if (!duplicate) {
       src.foreignKeys.push({
-        attributes: [link.sourceColumn],
+        attributes: [...srcCols],
         references: tgt.name,
-        referencedKey: [link.targetColumn],
+        referencedKey: [...tgtCols],
         cardinality: link.cardinality,
       } satisfies ForeignKey);
     }
-    if (link.optional) optionalFks.add(`${src.name}.${link.sourceColumn}`);
-    if (!sameSet(tgt.primaryKey, [link.targetColumn])) referencedUnique.add(`${tgt.name}.${link.targetColumn}`);
+    if (link.optional) for (const c of srcCols) optionalFks.add(`${src.name}.${c}`);
+    if (!sameSet(tgt.primaryKey, tgtCols)) for (const c of tgtCols) referencedUnique.add(`${tgt.name}.${c}`);
   }
 
-  return { relations: all, optionalFks, referencedUnique, unplaced };
+  return { relations: all, optionalFks, referencedUnique, unplaced, junctions: findJunctionTables(all) };
+}
+
+/**
+ * Junction (association) tables: a relation whose primary key is made up of
+ * foreign keys to two or more different relations. It realises a many-to-many
+ * relationship between those parents.
+ */
+export function findJunctionTables(relations: RelationSchema[]): JunctionTable[] {
+  const out: JunctionTable[] = [];
+  for (const r of relations) {
+    if (r.primaryKey.length < 2) continue;
+    const fks = r.foreignKeys.filter(fk => fk.attributes.every(a => r.primaryKey.includes(a)));
+    const covered = new Set(fks.flatMap(fk => fk.attributes));
+    const parents = [...new Set(fks.map(fk => fk.references))].filter(p => p !== r.name);
+    if (parents.length >= 2 && r.primaryKey.every(a => covered.has(a))) {
+      out.push({ relation: r.name, between: parents });
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -207,6 +235,10 @@ export function emitMermaidErd(schema: BuiltSchema): string {
       const label = fk.attributes.map(a => col(r.name, a)).join(', ').replace(/"/g, "'");
       lines.push(`    ${parent} ${left}--${right} ${child} : "${label}"`);
     }
+  }
+  for (const j of schema.junctions) {
+    const names = j.between.map(b => entity.get(b) ?? b).join(' <-> ');
+    lines.push(`    %% ${entity.get(j.relation) ?? j.relation} is a junction table: many-to-many between ${names}`);
   }
   return `${lines.join('\n')}\n`;
 }

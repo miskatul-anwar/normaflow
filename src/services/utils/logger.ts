@@ -79,20 +79,21 @@ export class Logger {
     // Console output with appropriate method
     const formattedMessage = `[${logEntry.timestamp}] [${level}] ${message}`;
     
+    const args = data === undefined ? [formattedMessage] : [formattedMessage, data];
     switch (level) {
       case 'ERROR':
-        console.error(formattedMessage, data);
+        console.error(...args);
         break;
       case 'WARN':
-        console.warn(formattedMessage, data);
+        console.warn(...args);
         break;
       case 'DEBUG':
-        console.debug(formattedMessage, data);
+        console.debug(...args);
         break;
       case 'SUCCESS':
       case 'INFO':
       default:
-        console.log(formattedMessage, data);
+        console.log(...args);
         break;
     }
   }
