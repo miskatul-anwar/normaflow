@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- One analysis engine. Multi-file runs no longer go to the native Rust engine, which only parsed files and never mined dependencies or normalized. Every file now runs through the same TypeScript routine as a single file and honours the nodes on the canvas.
+- Multi-file ER diagram, DDL and report are built from the *normalized* relations, with cross-file foreign keys attached to the relations that hold the columns.
+- Only dependencies that hold on every row feed key discovery and the normal forms. Approximate dependencies are still reported but need `acceptApproximateFDs` to be used.
+- Missing values are now handled one way in the FD miner: all missing values in a column are one value (`nullSemantics: 'equal'`, default) or all distinct (`'distinct'`). No rows are dropped.
+- Primary keys are chosen from candidate keys that are unique and complete; a surrogate `row_id` is added (and materialized) when none exists.
+- Foreign keys are found from the data (inclusion dependencies scored by containment, coverage, name and type evidence) instead of requiring `<table>_id` column names; nullable foreign keys are marked optional.
+- Column-level atomicity: text containing "and", "&", "+" or parentheses, and name/address columns with commas, are no longer reported as multi-valued.
+- Generated DDL infers sized types (`VARCHAR(n)`, `DECIMAL(p,s)`, `BIGINT`, `BOOLEAN`, `TIMESTAMP`), keeps zero-padded digit strings as text, and emits `NOT NULL`/`UNIQUE` from the data. Identifiers that collide after sanitizing get unique names.
+- Tables are created parents-first in multi-file DDL.
+- Lossless-join reports the chase verdict and a re-join of the projections on the data; the "guaranteed" wording is gone.
+- Results are kept in memory with a slimmed copy in `sessionStorage`, so large inputs no longer overflow the storage quota.
+
+### Removed
+- Native Rust analysis engine, SQLite history and their dependencies (`sqlx`, `tokio`, `csv`); the Rust side is now just the window shell.
+- Unused modules: console, natural-language prompt bar, compatibility checker and its hook, JSON-from-LLM helpers.
+- `rehype-raw`: reports embed text from CSV files, so raw HTML in Markdown is no longer rendered.
+- `.xlsx` as an accepted file type (there was no spreadsheet parser).
+
+### Security
+- Strict Content-Security-Policy for the webview; Mermaid runs with `securityLevel: 'strict'`; Markdown tables and spans escape CSV-derived text.
+
+### Fixed
+- Removed the 100-row analysis cap that the UI hook applied to large files; truncation is now reported.
+- FD mining can be cancelled and has a 30 s default time budget; a cut-short search is flagged.
+- Dependency-preservation lists now use the same projected-closure test as the verdict.
+- Notification sound resolved through the bundler instead of a dev-server path.
+
 ## [2.6.0] - 2026-08-24
 
 ### Added
