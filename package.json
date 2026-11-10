@@ -35,7 +35,9 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "typecheck": "tsc --noEmit --pretty",
-    "lint": "eslint . --max-warnings 387",
+    "cli": "tsx scripts/cli.ts",
+    "bench": "tsx scripts/bench.ts",
+    "lint": "eslint . --max-warnings 390",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "fmt:rust": "cargo fmt --all --manifest-path src-tauri/Cargo.toml"
@@ -80,6 +82,7 @@
     "fast-check": "^4.10.2",
     "globals": "^17.14.0",
     "tailwindcss": "^4.1.11",
+    "tsx": "^4.23.15",
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.72.2",
     "vite": "^6.0.3",

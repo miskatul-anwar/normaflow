@@ -86,6 +86,17 @@ sudo apt update && sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev l
 3. Run the pipeline.
 4. Open the **Output** tab to browse the ERD, SQL DDL, FDs, keys, cardinalities and the full report — then download what you need.
 
+## Command line
+
+The same engine runs without the window:
+
+```bash
+npm run cli -- analyze data/orders.csv data/customers.csv --out out/ --dialect postgresql --json
+```
+
+Options: `--out`, `--dialect` (`postgresql`, `mysql`, `sqlite`, `ansi`), `--ops "FD Miner,3NF"`, `--max-lhs`, `--json`, `--verbose`.
+`npm run bench` scores key, foreign-key and relation recovery on ground-truth schemas (see [docs/EVALUATION.md](docs/EVALUATION.md)).
+
 ## Architecture at a glance
 
 ```
