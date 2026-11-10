@@ -1473,14 +1473,10 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 .nf-workspaces[hidden] {
   display: none;
 }
-/* Output page: fills the space under the shared tab strip; its header continues the active tab's surface. */
+/* Output page: reuses the pipeline shell (header card, sidebar card, content panel) under the shared tab strip. */
 .nf-output-page {
   flex: 1;
   min-height: 0;
-}
-.nf-output-header {
-  background: var(--nf-chrome-bg, #f8fafc);
-  transition: background-color 0.15s ease;
 }
 
 /* Tab rename button (shown on hover, keyboard focus and for the active tab) and context menu */
