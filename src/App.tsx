@@ -63,6 +63,8 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
   const navigate = useNavigate();
   const { fitView } = useReactFlow();
   const [uploadedFiles, setUploadedFiles] = useState<File[]>(() => [createSampleFile()]);
+  // The bundled sample is preloaded so Run works immediately; it is not an upload and gets no badge.
+  const [usingSample, setUsingSample] = useState(true);
   const [processedResults, setProcessedResults] = useState<any>(() => loadCachedResult(tabId));
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -93,6 +95,7 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
       );
       if (valid.length > 0) {
         setUploadedFiles(valid);
+        setUsingSample(false);
         onSuggestTitle(tabId, valid[0].name.replace(/\.[^.]+$/, ''));
         logMessage('success', `Loaded ${valid.length} dataset file(s): ${valid.map(f => f.name).join(', ')}`, 'FILE');
       } else {
@@ -258,7 +261,8 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
           onRun={handleRun}
           onRunAll={() => void handleRunAll()}
           onFileUpload={handleFileUpload}
-          uploadedFileCount={uploadedFiles.length}
+          uploadedFileCount={usingSample ? 0 : uploadedFiles.length}
+          usingSample={usingSample}
           onViewOutput={() => void handleViewOutput()}
           onSaveState={handleSaveState}
           onLoadState={handleLoadState}

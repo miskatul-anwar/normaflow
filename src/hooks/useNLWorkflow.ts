@@ -59,7 +59,7 @@ export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseN
   const pendingRun = useRef<number | null>(null);
   const requestId = useRef(0);
 
-  // Probe once; this also warms the model so the first request is fast. Failure only flips the badge.
+  // Probe once; this also warms the model so the first request is fast. The result is kept in `embeddings` for diagnostics; nothing is shown to the user.
   useEffect(() => {
     let cancelled = false;
     void provider.status().then(s => {
