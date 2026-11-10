@@ -31,7 +31,7 @@ export interface EmbeddingProvider {
   status(): Promise<ProviderStatus>;
 }
 
-/** Task prefixes EmbeddingGemma expects; the server does not add them. */
+/** Task prefixes for models that expect them (not used by the bundled MiniLM, kept for swappable providers). */
 export function formatInput(text: string, kind: EmbedKind, framing: Framing): string {
   if (framing === 'classification') return `task: classification | query: ${text}`;
   return kind === 'query' ? `task: search result | query: ${text}` : `title: none | text: ${text}`;

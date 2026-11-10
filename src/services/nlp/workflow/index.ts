@@ -1,5 +1,5 @@
 export * from './planner';
 export * from './resolver';
 export * from './embeddingProvider';
-export { createOllamaProvider, OllamaProvider, isLoopbackUrl, DEFAULT_EMBED_MODELS, DEFAULT_OLLAMA_URL } from './ollamaProvider';
+export { LocalModelProvider, LOCAL_MODEL_ID, type Extractor } from './localModelProvider';
 export { ANCHORS } from './anchors';

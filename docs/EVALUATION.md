@@ -37,18 +37,16 @@ keys and foreign keys at or above 90%).
 
 `npm run bench:nl` runs 77 labelled requests (`src/eval/nlWorkflowCases.ts`: direct keywords, acronyms, compound requests, negations, paraphrases, typos, and 10 junk sentences that must build nothing).
 
-| Resolver | Plan accuracy | Junk rejected | Notes |
+| Resolver | Plan accuracy | Junk rejected | By kind |
 |---|---|---|---|
 | Keywords only | 78% | 10 / 10 | keyword 20/20, acronym 10/10, compound 8/8, negation 4/4, paraphrase 7/17, typo 3/8 |
-| Hybrid with a **fake** bag-of-words embedder | 94% | 7 / 10 | **not representative**: it only shows the wiring works offline |
-| Hybrid with EmbeddingGemma | **not measured** | – | see below |
+| Bundled model only | 79% | 10 / 10 | keyword 19/20, acronym 7/10, compound 3/8, negation 3/4, paraphrase 15/17, typo 6/8 |
+| **Hybrid (shipped)** | **94%** | **10 / 10** | keyword 20/20, acronym 10/10, compound 8/8, negation 4/4, paraphrase 15/17, typo 6/8 |
 
-**What is missing.** No real embedding model could be run while this was written (the sandbox had no Ollama), so the cosine thresholds in `resolver.ts` (`accept 0.6`, `margin 0.03`, `floor 0.4`) are **untuned starting values**, and the prompt framing (`classification` vs `retrieval`) and the choice between `embeddinggemma-2:270m` and `embeddinggemma` have not been compared. To fill this in:
+The model is `Xenova/all-MiniLM-L6-v2` (int8, 384-dim). Thresholds in `DEFAULT_THRESHOLDS` (`accept 0.40`, `margin 0.02`, `floor 0.30`) are the middle of a plateau found with `npm run bench:nl -- --sweep`; the best single point (margin 0, 96%) was not used because it sits on the edge of the plateau.
 
-```bash
-ollama pull embeddinggemma-2:270m
-npm run bench:nl -- --ollama --sweep --failures
-npm run bench:nl -- --ollama --framing retrieval --sweep   # compare framings
-```
+**Caveat.** Thresholds were tuned and scored on the same 77 cases, so real-world accuracy will be lower. Remaining misses: "is anything lost when the tables are joined back together" (picks Relation Detector instead of Lossless Check), "make sure the split kept all the dependencies" (Lossless Check instead of Dependency Preservation) and "clen the dat". Add held-out cases before trusting the figure.
 
-Then copy the best thresholds into `DEFAULT_THRESHOLDS`, and the table above. Until then, embedding-based answers are labelled "best guess" and always wait for the user to press Apply.
+An earlier attempt used EmbeddingGemma through a local Ollama server. It was dropped because it required users to install and run a separate program; a 23 MB bundled model gives good results without that.
+
+Reproduce: `npm run bench:nl -- --sweep --failures`.

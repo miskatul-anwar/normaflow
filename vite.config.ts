@@ -6,8 +6,22 @@ import path from "path"; // <-- Import path module
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
+/**
+ * transformers.js pulls in onnxruntime-web, whose bundle makes Vite emit a 27 MB
+ * WebAssembly file. The embedding worker loads its own copy from /ort (set via
+ * `wasmPaths`), so the emitted one is never used; drop it from the installer.
+ */
+const dropUnusedOrtWasm = {
+  name: 'drop-unused-ort-wasm',
+  generateBundle(_options: unknown, bundle: Record<string, unknown>) {
+    for (const name of Object.keys(bundle)) {
+      if (/ort-wasm-.*\.wasm$/.test(name)) delete bundle[name];
+    }
+  },
+};
+
 export default defineConfig(async () => ({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), dropUnusedOrtWasm],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'), // <-- This enables @/ alias
@@ -26,15 +40,6 @@ export default defineConfig(async () => ({
           port: 1421,
         }
       : undefined,
-    // Dev-only: lets `npm run dev` (plain browser) reach a local Ollama without CORS setup.
-    // The packaged app never uses this; it calls the Rust command instead.
-    proxy: {
-      '/ollama': {
-        target: 'http://127.0.0.1:11434',
-        changeOrigin: true,
-        rewrite: (p: string) => p.replace(/^\/ollama/, ''),
-      },
-    },
     watch: {
       ignored: ["**/src-tauri/**"],
     },

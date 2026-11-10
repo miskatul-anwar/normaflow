@@ -37,7 +37,7 @@ Drop in one or many CSV files and NormaFlow will:
 
 | | |
 |---|---|
-| 🔒 **Private by design** | All processing happens locally. The only optional network use is a loopback call to a local Ollama for the natural-language box; CSV data is never sent. |
+| 🔒 **Private by design** | All processing happens locally; no network calls are made. The natural-language box runs a small model that ships inside the installer. |
 | ⚡ **One engine** | The same TypeScript analysis runs for one file or many, in the desktop app and in the browser. |
 | 🧮 **Sound algorithms** | Functional-dependency mining, closure-based key discovery, 3NF synthesis. Only dependencies that hold on every row shape the schema. |
 | 🖱️ **Visual pipelines** | Build workflows on an interactive React Flow canvas — click or drag the operations you want. |
@@ -88,13 +88,9 @@ sudo apt update && sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev l
 
 ## Natural-language box
 
-Type a request such as *“Can you pls convert it to 1NF”* in the bar above the canvas (`Ctrl/Cmd+K` focuses it). NormaFlow shows the pipeline it would build, including the steps added because others need them, and you press **Apply** or **Apply & Run**. It works with keywords alone. For paraphrases the keywords miss, install [Ollama](https://ollama.com) and run:
+Type a request such as *“Can you pls convert it to 1NF”* in the bar above the canvas (`Ctrl/Cmd+K` focuses it). NormaFlow shows the pipeline it would build, including the steps added because others need them, and you press **Apply** or **Apply & Run**.
 
-```bash
-ollama pull embeddinggemma-2:270m
-```
-
-The badge under the box shows whether embeddings are ready. Only your typed sentence is sent, and only to `localhost`. Accuracy numbers: [docs/EVALUATION.md](docs/EVALUATION.md).
+Nothing extra to install: exact keywords are matched first, and a small sentence-embedding model (all-MiniLM-L6-v2, int8, 23 MB, Apache-2.0) bundled in the installer handles paraphrases the keywords miss. It runs inside the app on WebAssembly; your sentence never leaves the machine, and neither does your data. Accuracy: [docs/EVALUATION.md](docs/EVALUATION.md).
 
 ## Command line
 

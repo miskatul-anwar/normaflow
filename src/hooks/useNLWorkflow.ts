@@ -8,7 +8,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { OPERATIONS } from '../config/operations';
-import { createOllamaProvider, resolve, NullProvider, type EmbeddingProvider, type Resolution } from '../services/nlp/workflow';
+import { resolve, NullProvider, type EmbeddingProvider, type Resolution } from '../services/nlp/workflow';
+import { createAppProvider } from '../services/nlp/workflow/workerExtractor';
 import type { useWorkflowGraph, WorkflowSnapshot } from './useWorkflowGraph';
 
 type Graph = ReturnType<typeof useWorkflowGraph>;
@@ -38,7 +39,7 @@ export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseN
   const provider = useMemo<EmbeddingProvider>(() => {
     if (injected) return injected;
     try {
-      return createOllamaProvider();
+      return createAppProvider();
     } catch {
       return new NullProvider();
     }
@@ -51,7 +52,7 @@ export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseN
   const pendingRun = useRef<number | null>(null);
   const requestId = useRef(0);
 
-  // Probe once; a missing Ollama just flips the badge.
+  // Probe once; this also warms the model so the first request is fast. Failure only flips the badge.
   useEffect(() => {
     let cancelled = false;
     void provider.status().then(s => {
