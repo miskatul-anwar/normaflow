@@ -81,7 +81,7 @@ sudo apt update && sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev l
 
 ## Quick start
 
-1. Launch NormaFlow and upload one or more CSV files (a sample dataset is preloaded).
+1. Launch NormaFlow and upload one or more CSV files with the **Upload** button.
 2. Build your pipeline by clicking or dragging operations from the palette onto the canvas, or hit **Run All** for the full pipeline.
 3. Run the pipeline.
 4. Open the **Output** tab to browse the ERD, SQL DDL, FDs, keys, cardinalities and the full report — then download what you need.

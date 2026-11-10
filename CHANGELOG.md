@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- The built-in sample dataset. Nothing is preloaded any more, so results always come from files you upload. Run, Full 3NF and Output now say "Upload a CSV file" instead of silently analysing four sample rows.
+
 ### Changed (UI consistency)
 - One shared `Button` (primary / secondary / ghost, one radius, two heights) replaces the dozens of hand-styled buttons. Documented in `docs/DESIGN.md`.
 - Header: every action now has an icon and a label (labels collapse to icons on narrow windows); "Run" is the only primary button and "Synthesize 3NF" became "Full 3NF". Undo and redo are the only icon-only buttons.
@@ -17,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - App icon: the source image had a 1 px semi-transparent grey line down its left edge, which was carried into every generated size (taskbar, dock, installer). The edge is cleared and the whole set regenerated with `tauri icon`; `bundle.icon` now lists the files the Tauri docs recommend (`32x32.png`, `128x128.png`, `128x128@2x.png`, `icon.icns`, `icon.ico` with the 32 px layer first) instead of `logo.ico` and a `.webp`.
-- The upload button no longer shows a `1` badge before any upload: the preloaded sample dataset is not counted, and the button's tooltip says when the sample is in use. The count is now exactly the files you uploaded.
+- The upload button no longer shows a `1` badge before any upload. The count is exactly the files you uploaded.
 
 ### Changed
 - The active workspace tab now joins the header with no gap: they share one surface colour and the header sits directly under the tab strip.

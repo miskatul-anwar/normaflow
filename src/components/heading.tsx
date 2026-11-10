@@ -10,10 +10,8 @@ interface HeadingProps {
   onRun?: () => void;
   onRunAll?: () => void;
   onFileUpload?: (files: File[]) => void;
-  /** Files the user uploaded (0 while the bundled sample is in use). */
+  /** Number of CSV files the user has uploaded. */
   uploadedFileCount?: number;
-  /** True while the built-in sample dataset is the active input. */
-  usingSample?: boolean;
   onViewOutput?: () => void;
   onSaveState?: () => void;
   onLoadState?: (file: File) => void;
@@ -30,7 +28,6 @@ export default function Heading({
   onRunAll,
   onFileUpload,
   uploadedFileCount = 0,
-  usingSample = false,
   onViewOutput,
   onSaveState,
   onLoadState,
@@ -74,8 +71,8 @@ export default function Heading({
   };
 
   const activeFiles = uploadedFileCount;
-  const uploadTitle = usingSample
-    ? 'Using the built-in sample data. Click to upload your own CSV files.'
+  const uploadTitle = activeFiles === 0
+    ? 'Upload CSV files to analyse'
     : `${activeFiles} file${activeFiles === 1 ? '' : 's'} loaded. Click to upload different CSV files.`;
 
   // Labels collapse to icons on narrow windows; the tooltip and aria-label keep the name.
