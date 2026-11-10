@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mineFunctionalDependencies } from './services/processors/fdMiner';
+import { mineFunctionalDependencies } from './fdMiner';
 
 interface Row {
   [key: string]: unknown;

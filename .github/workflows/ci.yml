@@ -27,6 +27,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Lint (warning count may only go down)
+        run: npm run lint
+
       - name: Unit tests
         run: npm run test -- --run
 

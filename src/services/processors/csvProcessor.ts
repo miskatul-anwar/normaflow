@@ -1,3 +1,4 @@
+import { decodeBytes } from '../utils/encoding';
 /**
  * CSV File Processor
  * Author: miskatul-anwar
@@ -585,14 +586,17 @@ export class CSVProcessor {
   }
 
   static async processFile(file: File, options: CSVParseOptions = {}): Promise<CSVParseResult> {
-    const text = typeof file.text === 'function'
-      ? await file.text()
-      : await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target?.result as string);
-          reader.onerror = () => reject(new Error('Failed to read file'));
-          reader.readAsText(file);
-        });
+    let text: string;
+    if (typeof file.arrayBuffer === 'function') {
+      text = decodeBytes(new Uint8Array(await file.arrayBuffer())).text;
+    } else {
+      text = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(decodeBytes(new Uint8Array(e.target?.result as ArrayBuffer)).text);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsArrayBuffer(file);
+      });
+    }
 
     return this.parse(text, { ...options, fileName: file.name });
   }

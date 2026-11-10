@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyColumn, singularize, tokenizeName } from './services/nlp/semanticProfiler';
+import { classifyColumn, singularize, tokenizeName } from './semanticProfiler';
 
 const stats = (samples: string[], distinct?: number) => ({
   samples,
