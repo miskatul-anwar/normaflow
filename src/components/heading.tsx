@@ -1,9 +1,6 @@
 import { useRef } from "react";
-import { CiRedo, CiUndo } from "react-icons/ci";
-import { FaCode, FaUpload } from "react-icons/fa";
-import { MdOutlineOutput } from "react-icons/md";
-import { TbRefresh } from "react-icons/tb";
-import { Loader2, Zap, Save, FolderOpen } from "lucide-react";
+import { FileOutput, FolderOpen, Play, Redo2, RotateCcw, Save, Undo2, Upload, Zap } from "lucide-react";
+import { Button, IconButton } from "@/components/ui/button";
 
 interface HeadingProps {
   onUndo?: () => void;
@@ -81,6 +78,9 @@ export default function Heading({
     ? 'Using the built-in sample data. Click to upload your own CSV files.'
     : `${activeFiles} file${activeFiles === 1 ? '' : 's'} loaded. Click to upload different CSV files.`;
 
+  // Labels collapse to icons on narrow windows; the tooltip and aria-label keep the name.
+  const label = (text: string) => <span className="hidden min-[1180px]:inline">{text}</span>;
+
   return (
     <div className="flex items-center justify-between w-full h-full px-3 py-1.5 relative z-30">
       {/* Brand: icon only */}
@@ -88,143 +88,61 @@ export default function Heading({
         <img src="/icon.png" alt="NormaFlow" title="NormaFlow" className="h-9 w-9 object-contain drop-shadow-xs" />
       </div>
 
-      {/* Center Action Group: Undo & Redo */}
-      <div className="flex items-center gap-1 bg-white/80 p-1 rounded-xl border border-gray-200/80 shadow-xs backdrop-blur-sm">
-        <button
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 hover:text-teal-600 hover:bg-teal-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
-          onClick={onUndo}
-          disabled={!canUndo || isRunning}
-          title="Undo (Ctrl+Z)"
-          aria-label="Undo"
-        >
-          <CiUndo className="h-5 w-5" />
-        </button>
-        <button
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 hover:text-teal-600 hover:bg-teal-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
-          onClick={onRedo}
-          disabled={!canRedo || isRunning}
-          title="Redo (Ctrl+Y)"
-          aria-label="Redo"
-        >
-          <CiRedo className="h-5 w-5" />
-        </button>
+      {/* Undo / redo */}
+      <div className="flex items-center gap-1">
+        <IconButton label="Undo (Ctrl+Z)" icon={<Undo2 />} onClick={onUndo} disabled={!canUndo || isRunning} />
+        <IconButton label="Redo (Ctrl+Y)" icon={<Redo2 />} onClick={onRedo} disabled={!canRedo || isRunning} />
       </div>
 
-      {/* Right Action Group: Pipeline Controls */}
       <div className="flex items-center gap-2">
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          accept=".csv"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-        <input
-          ref={loadStateInputRef}
-          type="file"
-          accept=".json"
-          className="hidden"
-          onChange={handleLoadStateFileChange}
-        />
+        <input ref={inputRef} type="file" multiple accept=".csv" className="hidden" onChange={handleFileChange} />
+        <input ref={loadStateInputRef} type="file" accept=".json" className="hidden" onChange={handleLoadStateFileChange} />
 
-        {/* Load Workflow */}
-        <button
-          className="w-9 h-9 rounded-xl bg-white/90 border border-gray-200/80 text-gray-700 hover:text-teal-600 hover:border-teal-400 flex items-center justify-center transition-all shadow-xs active:scale-95 disabled:opacity-50"
-          onClick={handleLoadStateClick}
-          disabled={isRunning}
-          title="Load Workflow (.json)"
-          aria-label="Load Workflow"
-        >
-          <FolderOpen className="h-4 w-4" />
-        </button>
-
-        {/* Save Workflow */}
-        <button
-          className="w-9 h-9 rounded-xl bg-white/90 border border-gray-200/80 text-gray-700 hover:text-teal-600 hover:border-teal-400 flex items-center justify-center transition-all shadow-xs active:scale-95 disabled:opacity-50"
-          onClick={onSaveState}
-          disabled={isRunning}
-          title="Save Workflow (.json)"
-          aria-label="Save Workflow"
-        >
-          <Save className="h-4 w-4" />
-        </button>
-
-        {/* Upload Datasets */}
-        <button
-          className="w-9 h-9 rounded-xl bg-white/90 border border-gray-200/80 text-gray-700 hover:text-teal-600 hover:border-teal-400 flex items-center justify-center transition-all shadow-xs active:scale-95 relative disabled:opacity-50"
-          onClick={handleUploadClick}
-          disabled={isRunning}
-          title={uploadTitle}
-          aria-label="Upload CSV Datasets"
-        >
-          <FaUpload className="h-4 w-4" />
+        <Button onClick={handleLoadStateClick} disabled={isRunning} title="Load a saved workflow (.json)" aria-label="Open workflow">
+          <FolderOpen />
+          {label("Open")}
+        </Button>
+        <Button onClick={onSaveState} disabled={isRunning} title="Save the workflow (.json)" aria-label="Save workflow">
+          <Save />
+          {label("Save")}
+        </Button>
+        <Button onClick={handleUploadClick} disabled={isRunning} title={uploadTitle} aria-label="Upload CSV Datasets" className="relative">
+          <Upload />
+          {label("Upload")}
           {activeFiles > 0 && (
-            <span className="absolute -top-1 -right-1 bg-teal-600 text-white text-[10px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold border border-white shadow-xs">
+            <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-white bg-teal-600 px-1 text-[10px] font-semibold leading-none text-white">
               {activeFiles}
             </span>
           )}
-        </button>
+        </Button>
+        <Button onClick={handleRefresh} disabled={isRunning} title="Reload the app and reset every workspace" aria-label="Reset workspace">
+          <RotateCcw />
+          {label("Reset")}
+        </Button>
 
-        {/* Refresh App */}
-        <button
-          className="w-9 h-9 rounded-xl bg-white/90 border border-gray-200/80 text-gray-700 hover:text-teal-600 hover:border-teal-400 flex items-center justify-center transition-all shadow-xs active:scale-95 disabled:opacity-50"
-          onClick={handleRefresh}
-          disabled={isRunning}
-          title="Reset Workspace"
-          aria-label="Reset Workspace"
-        >
-          <TbRefresh className="h-4 w-4" />
-        </button>
+        <div className="mx-1 h-5 w-px bg-gray-300" aria-hidden />
 
-        <div className="h-5 w-px bg-gray-300 mx-0.5" />
-
-        {/* Run Selected Step */}
-        <button
-          className="px-3 h-9 rounded-xl bg-gray-900 text-white hover:bg-gray-800 flex items-center gap-1.5 transition-all shadow-xs active:scale-95 disabled:opacity-50 text-xs font-semibold"
+        <Button
+          variant="primary"
           onClick={onRun}
-          disabled={isRunning}
-          title="Execute Selected Pipeline Steps"
-          aria-label="Execute Selected Pipeline Steps"
+          loading={isRunning}
+          title="Run the pipeline steps on the canvas"
+          aria-label="Run the pipeline steps on the canvas"
         >
-          {isRunning ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-teal-400" />
-          ) : (
-            <FaCode className="h-3.5 w-3.5 text-teal-300" />
-          )}
-          <span>Run Step</span>
-        </button>
-
-        {/* Run All Pipeline */}
-        <button
-          className="px-3.5 h-9 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white hover:from-teal-700 hover:to-emerald-700 flex items-center gap-1.5 transition-all shadow-sm active:scale-95 disabled:opacity-50 text-xs font-semibold"
-          onClick={onRunAll}
-          disabled={isRunning}
-          title="Synthesize Full 3NF Pipeline"
-          aria-label="Synthesize Full 3NF Pipeline"
-        >
-          {isRunning ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
-          ) : (
-            <Zap className="h-3.5 w-3.5 fill-current text-white" />
-          )}
-          <span>Synthesize 3NF</span>
-        </button>
-
-        {/* View Output */}
-        <button
-          className={`px-3.5 h-9 rounded-xl flex items-center gap-1.5 transition-all shadow-sm active:scale-95 text-xs font-semibold ${
-            isOutputReady
-              ? "bg-emerald-600 text-white hover:bg-emerald-700"
-              : "bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100"
-          }`}
-          onClick={onViewOutput}
-          title="View Generated ERD, SQL DDL & Reports"
-          aria-label="View Results"
-        >
-          <MdOutlineOutput className="h-4 w-4" />
+          {!isRunning && <Play />}
+          <span>Run</span>
+        </Button>
+        <Button onClick={onRunAll} disabled={isRunning} title="Build and run the full 3NF pipeline" aria-label="Build and run the full 3NF pipeline">
+          <Zap />
+          {label("Full 3NF")}
+        </Button>
+        <Button onClick={onViewOutput} title="View the generated ERD, SQL and reports" aria-label="View results" className="relative">
+          <FileOutput />
           <span>Output</span>
-        </button>
+          {isOutputReady && (
+            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-teal-600" aria-label="Results ready" />
+          )}
+        </Button>
       </div>
     </div>
   );

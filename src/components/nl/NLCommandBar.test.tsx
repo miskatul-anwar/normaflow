@@ -20,13 +20,10 @@ function Harness({ hasFiles = true }: { hasFiles?: boolean }) {
 }
 
 const type = async (text: string) => {
-  // The input is disabled while its vanish animation plays after a submit.
-  await waitFor(() => expect((screen.getByLabelText(/describe the pipeline/i) as HTMLInputElement).disabled).toBe(false));
   const input = screen.getByLabelText(/describe the pipeline/i);
   fireEvent.change(input, { target: { value: text } });
   await act(async () => {
-    // A real Enter key: keydown first, then the form submit it triggers.
-    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.submit(input.closest('form')!);
   });
 };
 

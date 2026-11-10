@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitBranch, TrendingUp, TrendingDown, BarChart3, ArrowRight, ChevronRight, ChevronDown, Info } from 'lucide-react';
 import { FunctionalDependency } from '../../types';
+import { Button } from '@/components/ui/button';
 
 export function FunctionalDependenciesSection({ fdData }: { fdData: FunctionalDependency[] }) {
   const [expandedFD, setExpandedFD] = useState<number | null>(null);
@@ -101,20 +102,15 @@ export function FunctionalDependenciesSection({ fdData }: { fdData: FunctionalDe
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-expanded={expandedFD === index}
                         onClick={() => setExpandedFD(expandedFD === index ? null : index)}
-                        className="text-teal-600 hover:text-teal-700 flex items-center gap-1 transition-colors"
                       >
-                        {expandedFD === index ? (
-                          <>
-                            <ChevronDown className="w-4 h-4" /> Hide
-                          </>
-                        ) : (
-                          <>
-                            <ChevronRight className="w-4 h-4" /> View
-                          </>
-                        )}
-                      </button>
+                        {expandedFD === index ? <ChevronDown /> : <ChevronRight />}
+                        {expandedFD === index ? 'Hide' : 'View'}
+                      </Button>
                     </td>
                   </tr>
                 );
