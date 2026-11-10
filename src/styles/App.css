@@ -1775,3 +1775,26 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   }
 }
 
+
+/* Natural-language command bar buttons */
+.nf-nl-btn {
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+  color: #115e59;
+  border-radius: 9999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.nf-nl-btn:hover:not(:disabled) {
+  background: #ccfbf1;
+}
+.nf-nl-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.nf-nl-btn:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 2px;
+}

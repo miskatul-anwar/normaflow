@@ -10,6 +10,8 @@ import OutputPage from './components/OutputPage';
 import { OperationPalette } from './components/workflow/OperationPalette';
 import { FlowCanvas } from './components/workflow/FlowCanvas';
 import { useNormalization } from './hooks/useNormalization';
+import { useNLWorkflow } from './hooks/useNLWorkflow';
+import { NLCommandBar } from './components/nl/NLCommandBar';
 import { usePaletteResize } from './hooks/usePaletteResize';
 import { useWorkflowGraph, type WorkflowSnapshot, buildChainEdges } from './hooks/useWorkflowGraph';
 import { Logger } from './services/utils/logger';
@@ -219,6 +221,8 @@ function Workspace() {
     [graph, logMessage],
   );
 
+  const nl = useNLWorkflow({ graph, run: handleRun, hasFiles });
+
   const palette = usePaletteResize();
 
   return (
@@ -281,6 +285,8 @@ function Workspace() {
             <span>Operations</span>
           </button>
         )}
+
+        <NLCommandBar nl={nl} />
 
         <div className="nf-canvas">
           <FlowCanvas

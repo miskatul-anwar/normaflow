@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Natural-language workflow builder: type a request ("convert it to 1NF"), preview the minimal pipeline with its dependencies, then Apply or Apply & Run; one-click Undo. Keyword matching always works; local Ollama embeddings (`embeddinggemma-2:270m`, fallback `embeddinggemma`) are optional. Network exception: loopback-only calls to Ollama from the Rust command `embed_texts`; CSV data is never sent; CSP unchanged.
+- `npm run bench:nl` and a 77-case labelled eval set.
 - Command-line mode: `npm run cli -- analyze data/*.csv --out out/ --dialect postgresql --json` runs the same engine as the app.
 - Evaluation harness (`npm run bench`): precision/recall/F1 for primary keys, foreign keys and recovered relations on ground-truth schemas, with runtime.
 - Normalized data export for multi-file runs: one deduplicated CSV per relation, `INSERT` script in dependency order, and orphan-check queries per foreign key.

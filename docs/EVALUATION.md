@@ -32,3 +32,23 @@ to measure it.
 
 `src/eval/harness.test.ts` keeps a regression floor (recall and precision of
 keys and foreign keys at or above 90%).
+
+## Natural-language workflow builder
+
+`npm run bench:nl` runs 77 labelled requests (`src/eval/nlWorkflowCases.ts`: direct keywords, acronyms, compound requests, negations, paraphrases, typos, and 10 junk sentences that must build nothing).
+
+| Resolver | Plan accuracy | Junk rejected | Notes |
+|---|---|---|---|
+| Keywords only | 78% | 10 / 10 | keyword 20/20, acronym 10/10, compound 8/8, negation 4/4, paraphrase 7/17, typo 3/8 |
+| Hybrid with a **fake** bag-of-words embedder | 94% | 7 / 10 | **not representative**: it only shows the wiring works offline |
+| Hybrid with EmbeddingGemma | **not measured** | – | see below |
+
+**What is missing.** No real embedding model could be run while this was written (the sandbox had no Ollama), so the cosine thresholds in `resolver.ts` (`accept 0.6`, `margin 0.03`, `floor 0.4`) are **untuned starting values**, and the prompt framing (`classification` vs `retrieval`) and the choice between `embeddinggemma-2:270m` and `embeddinggemma` have not been compared. To fill this in:
+
+```bash
+ollama pull embeddinggemma-2:270m
+npm run bench:nl -- --ollama --sweep --failures
+npm run bench:nl -- --ollama --framing retrieval --sweep   # compare framings
+```
+
+Then copy the best thresholds into `DEFAULT_THRESHOLDS`, and the table above. Until then, embedding-based answers are labelled "best guess" and always wait for the user to press Apply.
