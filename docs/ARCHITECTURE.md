@@ -97,6 +97,10 @@ NLCommandBar → useNLWorkflow → resolver (keywords, then embeddings) → plan
 - The model (`public/models`, 23 MB, sha256-checked) and the ONNX WebAssembly runtime (`public/ort`, copied from `onnxruntime-web` by `scripts/prepare-nl-assets.mjs` before `dev`/`build`) ship inside the installer. `embed.worker.ts` loads them with remote loading disabled. The CSP gains only `'wasm-unsafe-eval'` (WebAssembly compilation, not JavaScript `eval`).
 - Pitfall worth knowing: transformers.js only looks for local tokenizer files when `localModelPath` is a path rather than an http(s) URL, so the worker passes `/models/`.
 
+## Workspace tabs
+
+`AppShell` (`src/App.tsx`) hosts one `Workspace` per tab, each inside its own `ReactFlowProvider`. Inactive tabs, and all tabs while the Output page is open, stay mounted but hidden, so graphs, files, results and running jobs survive. State is per tab: the graph hook, uploaded files, result cache (`resultCache.ts`, keyed by tab id) and the engine worker for each run. The embedding worker is shared by all tabs (one copy of the model in memory). Anything DOM-global must be namespaced per tab: React Flow gets `id={tabId}` (marker ids), the edge gradient id and the NL input id include the tab id, and keyboard shortcuts only act in the active tab. Tab state is in `useWorkspaceTabs`; it is not persisted across launches.
+
 ## Workflow graphs
 
 Canvas state (nodes = operations, edges = chain or manual connections) lives

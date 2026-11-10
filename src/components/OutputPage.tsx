@@ -22,7 +22,7 @@ import { loadCachedResult, saveCachedResult } from '../utils/resultCache';
 export default function OutputPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { results } = location.state || {};
+  const { results, tabId } = location.state || {};
 
   const currentDateTime = useMemo(() => {
     const now = new Date();
@@ -44,11 +44,11 @@ export default function OutputPage() {
     const isUsable = (r: any) =>
       r && r.success !== false && (r.success || r.tables || r.outputFiles);
     if (isUsable(results)) {
-      saveCachedResult(results);
+      saveCachedResult(results, tabId);
       return results;
     }
-    return loadCachedResult();
-  }, [results]);
+    return loadCachedResult(tabId);
+  }, [results, tabId]);
 
   const isMultiTable = safeResults?.isMultiTable || false;
   const multiTables = safeResults?.tables || [];

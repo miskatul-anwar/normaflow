@@ -43,7 +43,7 @@ export function FlowEdge({
         path={edgePath}
         markerEnd={markerEnd}
         style={{
-          stroke: 'url(#nf-edge-flow)',
+          stroke: 'var(--nf-edge-gradient)',
           strokeWidth: 2.5,
           strokeLinecap: 'round',
           ...style,

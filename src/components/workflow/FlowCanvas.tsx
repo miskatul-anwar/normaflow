@@ -48,6 +48,8 @@ function getNodeColor(node: Node): string {
 }
 
 interface FlowCanvasProps {
+  /** Unique per canvas; namespaces SVG ids so several canvases (workspace tabs) can coexist. */
+  flowId?: string;
   nodes: Node[];
   edges: Edge[];
   onNodesChange: OnNodesChange;
@@ -58,6 +60,7 @@ interface FlowCanvasProps {
 }
 
 export function FlowCanvas({
+  flowId = 'main',
   nodes,
   edges,
   onNodesChange,
@@ -69,8 +72,14 @@ export function FlowCanvas({
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div ref={wrapperRef} className="h-full w-full relative" data-testid="flow-canvas">
+    <div
+      ref={wrapperRef}
+      className="h-full w-full relative"
+      data-testid="flow-canvas"
+      style={{ ['--nf-edge-gradient' as string]: `url(#nf-edge-flow-${flowId})` }}
+    >
       <ReactFlow
+        id={flowId}
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
@@ -92,7 +101,7 @@ export function FlowCanvas({
         {/* Shared defs for the gradient pipeline edges (see FlowEdge). */}
         <svg aria-hidden focusable={false} className="nf-edge-defs">
           <defs>
-            <linearGradient id="nf-edge-flow" x1="0%" y1="0%" x2="100%" y2="0%">
+            <linearGradient id={`nf-edge-flow-${flowId}`} x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#14b8a6" />
               <stop offset="55%" stopColor="#0891b2" />
               <stop offset="100%" stopColor="#7c3aed" />

@@ -91,7 +91,7 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 
 /* Connection line drawn while wiring nodes by hand. */
 .react-flow__connection-path {
-  stroke: url(#nf-edge-flow);
+  stroke: var(--nf-edge-gradient);
   stroke-width: 2.5;
   stroke-dasharray: 6 6;
   animation: nf-edge-march 0.7s linear infinite;
@@ -147,7 +147,7 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 }
 
 .nf-edge-dashes {
-  stroke: url(#nf-edge-flow);
+  stroke: var(--nf-edge-gradient);
   stroke-width: 2.5;
   stroke-dasharray: 5 19;
   opacity: 0.85;
@@ -1797,4 +1797,120 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 .nf-nl-btn:focus-visible {
   outline: 2px solid #0d9488;
   outline-offset: 2px;
+}
+
+/* Workspace tabs */
+.nf-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #e5e7eb;
+}
+.nf-app .nf-shell {
+  height: auto;
+  flex: 1;
+  min-height: 0;
+}
+.nf-tab-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.nf-tab-pane[hidden] {
+  display: none;
+}
+.nf-tabbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 0.4rem 0.75rem 0;
+  overflow-x: auto;
+  flex: none;
+}
+.nf-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 200px;
+  min-width: 96px;
+  padding: 6px 8px 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #475569;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid #d1d5db;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  cursor: pointer;
+  user-select: none;
+}
+.nf-tab:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+.nf-tab.is-active {
+  color: #0f172a;
+  background: #f8fafc;
+}
+.nf-tab:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: -2px;
+}
+.nf-tab-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nf-tab-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  border: 1px solid #0d9488;
+  border-radius: 4px;
+  padding: 0 4px;
+  background: #fff;
+}
+.nf-tab-close,
+.nf-tab-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.nf-tab-close {
+  width: 18px;
+  height: 18px;
+}
+.nf-tab-add {
+  width: 26px;
+  height: 26px;
+  margin: 0 0 3px 4px;
+}
+.nf-tab-close:hover,
+.nf-tab-add:hover:not(:disabled) {
+  background: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+.nf-tab-add:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.nf-tab-spinner {
+  animation: nf-spin 1s linear infinite;
+  color: #0d9488;
+}
+@keyframes nf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.nf-app[hidden] {
+  display: none;
 }

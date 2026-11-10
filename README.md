@@ -86,6 +86,10 @@ sudo apt update && sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev l
 3. Run the pipeline.
 4. Open the **Output** tab to browse the ERD, SQL DDL, FDs, keys, cardinalities and the full report — then download what you need.
 
+## Workspace tabs
+
+Work on several datasets at once: each tab is a separate workspace with its own pipeline, files and results, and long runs keep going in the background while you use another tab. `Ctrl/Cmd+T` opens a tab, `Ctrl/Cmd+W` closes it, `Ctrl+Tab` switches, double-click a tab to rename it. Tabs live as long as the app is open (they are not saved between launches; use the Save button to keep a pipeline).
+
 ## Natural-language box
 
 Type a request such as *“Can you pls convert it to 1NF”* in the bar above the canvas (`Ctrl/Cmd+K` focuses it). NormaFlow shows the pipeline it would build, including the steps added because others need them, and you press **Apply** or **Apply & Run**.

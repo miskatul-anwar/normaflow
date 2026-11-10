@@ -1,5 +1,5 @@
 /**
- * Result cache — single source of truth for the latest pipeline output.
+ * Result cache — single source of truth for the latest pipeline output of each workspace tab.
  *
  * The full result lives in memory, so large inputs never hit the storage
  * quota. A slimmed copy (row arrays cut to a preview) goes to sessionStorage
@@ -8,9 +8,11 @@
  */
 
 const STORAGE_KEY = 'normaflow_latest_results';
+const DEFAULT_KEY = 'default';
+const storageKey = (key: string) => (key === DEFAULT_KEY ? STORAGE_KEY : `${STORAGE_KEY}:${key}`);
 const ROW_PREVIEW = 50;
 
-let memory: unknown = null;
+const memory = new Map<string, unknown>();
 
 /** JSON replacer that keeps only a preview of row arrays. */
 function slimReplacer(key: string, value: unknown): unknown {
@@ -20,10 +22,10 @@ function slimReplacer(key: string, value: unknown): unknown {
   return value;
 }
 
-export function loadCachedResult<T = unknown>(): T | null {
-  if (memory) return memory as T;
+export function loadCachedResult<T = unknown>(key: string = DEFAULT_KEY): T | null {
+  if (memory.get(key)) return memory.get(key) as T;
   try {
-    const cached = sessionStorage.getItem(STORAGE_KEY);
+    const cached = sessionStorage.getItem(storageKey(key));
     if (!cached) return null;
     const parsed = JSON.parse(cached);
     if (parsed && (parsed.success || parsed.tables)) return parsed as T;
@@ -33,24 +35,24 @@ export function loadCachedResult<T = unknown>(): T | null {
   return null;
 }
 
-export function saveCachedResult(result: unknown): void {
-  memory = result;
+export function saveCachedResult(result: unknown, key: string = DEFAULT_KEY): void {
+  memory.set(key, result);
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(result, slimReplacer));
+    sessionStorage.setItem(storageKey(key), JSON.stringify(result, slimReplacer));
   } catch {
     // Quota exceeded or storage unavailable: the in-memory copy still serves this session.
     try {
-      sessionStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(storageKey(key));
     } catch {
       // ignore
     }
   }
 }
 
-export function clearCachedResult(): void {
-  memory = null;
+export function clearCachedResult(key: string = DEFAULT_KEY): void {
+  memory.delete(key);
   try {
-    sessionStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(storageKey(key));
   } catch {
     // ignore
   }

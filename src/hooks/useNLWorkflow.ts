@@ -35,11 +35,18 @@ export function extensionFor(placed: string[], plan: string[]): string[] | null 
   return missing.every(m => OPERATIONS[m].order > lastOrder) ? missing : null;
 }
 
+let sharedProvider: EmbeddingProvider | null = null;
+/** One embedding worker (and one copy of the model in memory) for every workspace tab. */
+function getSharedProvider(): EmbeddingProvider {
+  sharedProvider ??= createAppProvider();
+  return sharedProvider;
+}
+
 export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseNLWorkflowOptions) {
   const provider = useMemo<EmbeddingProvider>(() => {
     if (injected) return injected;
     try {
-      return createAppProvider();
+      return getSharedProvider();
     } catch {
       return new NullProvider();
     }
