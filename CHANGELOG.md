@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (header layout)
+- Undo, redo and Reset now sit beside the logo on the left; Open, Save and Upload are centred in the header; Run and Output stay on the right. The three zones are a grid with equal side columns, so the middle group stays exactly centred.
+
 ### Changed (Output page look)
 - The Output page now uses the same layout as the pipeline page: a rounded header card, a sidebar card styled like the operations palette (titled header, grouped sections, tinted icon tiles, name and one-line description per row) and a white rounded content panel.
 - Removed the header labels "Workspace …", "Complete Pipeline Executed" and "N Tables Processed". The tab strip already says which workspace you are in, and the header now just reads "Analysis results" with the time the page was opened.
