@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
   CheckCircle, ArrowLeft, Copy, Download, Layers, GitBranch,
   Code, Activity, Database, FileText, BarChart3, Shield, Key, Cpu, Table
@@ -17,13 +15,18 @@ import { KeysSection } from './output/KeysSection';
 import { GeneratedFilesSection } from './output/GeneratedFilesSection';
 import { MarkdownRenderer } from './output/MarkdownRenderer';
 import { SVGPreviewSection } from './output/SVGPreviewSection';
+import { CodeViewer } from './output/CodeViewer';
 import { Button } from '@/components/ui/button';
+import type { WorkspaceTab } from '../hooks/useWorkspaceTabs';
+import { activeSurface } from '../utils/tabColors';
 import { loadCachedResult, saveCachedResult } from '../utils/resultCache';
 
-export default function OutputPage() {
+export default function OutputPage({ tabs = [] }: { tabs?: WorkspaceTab[] }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { results, tabId } = location.state || {};
+  /** The workspace these results came from, so several open tabs cannot be confused. */
+  const sourceTab = tabs.find(t => t.id === tabId) ?? null;
 
   const currentDateTime = useMemo(() => {
     const now = new Date();
@@ -241,7 +244,10 @@ export default function OutputPage() {
   return (
     <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
       {/* Top Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-3.5 flex items-center justify-between flex-shrink-0">
+      <header
+        className="bg-white border-b border-gray-200 px-6 py-3.5 flex items-center justify-between flex-shrink-0"
+        style={sourceTab?.color ? { background: activeSurface(sourceTab.color), borderBottomColor: sourceTab.color, borderBottomWidth: 2 } : undefined}
+      >
         <div className="flex items-center gap-4">
           <Button onClick={() => navigate('/')} title="Return to the workflow canvas" aria-label="Back to the workflow canvas">
             <ArrowLeft />
@@ -257,6 +263,17 @@ export default function OutputPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {sourceTab && (
+            <span
+              className="bg-white text-gray-800 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 border max-w-[16rem]"
+              style={{ borderColor: sourceTab.color ?? '#d1d5db' }}
+              title={`These results come from the workspace “${sourceTab.title}”`}
+            >
+              <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full shrink-0" style={{ background: sourceTab.color ?? '#94a3b8' }} />
+              <span className="text-gray-500 font-medium">Workspace</span>
+              <span className="truncate">{sourceTab.title}</span>
+            </span>
+          )}
           {isMultiTable && (
             <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
               <Table className="w-3.5 h-3.5" /> {multiTables.length} Tables Processed
@@ -400,9 +417,7 @@ export default function OutputPage() {
                 </div>
               </div>
               <div className="p-4">
-                <SyntaxHighlighter language="sql" style={oneDark} customStyle={{ borderRadius: '0.5rem', margin: 0 }}>
-                  {sqlFile.content}
-                </SyntaxHighlighter>
+                <CodeViewer code={sqlFile.content} language="sql" />
               </div>
             </div>
           )}
