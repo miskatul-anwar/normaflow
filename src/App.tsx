@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import type { Node } from '@xyflow/react';
@@ -12,12 +12,14 @@ import { FlowCanvas } from './components/workflow/FlowCanvas';
 import { useNormalization } from './hooks/useNormalization';
 import { useNLWorkflow } from './hooks/useNLWorkflow';
 import { NLCommandBar } from './components/nl/NLCommandBar';
+import { WorkspaceTabBar } from './components/workflow/WorkspaceTabBar';
+import { useWorkspaceTabs, type TabStatus } from './hooks/useWorkspaceTabs';
 import { usePaletteResize } from './hooks/usePaletteResize';
 import { useWorkflowGraph, type WorkflowSnapshot, buildChainEdges } from './hooks/useWorkflowGraph';
 import { Logger } from './services/utils/logger';
 import { OPERATIONS } from './config/operations';
 import { validateSequence } from './utils/workflowValidation';
-import { loadCachedResult, saveCachedResult } from './utils/resultCache';
+import { clearCachedResult, loadCachedResult, saveCachedResult } from './utils/resultCache';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import './styles/App.css';
 
@@ -48,12 +50,20 @@ function downloadJson(snapshot: WorkflowSnapshot): void {
   URL.revokeObjectURL(url);
 }
 
-/** Main workspace: operation palette + full-canvas workflow builder. */
-function Workspace() {
+interface WorkspaceProps {
+  tabId: string;
+  /** False while another tab (or the output page) is showing; the workspace stays mounted. */
+  active: boolean;
+  onStatus: (id: string, status: TabStatus) => void;
+  onSuggestTitle: (id: string, title: string) => void;
+}
+
+/** One workspace tab: operation palette + full-canvas workflow builder, with its own files, graph and results. */
+function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) {
   const navigate = useNavigate();
   const { fitView } = useReactFlow();
   const [uploadedFiles, setUploadedFiles] = useState<File[]>(() => [createSampleFile()]);
-  const [processedResults, setProcessedResults] = useState<any>(() => loadCachedResult());
+  const [processedResults, setProcessedResults] = useState<any>(() => loadCachedResult(tabId));
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const { isProcessing, processFiles } = useNormalization();
@@ -83,12 +93,13 @@ function Workspace() {
       );
       if (valid.length > 0) {
         setUploadedFiles(valid);
+        onSuggestTitle(tabId, valid[0].name.replace(/\.[^.]+$/, ''));
         logMessage('success', `Loaded ${valid.length} dataset file(s): ${valid.map(f => f.name).join(', ')}`, 'FILE');
       } else {
         logMessage('error', `No valid CSV files among: ${files.map(f => f.name).join(', ')}`, 'FILE');
       }
     },
-    [logMessage],
+    [logMessage, onSuggestTitle, tabId],
   );
 
   // ----- execution -----------------------------------------------------------
@@ -99,7 +110,7 @@ function Workspace() {
         const result = await processFiles(files, operations);
         if (result?.success) {
           setProcessedResults(result);
-          saveCachedResult(result);
+          saveCachedResult(result, tabId);
           logMessage('success', `Pipeline completed for ${files.length} table(s)`, 'EXECUTION');
         } else {
           logMessage('error', `Processing failed: ${result?.error ?? 'unknown error'}`, 'EXECUTION');
@@ -178,18 +189,19 @@ function Workspace() {
       navigate('/output', {
         state: {
           results,
+          tabId,
           outputFiles: results.outputFiles,
           logs: results.logs ?? [],
           selectedOperations: graph.operationLabels,
         },
       });
     },
-    [graph.operationLabels, navigate],
+    [graph.operationLabels, navigate, tabId],
   );
 
   const handleViewOutput = useCallback(async () => {
     let active = processedResults;
-    if (!active) active = loadCachedResult();
+    if (!active) active = loadCachedResult(tabId);
     if (active?.success || active?.tables) {
       navigateToOutput(active);
       return;
@@ -222,6 +234,11 @@ function Workspace() {
   );
 
   const nl = useNLWorkflow({ graph, run: handleRun, hasFiles });
+
+  // Report running state and step count to the tab bar.
+  useEffect(() => {
+    onStatus(tabId, { running: isProcessing, operations: operationCount });
+  }, [isProcessing, onStatus, operationCount, tabId]);
 
   const palette = usePaletteResize();
 
@@ -286,10 +303,11 @@ function Workspace() {
           </button>
         )}
 
-        <NLCommandBar nl={nl} />
+        <NLCommandBar nl={nl} active={active} />
 
         <div className="nf-canvas">
           <FlowCanvas
+            flowId={tabId}
             nodes={graph.nodes}
             edges={graph.edges}
             onNodesChange={graph.onNodesChange}
@@ -310,23 +328,88 @@ function Workspace() {
   );
 }
 
+/**
+ * Hosts every workspace tab. Tabs stay mounted (hidden) while inactive or while the
+ * output page is open, so their graphs, files, results and running jobs survive switching.
+ */
+function AppShell() {
+  const location = useLocation();
+  const onOutput = location.pathname === '/output';
+  const tabsApi = useWorkspaceTabs();
+  const { tabs, activeId, status, addTab, closeTab, cycleTab } = tabsApi;
+
+  const requestClose = useCallback(
+    (id: string) => {
+      const tab = tabs.find(t => t.id === id);
+      const ops = status[id]?.operations ?? 0;
+      if (tab && ops > 0 && !window.confirm(`Close “${tab.title}”? Its ${ops} pipeline step${ops === 1 ? '' : 's'} and results will be lost.`)) return;
+      closeTab(id);
+      clearCachedResult(id);
+    },
+    [closeTab, status, tabs],
+  );
+
+  useEffect(() => {
+    if (onOutput) return;
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        addTab();
+      } else if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'w') {
+        e.preventDefault();
+        requestClose(activeId);
+      } else if (e.ctrlKey && e.key === 'Tab') {
+        e.preventDefault();
+        cycleTab(e.shiftKey ? -1 : 1);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [activeId, addTab, cycleTab, onOutput, requestClose]);
+
+  return (
+    <>
+      <div className="nf-app" hidden={onOutput}>
+        <WorkspaceTabBar
+          tabs={tabs}
+          activeId={activeId}
+          status={status}
+          onSelect={tabsApi.selectTab}
+          onAdd={addTab}
+          onClose={requestClose}
+          onRename={tabsApi.renameTab}
+        />
+        {tabs.map(tab => (
+          <div key={tab.id} className="nf-tab-pane" role="tabpanel" aria-label={tab.title} hidden={tab.id !== activeId}>
+            <ErrorBoundary componentName={`Workspace ${tab.title}`}>
+              <ReactFlowProvider>
+                <Workspace
+                  tabId={tab.id}
+                  active={!onOutput && tab.id === activeId}
+                  onStatus={tabsApi.setStatus}
+                  onSuggestTitle={tabsApi.suggestTitle}
+                />
+              </ReactFlowProvider>
+            </ErrorBoundary>
+          </div>
+        ))}
+      </div>
+      <AnimatePresence mode="wait">
+        <Routes>
+          <Route path="/" element={null} />
+          <Route path="/output" element={<OutputPage />} />
+        </Routes>
+      </AnimatePresence>
+    </>
+  );
+}
+
 export default function App() {
   return (
     <ErrorBoundary componentName="Application Root">
       <Router>
-        <AnimatePresence mode="wait">
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <ReactFlowProvider>
-                  <Workspace />
-                </ReactFlowProvider>
-              }
-            />
-            <Route path="/output" element={<OutputPage />} />
-          </Routes>
-        </AnimatePresence>
+        <AppShell />
       </Router>
     </ErrorBoundary>
   );

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { PlaceholdersAndVanishInput } from '../ui/placeholders-and-vanish-input';
 import { dependencyClosure } from '../../services/nlp/workflow/planner';
 import { extensionFor, type NLWorkflow } from '../../hooks/useNLWorkflow';
@@ -11,8 +11,6 @@ const PLACEHOLDERS = [
   'Give me a full report',
 ];
 
-const INPUT_ID = 'nl-command-input';
-
 const BADGE: Record<NLWorkflow['embeddings'], { text: string; cls: string }> = {
   checking: { text: 'Embeddings: checking…', cls: 'bg-gray-100 text-gray-600' },
   ready: { text: 'Embeddings: ready', cls: 'bg-teal-100 text-teal-800' },
@@ -23,24 +21,27 @@ const BADGE: Record<NLWorkflow['embeddings'], { text: string; cls: string }> = {
  * Text box that turns a sentence into a pipeline: shows the plan as chips first,
  * then Apply / Apply & Run. Dimmed chips are dependencies added automatically.
  */
-export function NLCommandBar({ nl }: { nl: NLWorkflow }) {
+export function NLCommandBar({ nl, active = true }: { nl: NLWorkflow; active?: boolean }) {
+  // Each workspace tab has its own bar, so ids must be unique per instance.
+  const inputId = `nl-command-input-${useId().replace(/:/g, '')}`;
   const [draft, setDraft] = useState('');
   const draftRef = useRef('');
   const res = nl.resolution;
 
   // Ctrl/Cmd+K focuses the bar.
   useEffect(() => {
+    if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        document.getElementById(INPUT_ID)?.focus();
+        document.getElementById(inputId)?.focus();
       } else if (e.key === 'Escape' && res) {
         nl.dismiss();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [nl, res]);
+  }, [active, inputId, nl, res]);
 
   const onChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     draftRef.current = e.target.value;
@@ -64,7 +65,7 @@ export function NLCommandBar({ nl }: { nl: NLWorkflow }) {
         placeholders={PLACEHOLDERS}
         onChange={onChange}
         onSubmit={onSubmit}
-        inputId={INPUT_ID}
+        inputId={inputId}
         ariaLabel="Describe the pipeline you want (Ctrl+K)"
       />
       <div className="mt-1 flex justify-end">
