@@ -108,6 +108,12 @@ export interface CrossTableRelationship {
   confidence: number;
   matchRatio: number;
   detectedBy: 'NER_PATTERN' | 'VALUE_OVERLAP' | 'HEURISTIC';
+  /** True when some referencing cells are missing (the FK column is nullable). */
+  optional?: boolean;
+  /** Share of the referenced key's values that are actually referenced. */
+  coverage?: number;
+  /** 0..1 name similarity between the two columns (a scoring feature). */
+  nameScore?: number;
 }
 
 export interface TableData {
@@ -124,6 +130,21 @@ export interface TableData {
   secondNormalForm: RelationSchema[];
   thirdNormalForm: RelationSchema[];
   bcnf?: RelationSchema[];
+  /** Why this primary key was chosen (or why a surrogate was added). */
+  keyReason?: string;
+  /** How the FD search went: counts, and whether it was cut short. */
+  fdSearch?: {
+    truncated: boolean;
+    levelReached: number;
+    maxLhsSize: number;
+    exact: number;
+    approximate: number;
+    approximateUsed: boolean;
+  };
+  losslessCheck?: any;
+  dependencyPreservation?: any;
+  /** Warnings produced while analysing this table. */
+  notes?: string[];
 }
 
 export interface ValidationResult {

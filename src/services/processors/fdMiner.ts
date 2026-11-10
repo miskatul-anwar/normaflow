@@ -41,18 +41,47 @@ interface Partition {
 const EMPTY_PARTITION: Partition = { groups: [], classCount: 0 };
 
 /**
- * Encode every column of the dataset into integer codes. Empty/undefined
- * values share code -1 and are treated as "unknown" (excluded from FD
- * evidence like SQL NULLs).
+ * How missing values (null, undefined or the empty string) take part in FD
+ * evidence. Both are standard in the FD-discovery literature:
+ *
+ * - `equal`    (default): all missing values in a column are one value, so
+ *                two rows with missing cells agree on that column.
+ * - `distinct`: every missing value is different from every other, like SQL
+ *                NULL in a UNIQUE constraint.
+ *
+ * Either way no row is dropped, so `rowCount` is the right denominator for
+ * confidence and for the superkey test.
  */
-function encodeColumns(data: Record<string, unknown>[], attributes: string[]): number[][] {
+export type NullSemantics = 'equal' | 'distinct';
+
+function isMissing(raw: unknown): boolean {
+  return raw === null || raw === undefined || (typeof raw === 'string' && raw.trim() === '');
+}
+
+/** Encode every column of the dataset into integer codes. */
+function encodeColumns(
+  data: Record<string, unknown>[],
+  attributes: string[],
+  nullSemantics: NullSemantics = 'equal',
+): number[][] {
   return attributes.map(attr => {
     const codes = new Int32Array(data.length);
     const dictionary = new Map<string, number>();
+    let nextUnique = 0;
     for (let row = 0; row < data.length; row++) {
       const raw = data[row][attr];
-      if (raw === null || raw === undefined) {
-        codes[row] = -1;
+      if (isMissing(raw)) {
+        if (nullSemantics === 'distinct') {
+          // Unique negative codes never collide with dictionary codes (>= 0).
+          codes[row] = -1 - nextUnique++;
+        } else {
+          let nullCode = dictionary.get('\u0000null');
+          if (nullCode === undefined) {
+            nullCode = dictionary.size;
+            dictionary.set('\u0000null', nullCode);
+          }
+          codes[row] = nullCode;
+        }
         continue;
       }
       const key =
@@ -68,12 +97,11 @@ function encodeColumns(data: Record<string, unknown>[], attributes: string[]): n
   });
 }
 
-/** Build the initial partition for one attribute (skipping nulls). */
+/** Build the initial partition for one attribute (every row is placed). */
 function partitionOfColumn(codes: number[], rowCount: number): Partition {
   const byCode = new Map<number, number[]>();
   for (let row = 0; row < rowCount; row++) {
     const code = codes[row];
-    if (code === -1) continue;
     const group = byCode.get(code);
     if (group) group.push(row);
     else byCode.set(code, [row]);
@@ -142,6 +170,12 @@ export interface MineOptions {
    * Set to 1 to collect only exact dependencies (default: 0.85).
    */
   minConfidence?: number;
+  /** How missing values compare (default `equal`). See {@link NullSemantics}. */
+  nullSemantics?: NullSemantics;
+  /** Abort the search early; the result is flagged `truncated`. */
+  signal?: AbortSignal;
+  /** Wall-clock budget in ms; the result is flagged `truncated` when exceeded. */
+  timeBudgetMs?: number;
   /** Progress callback invoked after each lattice level. */
   onProgress?: (level: number, fdsFound: number) => void;
 }
@@ -152,6 +186,10 @@ export interface MineResult {
   durationMs: number;
   combinationsEvaluated: number;
   exactCount: number;
+  /** True when the search stopped early (abort or time budget). */
+  truncated?: boolean;
+  /** Highest LHS size fully explored. */
+  levelReached?: number;
 }
 
 /**
@@ -179,7 +217,12 @@ export function mineFunctionalDependencies(
   const maxLhsSize = Math.max(1, Math.min(options.maxLhsSize ?? 4, attributes.length - 1));
   const minConfidence = options.minConfidence ?? 0.85;
 
-  const encoded = encodeColumns(data, attributes);
+  const encoded = encodeColumns(data, attributes, options.nullSemantics ?? 'equal');
+  let truncated = false;
+  let levelReached = 0;
+  const outOfBudget = () =>
+    Boolean(options.signal?.aborted) ||
+    (options.timeBudgetMs !== undefined && Date.now() - started > options.timeBudgetMs);
   const rowCount = data.length;
 
   const basePartitions = encoded.map(codes => partitionOfColumn(codes, rowCount));
@@ -200,8 +243,19 @@ export function mineFunctionalDependencies(
   const knownSuperkeys: number[][] = [];
   const minedLhsByRhs = new Map<number, Array<{ combo: number[]; confidence: number }>>();
 
-  for (let level = 1; level <= maxLhsSize; level++) {
+  search: for (let level = 1; level <= maxLhsSize; level++) {
+    // Level k only needs the partitions of level k-1 (its parents); free the rest.
+    if (level >= 3) {
+      for (const key of partitionCache.keys()) {
+        if (key.split(',').length < level - 1) partitionCache.delete(key);
+      }
+    }
     for (const combo of combinations(attributes.length, level)) {
+      if (outOfBudget()) {
+        truncated = true;
+        break search;
+      }
+
       // Key pruning: if a strict subset of combo is already a known superkey,
       // no superset can yield minimal functional dependencies.
       if (level > 1 && knownSuperkeys.some(k => k.every(attr => combo.includes(attr)))) {
@@ -311,6 +365,7 @@ export function mineFunctionalDependencies(
 
       if (options.onProgress) options.onProgress(level, results.length);
     }
+    levelReached = level;
   }
 
   // Order: exact first, then by determinacy strength.
@@ -325,5 +380,7 @@ export function mineFunctionalDependencies(
     durationMs: Date.now() - started,
     combinationsEvaluated: evaluated,
     exactCount,
+    truncated,
+    levelReached,
   };
 }

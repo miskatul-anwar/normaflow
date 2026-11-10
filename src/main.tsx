@@ -8,7 +8,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { toast, Toaster } from 'sonner';
-import { listen } from '@tauri-apps/api/event';
+import bubblePopUrl from './assets/sounds/bubble-pop.mp3';
 
 // Global toast instance for Tauri integration
 declare global {
@@ -19,44 +19,10 @@ declare global {
 
 // Play notification sound
 function playBubblePop() {
-  const audio = new Audio('/src/assets/sounds/bubble-pop.mp3');
+  const audio = new Audio(bubblePopUrl);
   audio.volume = 0.6;
   audio.play().catch(() => { });
 }
-
-// Listen for compatibility result from Tauri backend
-listen('compatibility_result', (event) => {
-  const message = event.payload === true
-    ? 'Current operations are compatible!'
-    : 'Operations are not compatible! Please check your flow and uploaded file.';
-
-  // Play sound for notifications
-  playBubblePop();
-
-  window.dispatchEvent(new CustomEvent('show-sonner-toast', {
-    detail: {
-      type: event.payload === true ? 'success' : 'warning',
-      message
-    }
-  }));
-});
-
-// Listen for processing updates from Tauri
-listen('processing_update', (event: any) => {
-  const { phase, operation, progress, message } = event.payload;
-
-  // Play sound for processing updates
-  playBubblePop();
-
-  window.dispatchEvent(new CustomEvent('processing-update', {
-    detail: { phase, operation, progress, message }
-  }));
-
-  // Dispatch internal processing update event
-  window.dispatchEvent(new CustomEvent('processing-update', {
-    detail: { phase, operation, progress, message }
-  }));
-});
 
 // Enhanced toast event handler with console logging
 window.addEventListener('show-sonner-toast', (e: any) => {

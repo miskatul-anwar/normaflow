@@ -30,7 +30,7 @@ export const useNormalization = (): UseNormalizationReturn => {
         files,
         operations,
         setProgress,
-        { maxLhsSize: 4, maxSampleSize: 100, timeout: 45000 }
+        { maxLhsSize: 4 }
       );
 
       setResults(result);

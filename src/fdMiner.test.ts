@@ -48,15 +48,46 @@ describe('fdMiner', () => {
     expect(fds.some(fd => fd.lhs.length === 1 && fd.lhs[0] === 'id' && fd.rhs === 'name')).toBe(true);
   });
 
-  it('handles nulls by excluding them from evidence', () => {
+  describe('missing values', () => {
     const data: Row[] = [
       { k: 'a', v: '1' },
       { k: 'a', v: '1' },
       { k: '', v: '9' },
       { k: null, v: '8' },
     ];
-    const { fds } = mineFunctionalDependencies(data, { minConfidence: 1 });
-    expect(fds.some(fd => fd.lhs.includes('k') && fd.rhs === 'v')).toBe(true);
+    const holds = (opts: Parameters<typeof mineFunctionalDependencies>[1]) =>
+      mineFunctionalDependencies(data, { minConfidence: 1, ...opts }).fds.some(
+        fd => fd.lhs.length === 1 && fd.lhs[0] === 'k' && fd.rhs === 'v',
+      );
+
+    it('treats all missing values as one value by default (null = null)', () => {
+      // The two rows with a missing k disagree on v, so k -> v is violated.
+      expect(holds({})).toBe(false);
+    });
+
+    it('treats every missing value as distinct when asked (SQL NULL-like)', () => {
+      expect(holds({ nullSemantics: 'distinct' })).toBe(true);
+    });
+
+    it('never drops rows: a column unique except for missing values is not a superkey', () => {
+      const rows: Row[] = [
+        { id: '1', x: 'a' },
+        { id: '2', x: 'b' },
+        { id: '', x: 'c' },
+        { id: '', x: 'c' },
+      ];
+      const { fds } = mineFunctionalDependencies(rows, { minConfidence: 1 });
+      // id -> x holds (both missing-id rows agree on x); x -> id does not (c maps to nothing but '' twice is fine).
+      expect(fds.some(fd => fd.lhs[0] === 'id' && fd.rhs === 'x')).toBe(true);
+    });
+  });
+
+  it('stops early and flags the result when the abort signal fires', () => {
+    const rows: Row[] = Array.from({ length: 50 }, (_, i) => ({ a: `${i % 5}`, b: `${i % 7}`, c: `${i}` }));
+    const controller = new AbortController();
+    controller.abort();
+    const result = mineFunctionalDependencies(rows, { signal: controller.signal });
+    expect(result.truncated).toBe(true);
   });
 
   it('supports approximate dependencies with confidence below 1', () => {

@@ -7,17 +7,61 @@
 
 import { CSVProcessor, DataProcessor, NormalizationEngine } from '../processors';
 import { RelationDetectorService } from '../processors/relationDetector';
+import { chooseKey, type KeyChoice } from '../processors/keySelection';
+import { verifyLosslessOnData } from '../processors/instanceVerification';
+import { buildSchema, emitMermaidErd, toDecomposedRelations } from '../processors/schemaGraph';
+import { buildMultiTableReport } from '../processors/multiTableReport';
+import { IdentifierRegistry } from '../utils/identifiers';
 import { Logger } from '../utils/logger';
 import { FileUtils } from '../utils/fileUtils';
 import { TableData } from '../../types';
-import { invoke } from '@tauri-apps/api/core';
 
 export interface ProcessingOptions {
   maxLhsSize?: number;
   maxSampleSize?: number;
+  /** Time budget for functional-dependency mining, in milliseconds (default 30 000). */
   timeout?: number;
   enableParallelProcessing?: boolean;
   adaptiveThresholds?: boolean;
+  /**
+   * Use dependencies that hold on most but not all rows for keys and normal
+   * forms. Off by default: such dependencies can make a decomposition lossy.
+   */
+  acceptApproximateFDs?: boolean;
+  /** SQL dialect for multi-table DDL (default `sqlite`). */
+  sqlDialect?: SQLDialect;
+}
+
+/** Everything the shared analysis routine produces for one table. */
+export interface TableAnalysis {
+  rows: any[];
+  attributes: string[];
+  atomicityResult: any;
+  dataProfile: any;
+  nerTags: any[];
+  /** Every dependency mined, exact and approximate (for display). */
+  functionalDependencies: any[];
+  /** The dependencies that fed keys and normal forms. */
+  usedFDs: any[];
+  fdSearch: {
+    truncated: boolean;
+    levelReached: number;
+    maxLhsSize: number;
+    exact: number;
+    approximate: number;
+    approximateUsed: boolean;
+  } | null;
+  keyResult: any;
+  keyChoice: KeyChoice | null;
+  relations1NF: any[];
+  relations2NF: any[];
+  relations3NF: any[];
+  relationsBCNF: any[];
+  cardinalityAnalysis: any;
+  losslessCheck: any;
+  dependencyPreservation: any;
+  /** Warnings worth surfacing in the report. */
+  notes: string[];
 }
 
 export interface ProcessingResult {
@@ -105,6 +149,10 @@ export interface DecomposedRelation {
   }[];
   fds?: any[];
   columnTypes?: Record<string, string>;
+  /** Columns with no missing value in the data; emitted as NOT NULL. */
+  notNull?: Record<string, boolean>;
+  /** Non-key columns that other tables reference; emitted as UNIQUE. */
+  unique?: string[];
 }
 
 export const SQL_RESERVED_KEYWORDS = new Set([
@@ -255,7 +303,9 @@ export class DatabaseService {
       } else if (isPk && isCompositePk) {
         colDefs.push(`  ${colName} ${colType} NOT NULL`);
       } else {
-        colDefs.push(`  ${colName} ${colType}`);
+        const constraints =
+          (relation.notNull?.[attr] ? ' NOT NULL' : '') + (relation.unique?.includes(attr) ? ' UNIQUE' : '');
+        colDefs.push(`  ${colName} ${colType}${constraints}`);
       }
     }
 
@@ -424,380 +474,30 @@ export class DatabaseService {
         this.logger.warn(`Data quality issues detected (score: ${qualityAssessment.score})`);
       }
 
-      // Step 2: Data Cleaner 
-      if (selectedOperations.includes('Data Cleaner')) {
-        onProgress?.({ 
-          phase: 'PREP', 
-          operation: 'data-cleaner', 
-          progress: 15, 
-          message: 'Cleaning data incrementally...', 
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.15, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          const cleanedData = await this.cleanDataIncremental(processedData, enhancedOptions);
-          processedData = cleanedData;
-          this.addPerformanceCheckpoint('Data Cleaning Complete');
-          this.logger.success(`Data cleaned incrementally: ${processedData.length} rows remaining`);
-        } catch (error) {
-          this.logger.error('Incremental data cleaning failed', error);
-          throw new Error(`Data cleaning failed: ${(error as Error).message}`);
-        }
-      }
-
-      // Step 3: Progressive Atomicity Checker
-      if (selectedOperations.includes('Atomicity Checker')) {
-        onProgress?.({ 
-          phase: 'PREP', 
-          operation: 'atomicity-checker', 
-          progress: 25, 
-          message: 'Checking atomicity progressively...', 
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.25, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          atomicityResult = await this.checkAtomicityProgressive(processedData, enhancedOptions);
-          this.addPerformanceCheckpoint('Atomicity Check Complete');
-          this.logger.success('Progressive atomicity check completed');
-        } catch (error) {
-          this.logger.error('Progressive atomicity check failed', error);
-          throw new Error(`Atomicity check failed: ${(error as Error).message}`);
-        }
-      }
-
-      // Step 4: Adaptive Data Type Profiler
-      if (selectedOperations.includes('Data Type Profiler')) {
-        onProgress?.({ 
-          phase: 'PREP', 
-          operation: 'data-profiler', 
-          progress: 35, 
-          message: 'Profiling data types adaptively...',
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.35, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          dataProfile = await this.profileDataTypesAdaptive(processedData, enhancedOptions);
-          this.addPerformanceCheckpoint('Data Profiling Complete');
-          this.logger.success('Adaptive data profiling completed');
-        } catch (error) {
-          this.logger.error('Adaptive data profiling failed', error);
-          throw new Error(`Data profiling failed: ${(error as Error).message}`);
-        }
-      }
-
-      // Phase 2: Optimized Normalization
-      if (selectedOperations.includes('1NF')) {
-        onProgress?.({ 
-          phase: 'NORMAL', 
-          operation: '1nf', 
-          progress: 40, 
-          message: 'Applying optimized First Normal Form...',
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.40, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          const normalizedData = await NormalizationEngine.apply1NF(processedData);
-          processedData = normalizedData;
-          
-          relations1NF = [{
-            name: 'Relation_1NF',
-            attributes: attributes,
-            primaryKey: this.suggestPrimaryKey(processedData, attributes),
-            foreignKeys: [],
-            rows: processedData.slice(0, Math.min(100, processedData.length)),
-            sourceType: '1NF',
-            metadata: {
-              rowCount: processedData.length,
-              attributeTypes: this.inferAttributeTypesOptimized(processedData, attributes)
-            }
-          }];
-          
-          this.addPerformanceCheckpoint('1NF Application Complete');
-          this.logger.success('Optimized 1NF applied successfully');
-        } catch (error) {
-          this.logger.error('Optimized 1NF application failed', error);
-          throw new Error(`1NF application failed: ${(error as Error).message}`);
-        }
-      }
-
-      // Phase 3: Enhanced Analysis (45-65%)
-      this.addPerformanceCheckpoint('Phase 3 Start: Enhanced Analysis');
-      this.logger.info('Phase 3: Enhanced Analysis with Parallel Processing');
-
-      // Step 5: Optimized FD Miner
-      if (selectedOperations.includes('FD Miner')) {
-        onProgress?.({ 
-          phase: 'ANALYZE', 
-          operation: 'fd-miner', 
-          progress: 50, 
-          message: 'Mining functional dependencies with optimization...',
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.50, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          functionalDependencies = await this.retryOperation(
-            () => NormalizationEngine.mineFunctionalDependencies(
-              processedData, 
-              enhancedOptions.maxLhsSize || 4
-            ),
-            3,
-            2000
-          );
-          this.addPerformanceCheckpoint('FD Mining Complete');
-          this.logger.success(`Optimized FD mining completed: ${functionalDependencies.length} FDs found`);
-        } catch (error) {
-          this.logger.error('Optimized FD mining failed', error);
-          throw new Error(`FD mining failed: ${(error as Error).message}`);
-        }
-      }
-
-      // Step 6: Enhanced Key Discovery
-      if (selectedOperations.includes('Key Discovery')) {
-        onProgress?.({ 
-          phase: 'ANALYZE', 
-          operation: 'key-discovery', 
-          progress: 60, 
-          message: 'Discovering keys with multi-strategy approach...',
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.60, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          keyResult = await this.retryOperation(
-            () => NormalizationEngine.findKeys(attributes, functionalDependencies),
-            2,
-            3000
-          );
-          
-          this.addPerformanceCheckpoint('Key Discovery Complete');
-          
-          if (keyResult.searchMetrics) {
-            this.logger.info(`Enhanced key discovery: ${keyResult.searchMetrics.finalStrategy} strategy, ${keyResult.searchMetrics.totalDuration}ms`);
-            this.logger.debug(`Evaluated ${keyResult.searchMetrics.totalEvaluated} combinations across ${keyResult.searchMetrics.phases.length} phases`);
-          }
-          
-          if (keyResult.candidateKeys.length === 0) {
-            this.logger.warn('No natural keys found - using synthetic key strategy');
-            keyResult.candidateKeys = [['synthetic_id']];
-            keyResult.superkeys = [['synthetic_id']];
-            keyResult.fallbackUsed = true;
-          }
-          
-          this.logger.success(`Enhanced key discovery completed: ${keyResult.candidateKeys.length} candidate keys`);
-        } catch (error) {
-          this.logger.error('Enhanced key discovery failed', error);
-          throw new Error(`Key discovery failed: ${(error as Error).message}`);
-        }
-      }
-
-      // Step 7: Optimized Cardinality Analyzer
-      if (selectedOperations.includes('Cardinality Analyzer')) {
-        onProgress?.({ 
-          phase: 'ANALYZE', 
-          operation: 'cardinality-analyzer', 
-          progress: 65, 
-          message: 'Analyzing cardinalities with sampling...',
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.65, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          cardinalityAnalysis = await NormalizationEngine.analyzeCardinalities(processedData);
-          this.addPerformanceCheckpoint('Cardinality Analysis Complete');
-          this.logger.success('Optimized cardinality analysis completed');
-        } catch (error) {
-          this.logger.error('Optimized cardinality analysis failed', error);
-          throw new Error(`Cardinality analysis failed: ${(error as Error).message}`);
-        }
-      }
-
-      // Phase 4: Advanced Normalization with Parallel Processing (70-85%)
-      this.addPerformanceCheckpoint('Phase 4 Start: Advanced Normalization');
-      this.logger.info('Phase 4: Advanced Normalization with Parallel Processing');
-
-      // Step 8: Enhanced 2NF
-      if (selectedOperations.includes('2NF')) {
-        onProgress?.({ 
-          phase: 'NORMAL', 
-          operation: '2nf', 
-          progress: 70, 
-          message: 'Applying enhanced Second Normal Form...',
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.70, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          relations2NF = await NormalizationEngine.apply2NF(processedData, functionalDependencies);
-          this.addPerformanceCheckpoint('2NF Application Complete');
-          this.logger.success(`Enhanced 2NF applied: ${relations2NF.length} relations created`);
-        } catch (error) {
-          this.logger.error('Enhanced 2NF application failed', error);
-          throw new Error(`2NF application failed: ${(error as Error).message}`);
-        }
-      }
-
-      // Step 9: Optimized 3NF
-      if (selectedOperations.includes('3NF')) {
-        onProgress?.({ 
-          phase: 'NORMAL', 
-          operation: '3nf', 
-          progress: 75, 
-          message: 'Synthesizing optimized Third Normal Form...',
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.75, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          relations3NF = await NormalizationEngine.synthesize3NF(
-            functionalDependencies,
-            keyResult.candidateKeys,
-            processedData,
-          );
-          this.addPerformanceCheckpoint('3NF Synthesis Complete');
-          this.logger.success(`Optimized 3NF synthesis completed: ${relations3NF.length} relations`);
-        } catch (error) {
-          this.logger.error('Optimized 3NF synthesis failed', error);
-          throw new Error(`3NF synthesis failed: ${(error as Error).message}`);
-        }
-      }
-
-      // Step 9.5: Boyce-Codd Normal Form (BCNF) Decomposition
-      if (selectedOperations.includes('BCNF')) {
-        onProgress?.({ 
-          phase: 'NORMAL', 
-          operation: 'bcnf', 
-          progress: 78, 
-          message: 'Decomposing schema into Boyce-Codd Normal Form (BCNF)...',
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.78, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          const sourceRels = relations3NF.length > 0
-            ? relations3NF
-            : relations2NF.length > 0
-              ? relations2NF
-              : [{
-                  name: 'MainRelation',
-                  attributes,
-                  primaryKey: keyResult.candidateKeys[0] || [attributes[0] || 'id'],
-                  foreignKeys: [],
-                  rows: processedData,
-                  metadata: { rowCount: processedData.length, attributeTypes: {} }
-                }];
-
-          relationsBCNF = await NormalizationEngine.applyBCNF(sourceRels, functionalDependencies);
-          // Propagate BCNF relations to downstream steps (Lossless, Relation Gen, ERD, SQL)
-          relations3NF = relationsBCNF;
-          this.addPerformanceCheckpoint('BCNF Decomposition Complete');
-          this.logger.success(`BCNF decomposition completed: ${relationsBCNF.length} relations created`);
-        } catch (error) {
-          this.logger.error('BCNF decomposition failed', error);
-          throw new Error(`BCNF decomposition failed: ${(error as Error).message}`);
-        }
-      }
-
-      // Step 10: Enhanced Lossless Check
-      if (selectedOperations.includes('Lossless Check')) {
-        onProgress?.({ 
-          phase: 'NORMAL', 
-          operation: 'lossless-check', 
-          progress: 80, 
-          message: 'Checking lossless decomposition with optimization...',
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.80, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          const isLossless = await NormalizationEngine.checkLosslessJoin(relations3NF, functionalDependencies);
-          losslessCheck = {
-            isLossless,
-            details: {
-              algorithm: 'Optimized Chase Algorithm',
-              relationCount: relations3NF.length,
-              fdCount: functionalDependencies.length,
-              optimizations: 'Streaming tableau, adaptive limits'
-            }
-          };
-          this.addPerformanceCheckpoint('Lossless Check Complete');
-          this.logger.success('Enhanced lossless join check completed');
-        } catch (error) {
-          this.logger.error('Enhanced lossless check failed', error);
-          throw new Error(`Lossless check failed: ${(error as Error).message}`);
-        }
-      }
-
-      // Step 11: Enhanced Dependency Preservation
-      if (selectedOperations.includes('Dependency Preservation')) {
-        onProgress?.({ 
-          phase: 'NORMAL', 
-          operation: 'dependency-preservation', 
-          progress: 85, 
-          message: 'Checking dependency preservation with batching...',
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.85, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          const isPreserved = await NormalizationEngine.checkDependencyPreservation(relations3NF, functionalDependencies);
-          
-          // Enhanced dependency preservation analysis with parallel processing
-          const preserved: any[] = [];
-          const lost: any[] = [];
-          
-          if (enhancedOptions.enableParallelProcessing) {
-            await Promise.all(functionalDependencies.map(async (fd) => {
-              const isPreservedInDecomposition = relations3NF.some(relation => {
-                const hasAllLHS = fd.lhs.every((attr: string) => relation.attributes.includes(attr));
-                const hasRHS = relation.attributes.includes(fd.rhs);
-                return hasAllLHS && hasRHS;
-              });
-              
-              if (isPreservedInDecomposition) {
-                preserved.push(fd);
-              } else {
-                lost.push(fd);
-              }
-            }));
-          } else {
-            functionalDependencies.forEach(fd => {
-              const isPreservedInDecomposition = relations3NF.some(relation => {
-                const hasAllLHS = fd.lhs.every((attr: string) => relation.attributes.includes(attr));
-                const hasRHS = relation.attributes.includes(fd.rhs);
-                return hasAllLHS && hasRHS;
-              });
-              
-              if (isPreservedInDecomposition) {
-                preserved.push(fd);
-              } else {
-                lost.push(fd);
-              }
-            });
-          }
-          
-          dependencyPreservation = {
-            isPreserved,
-            preserved,
-            lost,
-            totalDependencies: functionalDependencies.length,
-            preservedCount: preserved.length,
-            lostCount: lost.length,
-            preservationRatio: functionalDependencies.length > 0 ? preserved.length / functionalDependencies.length : 1,
-            optimizations: enhancedOptions.enableParallelProcessing ? 'Parallel processing, batch validation' : 'Sequential processing'
-          };
-          
-          this.addPerformanceCheckpoint('Dependency Preservation Complete');
-          this.logger.success('Enhanced dependency preservation check completed');
-        } catch (error) {
-          this.logger.error('Enhanced dependency preservation check failed', error);
-          throw new Error(`Dependency preservation check failed: ${(error as Error).message}`);
-        }
-      }
+      // Phases 2-4: run the selected operations through the shared analysis routine.
+      const analysis = await this.analyzeRows({
+        rows: processedData,
+        selectedOperations,
+        options: enhancedOptions,
+        tableName: file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase() || 'table',
+        startTime,
+        onProgress,
+      });
+      processedData = analysis.rows;
+      attributes = analysis.attributes;
+      atomicityResult = analysis.atomicityResult;
+      dataProfile = analysis.dataProfile;
+      functionalDependencies = analysis.functionalDependencies;
+      keyResult = analysis.keyResult;
+      relations1NF = analysis.relations1NF;
+      relations2NF = analysis.relations2NF;
+      relations3NF = analysis.relations3NF;
+      relationsBCNF = analysis.relationsBCNF;
+      cardinalityAnalysis = analysis.cardinalityAnalysis;
+      losslessCheck = analysis.losslessCheck;
+      dependencyPreservation = analysis.dependencyPreservation;
+      for (const note of analysis.notes) this.logger.warn(note);
+      this.addPerformanceCheckpoint('Analysis Complete');
 
       // Phase 5: Optimized Output Generation (90-100%)
       this.addPerformanceCheckpoint('Phase 5 Start: Optimized Output Generation');
@@ -981,6 +681,282 @@ export class DatabaseService {
     }
   }
 
+  // ========== SHARED PER-TABLE ANALYSIS ==========
+
+  private throwIfAborted(): void {
+    if (this.abortController?.signal.aborted) {
+      throw new Error('Processing was cancelled.');
+    }
+  }
+
+  /**
+   * Run the selected analysis operations on one table's rows.
+   *
+   * This is the single implementation used for one file and for every table
+   * of a multi-file run, so the canvas selection means the same thing in both.
+   *
+   * Soundness rules:
+   *  - Only dependencies that hold on every row (exact FDs) feed key
+   *    discovery and the normal forms. Approximate FDs are reported but not
+   *    used unless `acceptApproximateFDs` is set.
+   *  - The lossless-join verdict is reported twice: by the chase (with
+   *    respect to the FDs) and by re-joining the projections of the data.
+   */
+  private async analyzeRows(params: {
+    rows: any[];
+    selectedOperations: string[];
+    options: ProcessingOptions;
+    tableName: string;
+    startTime: number;
+    onProgress?: (state: ProcessingState) => void;
+    mapProgress?: (percent: number) => number;
+  }): Promise<TableAnalysis> {
+    const { selectedOperations: ops, options, tableName, startTime } = params;
+    const has = (name: string) => ops.includes(name);
+    const map = params.mapProgress ?? ((p: number) => p);
+    const report = (phase: ProcessingState['phase'], operation: string, percent: number, message: string) => {
+      params.onProgress?.({
+        phase,
+        operation,
+        progress: Math.round(map(percent)),
+        message,
+        estimatedTimeRemaining: this.estimateTimeRemaining(percent / 100, startTime),
+        memoryUsage: this.getMemoryUsage(),
+      });
+    };
+
+    let data = params.rows;
+    const notes: string[] = [];
+    let atomicityResult: any = {};
+    let dataProfile: any = {};
+    let nerTags: any[] = [];
+    let functionalDependencies: any[] = [];
+    let usedFDs: any[] = [];
+    let fdSearch: TableAnalysis['fdSearch'] = null;
+    let keyResult: any = { candidateKeys: [], superkeys: [] };
+    let keyChoice: KeyChoice | null = null;
+    let relations1NF: any[] = [];
+    let relations2NF: any[] = [];
+    let relations3NF: any[] = [];
+    let relationsBCNF: any[] = [];
+    let cardinalityAnalysis: any = {};
+    let losslessCheck: any = { isLossless: false };
+    let dependencyPreservation: any = { isPreserved: false };
+
+    if (has('Data Cleaner')) {
+      this.throwIfAborted();
+      report('PREP', 'data-cleaner', 15, `${tableName}: cleaning data…`);
+      data = await this.cleanDataIncremental(data, options);
+      this.logger.success(`Data cleaned: ${data.length} rows remaining`);
+    }
+
+    let attributes: string[] = Object.keys(data[0] || {});
+
+    if (has('Atomicity Checker')) {
+      this.throwIfAborted();
+      report('PREP', 'atomicity-checker', 25, `${tableName}: checking atomicity…`);
+      atomicityResult = await this.checkAtomicityProgressive(data, options);
+    }
+
+    if (has('Data Type Profiler')) {
+      this.throwIfAborted();
+      report('PREP', 'data-profiler', 35, `${tableName}: profiling data types…`);
+      dataProfile = await this.profileDataTypesAdaptive(data, options);
+    }
+
+    if (has('NER Classifier')) {
+      this.throwIfAborted();
+      report('PREP', 'ner-classifier', 38, `${tableName}: classifying columns…`);
+      const ner = RelationDetectorService.performNER([{ tableName, headers: attributes, rows: data }]);
+      nerTags = ner[tableName] || [];
+    }
+
+    if (has('1NF')) {
+      this.throwIfAborted();
+      report('NORMAL', '1nf', 40, `${tableName}: applying First Normal Form…`);
+      data = await NormalizationEngine.apply1NF(data);
+      relations1NF = [
+        {
+          name: `${tableName}_1NF`,
+          attributes: [...attributes],
+          primaryKey: this.suggestPrimaryKey(data, attributes),
+          foreignKeys: [],
+          rows: data.slice(0, Math.min(100, data.length)),
+          sourceType: '1NF',
+          metadata: {
+            rowCount: data.length,
+            attributeTypes: this.inferAttributeTypesOptimized(data, attributes),
+          },
+        },
+      ];
+    }
+
+    if (has('FD Miner')) {
+      this.throwIfAborted();
+      report('ANALYZE', 'fd-miner', 50, `${tableName}: mining functional dependencies…`);
+      const mined = await NormalizationEngine.mineFunctionalDependenciesDetailed(data, options.maxLhsSize || 4, {
+        signal: this.abortController?.signal,
+        timeBudgetMs: options.timeout ?? 30_000,
+      });
+      functionalDependencies = mined.fds;
+      const exact = NormalizationEngine.exactFDs(functionalDependencies);
+      usedFDs = options.acceptApproximateFDs ? [...functionalDependencies] : exact;
+      fdSearch = {
+        truncated: mined.truncated,
+        levelReached: mined.levelReached,
+        maxLhsSize: mined.maxLhsSize,
+        exact: exact.length,
+        approximate: functionalDependencies.length - exact.length,
+        approximateUsed: Boolean(options.acceptApproximateFDs),
+      };
+      if (fdSearch.approximate > 0 && !fdSearch.approximateUsed) {
+        notes.push(
+          `${tableName}: ${fdSearch.approximate} approximate dependenc${fdSearch.approximate === 1 ? 'y was' : 'ies were'} ` +
+            `reported but not used for keys or normal forms (they are violated by some rows).`,
+        );
+      }
+      if (mined.truncated) {
+        notes.push(
+          `${tableName}: FD search stopped after determinants of size ${mined.levelReached}; larger determinants were not explored.`,
+        );
+      }
+    }
+
+    const surrogateFDs = (key: string, attrs: string[]) =>
+      attrs
+        .filter(a => a !== key)
+        .map(a => ({ lhs: [key], rhs: a, confidence: 1, coverage: 1, violations: 0, uniqueGroups: data.length }));
+
+    const runKeyDiscovery = async () => {
+      keyResult = await NormalizationEngine.findKeys(attributes, usedFDs);
+      keyChoice = chooseKey(attributes, data, keyResult.candidateKeys, tableName);
+      if (keyChoice.surrogateAdded) {
+        const extra = surrogateFDs(keyChoice.primaryKey[0], attributes);
+        usedFDs = [...usedFDs, ...extra];
+        functionalDependencies = [...functionalDependencies, ...extra];
+        keyResult = { ...keyResult, candidateKeys: [keyChoice.primaryKey], superkeys: [keyChoice.primaryKey] };
+        notes.push(`${tableName}: ${keyChoice.reason}`);
+      }
+      keyResult.primaryKey = keyChoice.primaryKey;
+      keyResult.keyChoice = keyChoice;
+    };
+
+    if (has('Key Discovery')) {
+      this.throwIfAborted();
+      report('ANALYZE', 'key-discovery', 60, `${tableName}: discovering keys…`);
+      await runKeyDiscovery();
+    }
+
+    if (has('Cardinality Analyzer')) {
+      this.throwIfAborted();
+      report('ANALYZE', 'cardinality-analyzer', 65, `${tableName}: analyzing cardinalities…`);
+      cardinalityAnalysis = await NormalizationEngine.analyzeCardinalities(data);
+    }
+
+    if (has('2NF')) {
+      this.throwIfAborted();
+      report('NORMAL', '2nf', 70, `${tableName}: applying Second Normal Form…`);
+      relations2NF = await NormalizationEngine.apply2NF(data, usedFDs);
+    }
+
+    if (has('3NF')) {
+      this.throwIfAborted();
+      report('NORMAL', '3nf', 75, `${tableName}: synthesizing Third Normal Form…`);
+      relations3NF = await NormalizationEngine.synthesize3NF(usedFDs, keyResult.candidateKeys, data);
+    }
+
+    if (has('BCNF')) {
+      this.throwIfAborted();
+      report('NORMAL', 'bcnf', 78, `${tableName}: decomposing to BCNF…`);
+      let sourceRels = relations3NF.length > 0 ? relations3NF : relations2NF;
+      if (sourceRels.length === 0) {
+        if (!keyChoice) await runKeyDiscovery();
+        sourceRels = [
+          {
+            name: 'MainRelation',
+            attributes,
+            primaryKey: keyChoice!.primaryKey,
+            foreignKeys: [],
+            rows: data,
+            metadata: { rowCount: data.length, attributeTypes: {} },
+          },
+        ];
+      }
+      relationsBCNF = await NormalizationEngine.applyBCNF(sourceRels, usedFDs);
+      // BCNF output replaces the 3NF relation set for every later step (checks, ERD, SQL).
+      relations3NF = relationsBCNF;
+    }
+
+    const finalRelations =
+      relations3NF.length > 0 ? relations3NF : relations2NF.length > 0 ? relations2NF : relations1NF;
+
+    if (has('Lossless Check')) {
+      this.throwIfAborted();
+      report('NORMAL', 'lossless-check', 80, `${tableName}: checking lossless join…`);
+      const chase = await NormalizationEngine.checkLosslessJoin(finalRelations, usedFDs);
+      const instance = verifyLosslessOnData(
+        data,
+        finalRelations.map(r => r.attributes),
+      );
+      losslessCheck = {
+        isLossless: chase && instance.lossless !== false,
+        chaseLossless: chase,
+        instanceLossless: instance.lossless,
+        details: {
+          algorithm: 'Chase (w.r.t. FDs) + re-join of projections (on data)',
+          relationCount: finalRelations.length,
+          fdCount: usedFDs.length,
+          instance,
+        },
+      };
+      if (chase && instance.lossless === false) {
+        notes.push(
+          `${tableName}: the chase accepts the decomposition but re-joining the data produced ` +
+            `${instance.spuriousRows} spurious and ${instance.missingRows} missing rows; some dependencies may be coincidental.`,
+        );
+      }
+    }
+
+    if (has('Dependency Preservation')) {
+      this.throwIfAborted();
+      report('NORMAL', 'dependency-preservation', 85, `${tableName}: checking dependency preservation…`);
+      const details = NormalizationEngine.checkDependencyPreservationDetails(finalRelations, usedFDs);
+      dependencyPreservation = {
+        isPreserved: details.isPreserved,
+        preserved: details.preserved,
+        lost: details.lost,
+        details: details.details,
+        totalDependencies: details.totalDependencies,
+        preservedCount: details.preserved.length,
+        lostCount: details.lost.length,
+        preservationRatio: details.preservationRatio,
+      };
+    }
+
+    attributes = Object.keys(data[0] || {});
+
+    return {
+      rows: data,
+      attributes,
+      atomicityResult,
+      dataProfile,
+      nerTags,
+      functionalDependencies,
+      usedFDs,
+      fdSearch,
+      keyResult,
+      keyChoice,
+      relations1NF,
+      relations2NF,
+      relations3NF,
+      relationsBCNF,
+      cardinalityAnalysis,
+      losslessCheck,
+      dependencyPreservation,
+      notes,
+    };
+  }
+
   // ========== OPTIMIZED HELPER METHODS ==========
 
   /**
@@ -1034,6 +1010,9 @@ export class DatabaseService {
         const chunkText = decoder.decode(value, { stream: true });
         const shouldContinue = parser.feed(chunkText);
         if (!shouldContinue) {
+          this.logger.warn(
+            `${file.name}: row limit reached — analysing the first ${rows.length} rows only; dependencies found may not hold on the rest of the file.`
+          );
           break;
         }
       }
@@ -1081,8 +1060,16 @@ export class DatabaseService {
   private async checkAtomicityProgressive(data: any[], _options: ProcessingOptions): Promise<any> {
     const sampleSize = Math.min(data.length, 5000);
     const sampleData = this.getProgressiveSample(data, sampleSize);
-    
-    return await DataProcessor.checkAtomicity(sampleData);
+
+    const result = await DataProcessor.checkAtomicity(sampleData);
+    const multiValued = Object.keys(result.atomicity).filter(c => result.atomicity[c] === false);
+    if (multiValued.length > 0) {
+      this.logger.warn(
+        `Possible multi-valued column(s): ${multiValued.join(', ')}. ` +
+          `These violate 1NF if each cell holds several values; consider moving them to a child table.`
+      );
+    }
+    return result;
   }
 
   /**
@@ -3167,7 +3154,13 @@ export class DatabaseService {
   }
 
   /**
-   * Multi-CSV Pipeline Processing with NER, Relation Detection, and Consolidated Schema Generation
+   * Multi-CSV pipeline.
+   *
+   * Every file goes through the same analysis routine as a single file and
+   * honours the same selected operations. The per-file results are then
+   * joined into one schema: cross-file foreign keys are detected from the
+   * data, mapped onto the *normalized* relations, and the ER diagram, DDL
+   * and report are produced from that schema.
    */
   async processFiles(
     files: File[],
@@ -3178,310 +3171,228 @@ export class DatabaseService {
     const startTime = Date.now();
     try {
       if (!files || files.length === 0) {
-        throw new Error("No files uploaded for processing.");
+        throw new Error('No files uploaded for processing.');
       }
 
       if (files.length === 1) {
         return await this.processFile(files[0], selectedOperations, onProgress, options);
       }
 
+      this.abortController = new AbortController();
+      this.performanceMonitor.startTime = startTime;
+      this.performanceMonitor.checkpoints = [];
       this.logger.info(`Starting Multi-CSV Pipeline for ${files.length} files...`, { files: files.map(f => f.name) });
 
-      if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
-        try {
-          onProgress?.({
-            phase: 'ANALYZE',
-            operation: 'rust-core-engine',
-            progress: 50,
-            message: 'Delegating heavy-lifting pipeline execution to Rust Core Engine...'
-          });
-
-          const fileInputs = await Promise.all(
-            files.map(async f => ({
-              name: f.name,
-              content: await f.text()
-            }))
-          );
-
-          const rustResult = await invoke<any>('process_multi_csv_rust', {
-            files: fileInputs,
-            selectedOperations
-          });
-
-          if (rustResult && rustResult.success) {
-            return {
-              success: true,
-              isMultiTable: rustResult.is_multi_table,
-              tables: rustResult.tables.map((t: any) => ({
-                tableName: t.table_name,
-                fileName: t.file_name,
-                headers: t.headers,
-                rows: [],
-                rowCount: t.row_count,
-                skippedRows: t.skipped_rows ?? 0,
-                // Rust DTOs are snake_case; normalize for the UI layer.
-                nerTags: (t.ner_tags || []).map((tag: any) => ({
-                  columnName: tag.column_name,
-                  tableName: tag.table_name,
-                  entityType: tag.entity_type,
-                  confidence: tag.confidence,
-                  sampleValues: tag.sample_values || [],
-                  description: tag.description
-                })),
-                functionalDependencies: [],
-                candidateKeys: [],
-                primaryKey: t.primary_key,
-                firstNormalForm: [],
-                secondNormalForm: [],
-                thirdNormalForm: []
-              })),
-              crossTableRelationships: rustResult.cross_table_relationships.map((r: any) => ({
-                sourceTable: r.source_table,
-                sourceColumn: r.source_column,
-                targetTable: r.target_table,
-                targetColumn: r.target_column,
-                cardinality: r.cardinality,
-                confidence: r.confidence,
-                matchRatio: r.match_ratio,
-                detectedBy: r.detected_by
-              })),
-              nerResults: {},
-              stats: {
-                originalRows: rustResult.tables.reduce((acc: number, t: any) => acc + t.row_count, 0),
-                cleanedRows: rustResult.tables.reduce((acc: number, t: any) => acc + t.row_count, 0),
-                attributes: rustResult.tables.reduce((acc: number, t: any) => acc + t.headers.length, 0),
-                functionalDependencies: 0,
-                candidateKeys: 0,
-                relationships: rustResult.cross_table_relationships.length,
-                relations3NF: rustResult.tables.length,
-                processDuration: rustResult.duration
-              },
-              outputFiles: rustResult.output_files.map((f: any) => ({
-                name: f.name,
-                type: f.file_type,
-                description: f.description,
-                content: f.content,
-                size: f.size,
-                category: f.category
-              })),
-              logs: rustResult.logs,
-              erdDiagram: rustResult.erd_diagram,
-              sqlStatements: rustResult.sql_statements,
-              reportMarkdown: rustResult.report_markdown,
-              duration: rustResult.duration,
-              selectedOperations
-            };
-          }
-        } catch (tauriErr) {
-          this.logger.warn('Tauri Rust engine fallback to TypeScript:', tauriErr);
-        }
-      }
-
-      const tables: TableData[] = [];
+      const has = (name: string) => selectedOperations.includes(name);
       const logs: string[] = [`[INFO] Multi-CSV Pipeline initiated for ${files.length} dataset files.`];
+      const tableNames = new IdentifierRegistry();
+      const analysed: Array<{ tableName: string; fileName: string; analysis: TableAnalysis }> = [];
 
-      // 1. Process Each CSV File
+      // ---- 1. Per-file analysis (0-70%) ------------------------------------
       for (let idx = 0; idx < files.length; idx++) {
+        this.throwIfAborted();
         const file = files[idx];
-        const tableName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
+        const lo = 3 + (idx / files.length) * 67;
+        const hi = 3 + ((idx + 1) / files.length) * 67;
+        const tableName = tableNames.fresh(file.name.replace(/\.[^/.]+$/, '').toLowerCase());
 
         onProgress?.({
           phase: 'PREP',
           operation: 'csv-loader',
-          progress: Math.floor(10 + (idx / files.length) * 25),
-          message: `Processing table ${idx + 1}/${files.length}: ${file.name}...`
+          progress: Math.round(lo),
+          message: `Loading table ${idx + 1}/${files.length}: ${file.name}…`,
         });
 
         const csvData = await this.processCSVWithStreaming(file, options);
         const rows = csvData.data || [];
-        const headers = Object.keys(rows[0] || {});
-
-        // Clean & Profile Data
-        const cleanedRows = await DataProcessor.clean(rows);
-        const fds = await NormalizationEngine.mineFunctionalDependencies(cleanedRows, options.maxLhsSize || 4);
-        const keyRes = await NormalizationEngine.findKeys(headers, fds);
-        const primaryKey = keyRes.candidateKeys[0] || [headers[0] || 'id'];
-
-        // Decompositions for this table
-        const res1NFData = await NormalizationEngine.apply1NF(cleanedRows);
-        const res2NF = await NormalizationEngine.apply2NF(res1NFData, fds);
-        let res3NF = await NormalizationEngine.apply3NF(res2NF, fds);
-        let resBCNF: any[] = [];
-        if (selectedOperations.includes('BCNF')) {
-          resBCNF = await NormalizationEngine.applyBCNF(res3NF, fds);
-          res3NF = resBCNF;
+        if (rows.length === 0) {
+          logs.push(`[WARN] ${file.name} has no data rows and was skipped.`);
+          continue;
         }
 
-        const relation1NFSchema = [{
-          name: `${tableName}_1NF`,
-          attributes: headers,
-          primaryKey,
-          foreignKeys: [],
-          rows: res1NFData,
-          metadata: { rowCount: res1NFData.length, attributeTypes: {} }
-        }];
-
-        tables.push({
+        const analysis = await this.analyzeRows({
+          rows,
+          selectedOperations,
+          options,
           tableName,
-          fileName: file.name,
-          headers,
-          rows: cleanedRows,
-          rowCount: cleanedRows.length,
-          nerTags: [],
-          functionalDependencies: fds,
-          candidateKeys: keyRes.candidateKeys.map((k: string[]) => ({ attributes: k, isMinimal: true })),
+          startTime,
+          onProgress,
+          mapProgress: p => lo + (p / 100) * (hi - lo),
+        });
+        analysed.push({ tableName, fileName: file.name, analysis });
+        for (const note of analysis.notes) logs.push(`[WARN] ${note}`);
+        logs.push(
+          `[SUCCESS] Table '${tableName}' (${file.name}): ${analysis.rows.length} rows, ` +
+            `${analysis.attributes.length} columns, ${analysis.fdSearch ? analysis.fdSearch.exact : 0} exact FDs.`
+        );
+      }
+
+      if (analysed.length === 0) {
+        throw new Error('None of the uploaded files contained data rows.');
+      }
+
+      // ---- 2. Table summaries ------------------------------------------------
+      const tables: TableData[] = analysed.map(({ tableName, fileName, analysis }) => {
+        const primaryKey =
+          analysis.keyChoice?.primaryKey ??
+          (analysis.keyResult?.primaryKey as string[] | undefined) ??
+          this.suggestPrimaryKey(analysis.rows, analysis.attributes);
+        return {
+          tableName,
+          fileName,
+          headers: analysis.attributes,
+          rows: analysis.rows,
+          rowCount: analysis.rows.length,
+          nerTags: analysis.nerTags,
+          functionalDependencies: analysis.functionalDependencies,
+          candidateKeys: (analysis.keyResult?.candidateKeys ?? []).map((k: string[]) => ({
+            attributes: k,
+            isMinimal: true,
+          })),
           primaryKey,
-          firstNormalForm: relation1NFSchema,
-          secondNormalForm: res2NF,
-          thirdNormalForm: res3NF,
-          bcnf: resBCNF
-        });
+          firstNormalForm: analysis.relations1NF,
+          secondNormalForm: analysis.relations2NF,
+          thirdNormalForm: analysis.relations3NF,
+          bcnf: analysis.relationsBCNF,
+          keyReason: analysis.keyChoice?.reason,
+          fdSearch: analysis.fdSearch ?? undefined,
+          losslessCheck: analysis.losslessCheck,
+          dependencyPreservation: analysis.dependencyPreservation,
+          notes: analysis.notes,
+        };
+      });
 
-        logs.push(`[SUCCESS] Table '${tableName}' (${file.name}): ${cleanedRows.length} rows, ${headers.length} columns, ${fds.length} FDs.`);
+      const nerResults: Record<string, any[]> = {};
+      tables.forEach(t => {
+        nerResults[t.tableName] = t.nerTags;
+      });
+
+      // ---- 3. Cross-file foreign keys (70-80%) -------------------------------
+      let crossTableRelationships: ReturnType<typeof RelationDetectorService.detectCrossTableRelationships> = [];
+      if (has('Relation Detector')) {
+        this.throwIfAborted();
+        onProgress?.({
+          phase: 'ANALYZE',
+          operation: 'relation-detector',
+          progress: 72,
+          message: 'Detecting foreign keys across files…',
+        });
+        crossTableRelationships = RelationDetectorService.detectCrossTableRelationships(tables);
+        logs.push(`[SUCCESS] Relation Detector identified ${crossTableRelationships.length} foreign key relationship(s).`);
       }
 
-      // 2. Perform Named Entity Recognition (NER)
-      onProgress?.({
-        phase: 'PREP',
-        operation: 'ner-classifier',
-        progress: 45,
-        message: 'Running Named Entity Recognition (NER) across tables...'
-      });
-
-      const nerResults = RelationDetectorService.performNER(tables);
-      tables.forEach(t => {
-        t.nerTags = nerResults[t.tableName] || [];
-      });
-      logs.push(`[SUCCESS] NER Entity Classification completed across ${tables.length} tables.`);
-
-      // 3. Detect Cross-Table Relationships & Foreign Keys
-      onProgress?.({
-        phase: 'ANALYZE',
-        operation: 'relation-detector',
-        progress: 65,
-        message: 'Detecting cross-table relationships and foreign key constraints...'
-      });
-
-      const crossTableRelationships = RelationDetectorService.detectCrossTableRelationships(tables);
-      logs.push(`[SUCCESS] Relation Detector identified ${crossTableRelationships.length} foreign key relationships.`);
-
-      // 4. Generate Multi-Table Mermaid ERD
-      let erdContent = 'erDiagram\n';
-      tables.forEach(t => {
-        erdContent += `  ${t.tableName} {\n`;
-        t.headers.forEach(h => {
-          const isPk = t.primaryKey.includes(h);
-          erdContent += `    string ${h} ${isPk ? 'PK' : ''}\n`;
-        });
-        erdContent += `  }\n`;
-      });
-
-      crossTableRelationships.forEach(r => {
-        const cardSymbol = r.cardinality === '1:1' ? '||--||' : r.cardinality === 'N:M' ? '}}--{{' : '||--|{';
-        erdContent += `  ${r.sourceTable} ${cardSymbol} ${r.targetTable} : "${r.sourceColumn}->${r.targetColumn}"\n`;
-      });
-
-      // 5. Generate Consolidated Multi-Table SQL DDL
-      const dialect: SQLDialect = (options as any).sqlDialect || 'sqlite';
-      const decomposedRelations: DecomposedRelation[] = tables.map(t => ({
-        name: t.tableName,
-        attributes: t.headers,
-        primaryKey: t.primaryKey,
-        foreignKeys: crossTableRelationships
-          .filter(r => r.sourceTable === t.tableName)
-          .map(r => ({
-            attributes: [r.sourceColumn],
-            references: r.targetTable,
-            referencedKey: [r.targetColumn],
-            cardinality: r.cardinality
-          }))
-      }));
-      const sqlDDL = DatabaseService.generateDDL(decomposedRelations, dialect);
-
-      // 6. Multi-Table Markdown Report
-      let reportMarkdown = `# Multi-CSV Database Normalization Report\n\n`;
-      reportMarkdown += `**Processed Files**: ${files.map(f => f.name).join(', ')}\n`;
-      reportMarkdown += `**Total Tables**: ${tables.length}\n`;
-      reportMarkdown += `**Cross-Table Foreign Keys Detected**: ${crossTableRelationships.length}\n\n`;
-
-      reportMarkdown += `## 1. Table Schema Overview\n\n`;
-      tables.forEach(t => {
-        reportMarkdown += `### Table \`${t.tableName}\` (${t.rowCount} rows)\n`;
-        reportMarkdown += `- **Columns**: ${t.headers.join(', ')}\n`;
-        reportMarkdown += `- **Primary Key**: ${t.primaryKey.join(', ')}\n`;
-        reportMarkdown += `- **Discovered FDs**: ${t.functionalDependencies.length}\n\n`;
-      });
-
-      reportMarkdown += `## 2. Detected Cross-Table Relationships\n\n`;
-      if (crossTableRelationships.length > 0) {
-        reportMarkdown += `| Source Table | Source Column | Target Table | Target Column | Cardinality | Confidence |\n`;
-        reportMarkdown += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
-        crossTableRelationships.forEach(r => {
-          reportMarkdown += `| \`${r.sourceTable}\` | \`${r.sourceColumn}\` | \`${r.targetTable}\` | \`${r.targetColumn}\` | \`${r.cardinality}\` | ${(r.confidence * 100).toFixed(1)}% |\n`;
-        });
-      } else {
-        reportMarkdown += `*No direct cross-table foreign key relationships detected automatically.*\n`;
+      // ---- 4. One schema from the normalized relations -----------------------
+      const schema = buildSchema(
+        tables.map(t => ({
+          tableName: t.tableName,
+          headers: t.headers,
+          rows: t.rows,
+          primaryKey: t.primaryKey,
+          relations: t.thirdNormalForm.length ? t.thirdNormalForm : t.secondNormalForm,
+        })),
+        crossTableRelationships
+      );
+      for (const u of schema.unplaced) {
+        logs.push(`[WARN] Foreign key ${u.link.sourceTable}.${u.link.sourceColumn} → ${u.link.targetTable}.${u.link.targetColumn} skipped: ${u.reason}.`);
       }
 
-      const outputFiles: OutputFile[] = [
-        {
+      // ---- 5. Outputs (80-100%) ---------------------------------------------
+      const dialect: SQLDialect = options.sqlDialect || 'sqlite';
+      let erdContent = '';
+      if (has('ERD Generator')) {
+        onProgress?.({ phase: 'OUTPUT', operation: 'erd-generator', progress: 85, message: 'Generating ER diagram…' });
+        erdContent = emitMermaidErd(schema);
+      }
+
+      let sqlDDL = '';
+      if (has('SQL Generator')) {
+        onProgress?.({ phase: 'OUTPUT', operation: 'sql-generator', progress: 92, message: 'Generating SQL DDL…' });
+        sqlDDL = DatabaseService.generateDDL(toDecomposedRelations(schema), dialect);
+      }
+
+      onProgress?.({ phase: 'OUTPUT', operation: 'report-generator', progress: 97, message: 'Writing report…' });
+      const reportMarkdown = buildMultiTableReport({
+        tables: analysed.map(a => ({
+          tableName: a.tableName,
+          fileName: a.fileName,
+          rowCount: a.analysis.rows.length,
+          headers: a.analysis.attributes,
+          analysis: a.analysis,
+        })),
+        links: crossTableRelationships,
+        schema,
+        dialect,
+        selectedOperations,
+      });
+
+      const outputFiles: OutputFile[] = [];
+      if (erdContent) {
+        outputFiles.push({
           name: 'multi_table_erd.mermaid',
           type: 'mermaid',
-          description: 'Multi-Table ERD Diagram with Foreign Keys',
+          description: 'ER diagram of the normalized relations with foreign keys',
           content: erdContent,
           size: erdContent.length,
-          category: 'ERD'
-        },
-        {
+          category: 'ERD',
+        });
+      }
+      if (sqlDDL) {
+        outputFiles.push({
           name: 'consolidated_schema.sql',
           type: 'sql',
-          description: 'Consolidated Multi-Table SQL DDL Script',
+          description: `Consolidated ${dialect} DDL for the normalized relations`,
           content: sqlDDL,
           size: sqlDDL.length,
-          category: 'SQL'
-        },
-        {
-          name: 'multi_csv_normalization_report.md',
-          type: 'markdown',
-          description: 'Multi-CSV Normalization & Relationship Analysis Report',
-          content: reportMarkdown,
-          size: reportMarkdown.length,
-          category: 'Report'
-        }
-      ];
+          category: 'SQL',
+        });
+      }
+      outputFiles.push({
+        name: 'multi_csv_normalization_report.md',
+        type: 'markdown',
+        description: 'Per-table analysis, relationships and final schema',
+        content: reportMarkdown,
+        size: reportMarkdown.length,
+        category: 'Report',
+      });
 
       const totalDuration = `${((Date.now() - startTime) / 1000).toFixed(2)}s`;
-
       onProgress?.({
         phase: 'OUTPUT',
         operation: 'report-generator',
         progress: 100,
-        message: 'Multi-CSV pipeline completed successfully!'
+        message: 'Multi-CSV pipeline completed successfully!',
       });
 
+      const allFDs = tables.reduce((n, t) => n + t.functionalDependencies.length, 0);
       return {
         success: true,
         isMultiTable: true,
         tables,
         crossTableRelationships,
         nerResults,
+        relations: schema.relations,
+        relations3NF: schema.relations,
+        relationships: schema.relations.flatMap(r =>
+          r.foreignKeys.map(fk => ({ source: r.name, target: fk.references, cardinality: fk.cardinality }))
+        ),
         stats: {
-          originalRows: tables.reduce((acc, t) => acc + t.rowCount, 0),
-          cleanedRows: tables.reduce((acc, t) => acc + t.rowCount, 0),
-          attributes: tables.reduce((acc, t) => acc + t.headers.length, 0),
-          functionalDependencies: tables.reduce((acc, t) => acc + t.functionalDependencies.length, 0),
-          candidateKeys: tables.reduce((acc, t) => acc + t.candidateKeys.length, 0),
+          originalRows: tables.reduce((n, t) => n + t.rowCount, 0),
+          cleanedRows: tables.reduce((n, t) => n + t.rowCount, 0),
+          attributes: tables.reduce((n, t) => n + t.headers.length, 0),
+          functionalDependencies: allFDs,
+          candidateKeys: tables.reduce((n, t) => n + t.candidateKeys.length, 0),
           relationships: crossTableRelationships.length,
-          relations3NF: tables.reduce((acc, t) => acc + t.thirdNormalForm.length, 0),
-          processDuration: totalDuration
+          relations3NF: schema.relations.length,
+          processDuration: totalDuration,
         },
         outputFiles,
         logs,
         erdDiagram: erdContent,
+        erdContent,
         sqlStatements: sqlDDL,
         reportMarkdown,
         duration: totalDuration,
-        selectedOperations
+        selectedOperations,
       };
     } catch (err: any) {
       this.logger.error('Multi-CSV Pipeline error', err);
@@ -3492,7 +3403,7 @@ export class DatabaseService {
         outputFiles: [],
         logs: [`[ERROR] ${err?.message || 'Pipeline execution failed.'}`],
         duration: totalDuration,
-        stats: { processDuration: totalDuration }
+        stats: { processDuration: totalDuration },
       };
     }
   }
