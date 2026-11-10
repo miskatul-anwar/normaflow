@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (sidebar)
+- The operations sidebar is now a list: every operation with its name and a one-line description, grouped by phase with per-phase and overall progress (`8/19`), and a filter box. Narrowing it gives an icon-only rail with tooltips; widths from 64 to 360 px; arrow keys move between operations.
+- Each operation shows what a click will do: added (check mark), ready, or locked (a prerequisite is missing). Clicking a locked step now adds the steps it needs, in order, instead of failing with an error: "Added 3NF with 7 prerequisites: …".
+- The default sidebar width and its saved setting changed, so old saved widths no longer apply.
+- Removed about 425 lines of the old icon-grid and tooltip CSS.
+
 ### Removed
 - The built-in sample dataset. Nothing is preloaded any more, so results always come from files you upload. Run, Full 3NF and Output now say "Upload a CSV file" instead of silently analysing four sample rows.
 

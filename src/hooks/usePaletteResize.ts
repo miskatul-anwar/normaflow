@@ -1,26 +1,26 @@
 import { useCallback, useEffect, useState } from 'react';
 
-const STORAGE_KEY_WIDTH = 'normaflow_palette_width';
+// v2: the sidebar is now a list; widths saved by the old icon grid would open it as a thin rail.
+const STORAGE_KEY_WIDTH = 'normaflow_palette_width_v2';
 const STORAGE_KEY_COLLAPSED = 'normaflow_palette_collapsed';
-export const DEFAULT_PALETTE_WIDTH = 84;
-export const MIN_PALETTE_WIDTH = 70;
-export const COLLAPSE_THRESHOLD = 45;
+/** Default width: a list with names and one-line descriptions. */
+export const DEFAULT_PALETTE_WIDTH = 248;
+/** Narrowest width; this is the icon-only rail. */
+export const MIN_PALETTE_WIDTH = 64;
+/** From this width up the sidebar shows the list; below it, the icon rail. */
+export const LIST_MODE_MIN_WIDTH = 168;
+export const MAX_PALETTE_WIDTH = 360;
+export const COLLAPSE_THRESHOLD = 40;
 
-/** Calculate number of button columns dynamically that fit in the palette width. */
-export function calculatePaletteColumns(width: number): number {
-  const inner = width - 18; // 16px padding + 2px border
-  const itemW = 46;
-  const gap = 9.6; // 0.6rem at 16px font
-  if (inner < itemW) return 1;
-  return Math.max(1, Math.floor((inner + gap) / (itemW + gap)));
-}
+/** True when the sidebar is wide enough to show names and descriptions. */
+export const isListMode = (width: number): boolean => width >= LIST_MODE_MIN_WIDTH;
 
 /** Calculate clamped width and collapsed flag given a target drag position. */
 export function clampPaletteWidth(targetWidth: number, windowWidth = 1200): { width: number; isCollapsed: boolean } {
   if (targetWidth < COLLAPSE_THRESHOLD) {
     return { width: DEFAULT_PALETTE_WIDTH, isCollapsed: true };
   }
-  const maxWidth = Math.max(300, windowWidth - 160);
+  const maxWidth = Math.min(MAX_PALETTE_WIDTH, Math.max(MIN_PALETTE_WIDTH, windowWidth - 160));
   const clamped = Math.min(Math.max(MIN_PALETTE_WIDTH, targetWidth), maxWidth);
   return { width: clamped, isCollapsed: false };
 }
@@ -106,7 +106,7 @@ export function usePaletteResize(): UsePaletteResizeResult {
         if (targetWidth < COLLAPSE_THRESHOLD) {
           setIsCollapsed(true);
         } else {
-          const maxWidth = Math.max(300, window.innerWidth - 160);
+          const maxWidth = Math.min(MAX_PALETTE_WIDTH, Math.max(MIN_PALETTE_WIDTH, window.innerWidth - 160));
           const clamped = Math.min(Math.max(MIN_PALETTE_WIDTH, targetWidth), maxWidth);
           setIsCollapsed(false);
           setWidth(clamped);

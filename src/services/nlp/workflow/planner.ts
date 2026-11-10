@@ -51,3 +51,19 @@ export function planFor(targets: string[], exclude: ReadonlySet<string> = new Se
   const plan = [...closure].sort((a, b) => OPERATIONS[a].order - OPERATIONS[b].order);
   return { plan, addedAsDependencies: plan.filter(n => !targets.includes(n)) };
 }
+
+/**
+ * What clicking `label` on the palette should add when some prerequisites are
+ * missing: the not-yet-placed part of its dependency closure, in valid order.
+ * The canvas accepts any operation whose dependencies are placed (it only warns
+ * about phase order), so this never fails.
+ */
+export function prerequisitesToAdd(label: string, placed: readonly string[]): { add: string[]; prerequisites: string[] } {
+  const add = planFor([label]).plan.filter(p => !placed.includes(p));
+  return { add, prerequisites: add.filter(p => p !== label) };
+}
+
+/** True when every dependency of `label` is already on the canvas. */
+export function dependenciesMet(label: string, placed: readonly string[]): boolean {
+  return (OPERATIONS[label]?.dependencies ?? []).every(d => placed.includes(d));
+}

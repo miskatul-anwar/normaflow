@@ -15,6 +15,7 @@ import { NLCommandBar } from './components/nl/NLCommandBar';
 import { WorkspaceTabBar } from './components/workflow/WorkspaceTabBar';
 import { useWorkspaceTabs, type TabStatus } from './hooks/useWorkspaceTabs';
 import { activeSurface } from './utils/tabColors';
+import { prerequisitesToAdd } from './services/nlp/workflow/planner';
 import { usePaletteResize } from './hooks/usePaletteResize';
 import { useWorkflowGraph, type WorkflowSnapshot, buildChainEdges } from './hooks/useWorkflowGraph';
 import { Logger } from './services/utils/logger';
@@ -238,6 +239,18 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
     onStatus(tabId, { running: isProcessing, operations: operationCount });
   }, [isProcessing, onStatus, operationCount, tabId]);
 
+  // Clicking a locked palette item adds the steps it needs first, in order.
+  const addWithPrerequisites = useCallback(
+    (label: string) => {
+      const { add, prerequisites } = prerequisitesToAdd(label, graph.placedOperationLabels);
+      graph.addOperationsBatch(add);
+      if (prerequisites.length > 0) {
+        logMessage('info', `Added ${label} with ${prerequisites.length} prerequisite${prerequisites.length === 1 ? '' : 's'}: ${prerequisites.join(', ')}`, 'WORKFLOW');
+      }
+    },
+    [graph, logMessage],
+  );
+
   const palette = usePaletteResize();
 
   return (
@@ -272,6 +285,7 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
         <OperationPalette
           activeOperations={graph.placedOperationLabels}
           onAdd={graph.tryAddOperation}
+          onAddWithPrerequisites={addWithPrerequisites}
           width={palette.width}
           onCollapse={palette.toggleCollapse}
           onResetWidth={palette.resetWidth}
