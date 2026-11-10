@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { FileOutput, FolderOpen, Play, Redo2, RotateCcw, Save, Undo2, Upload, Zap } from "lucide-react";
+import { FileOutput, FolderOpen, Play, Redo2, RotateCcw, Save, Undo2, Upload } from "lucide-react";
 import { Button, IconButton } from "@/components/ui/button";
 import { INPUT_ACCEPT } from "@/services/processors/spreadsheetProcessor";
 
@@ -9,7 +9,6 @@ interface HeadingProps {
   canUndo?: boolean;
   canRedo?: boolean;
   onRun?: () => void;
-  onRunAll?: () => void;
   onFileUpload?: (files: File[]) => void;
   /** Number of data files the user has uploaded. */
   uploadedFileCount?: number;
@@ -26,7 +25,6 @@ export default function Heading({
   canUndo,
   canRedo,
   onRun,
-  onRunAll,
   onFileUpload,
   uploadedFileCount = 0,
   onViewOutput,
@@ -129,10 +127,6 @@ export default function Heading({
         >
           {!isRunning && <Play />}
           <span>Run</span>
-        </Button>
-        <Button onClick={onRunAll} disabled={isRunning} title="Build and run the full 3NF pipeline" aria-label="Build and run the full 3NF pipeline">
-          <Zap />
-          {label("Full 3NF")}
         </Button>
         <Button onClick={onViewOutput} title="View the generated ERD, SQL and reports" aria-label="View results" className="relative">
           <FileOutput />
