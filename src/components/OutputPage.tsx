@@ -18,13 +18,16 @@ import { SVGPreviewSection } from './output/SVGPreviewSection';
 import { CodeViewer } from './output/CodeViewer';
 import { Button } from '@/components/ui/button';
 import type { WorkspaceTab } from '../hooks/useWorkspaceTabs';
-import { activeSurface } from '../utils/tabColors';
 import { loadCachedResult, saveCachedResult } from '../utils/resultCache';
 
-export default function OutputPage({ tabs = [] }: { tabs?: WorkspaceTab[] }) {
+export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?: WorkspaceTab[] }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { results, tabId } = location.state || {};
+  // Fresh results are passed along when navigating from a run; they only apply to the tab that ran.
+  // Results are untyped throughout this page (the engine's result shape differs for one file and many).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const state = location.state as { results?: any; tabId?: string } | null;
+  const results = state?.tabId === tabId ? state.results : undefined;
   /** The workspace these results came from, so several open tabs cannot be confused. */
   const sourceTab = tabs.find(t => t.id === tabId) ?? null;
 
@@ -221,16 +224,16 @@ export default function OutputPage({ tabs = [] }: { tabs?: WorkspaceTab[] }) {
 
   if (!safeResults) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="nf-output-page bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl border border-gray-200 p-8 max-w-md w-full text-center shadow-sm">
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600 mx-auto mb-4">
+          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 mx-auto mb-4">
             <Activity className="w-6 h-6" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', sans-serif" }}>
-            No Output Available
+            {sourceTab ? `No results yet for “${sourceTab.title}”` : 'No Output Available'}
           </h3>
           <p className="text-gray-600 mb-6" style={{ fontFamily: "'Inter', sans-serif" }}>
-            Please execute a normalization workflow from the main application before viewing outputs.
+            Run this workspace's pipeline to see its results here. Use the tabs above to switch to another workspace.
           </p>
           <Button variant="primary" className="w-full" onClick={() => navigate('/')}>
             <ArrowLeft />
@@ -242,12 +245,9 @@ export default function OutputPage({ tabs = [] }: { tabs?: WorkspaceTab[] }) {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
+    <div className="nf-output-page flex flex-col bg-gray-100 overflow-hidden">
       {/* Top Header */}
-      <header
-        className="bg-white border-b border-gray-200 px-6 py-3.5 flex items-center justify-between flex-shrink-0"
-        style={sourceTab?.color ? { background: activeSurface(sourceTab.color), borderBottomColor: sourceTab.color, borderBottomWidth: 2 } : undefined}
-      >
+      <header className="nf-output-header border-b border-gray-200 px-6 py-3.5 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
           <Button onClick={() => navigate('/')} title="Return to the workflow canvas" aria-label="Back to the workflow canvas">
             <ArrowLeft />

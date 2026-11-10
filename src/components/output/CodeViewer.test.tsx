@@ -4,6 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { CodeViewer } from './CodeViewer';
 import OutputPage from '../OutputPage';
+import { clearCachedResult } from '../../utils/resultCache';
 
 afterEach(cleanup);
 
@@ -72,7 +73,7 @@ describe('OutputPage workspace badge', () => {
   ];
   const at = (tabId: string) => (
     <MemoryRouter initialEntries={[{ pathname: '/output', state: { results, tabId } }]}>
-      <OutputPage tabs={tabs} />
+      <OutputPage tabId={tabId} tabs={tabs} />
     </MemoryRouter>
   );
 
@@ -90,5 +91,17 @@ describe('OutputPage workspace badge', () => {
   it('shows no badge when the tab no longer exists', () => {
     render(at('gone'));
     expect(screen.queryByText('Workspace')).toBeNull();
+  });
+
+  it('never shows one tab\'s fresh results under another tab', () => {
+    // Results were passed for t2, but t1 is the active tab and has nothing cached.
+    clearCachedResult('t1');
+    render(
+      <MemoryRouter initialEntries={[{ pathname: '/output', state: { results, tabId: 't2' } }]}>
+        <OutputPage tabId="t1" tabs={tabs} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(/No results yet for “Workspace 1”/)).toBeTruthy();
+    expect(screen.queryByText('SELECT 1;')).toBeNull();
   });
 });
