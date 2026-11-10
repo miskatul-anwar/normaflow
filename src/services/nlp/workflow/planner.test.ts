@@ -5,7 +5,7 @@ import { renderHook, act } from '@testing-library/react';
 import { OPERATIONS, ALL_OPERATION_NAMES } from '../../../config/operations';
 import { useWorkflowGraph } from '../../../hooks/useWorkflowGraph';
 import { validateSequence } from '../../../utils/workflowValidation';
-import { planFor, PlanConflictError } from './planner';
+import { planFor, PlanConflictError, prerequisitesToAdd, dependenciesMet } from './planner';
 
 const build = (plan: string[]) => {
   const logs: Array<[string, string]> = [];
@@ -61,6 +61,39 @@ describe('planner', () => {
         expect(validateSequence(result.current.nodes).isValid).toBe(true);
       }),
       { numRuns: 60 },
+    );
+  });
+});
+
+describe('palette helpers', () => {
+  it('dependenciesMet reflects what is on the canvas', () => {
+    expect(dependenciesMet('CSV Data Loader', [])).toBe(true);
+    expect(dependenciesMet('1NF', [])).toBe(false);
+    expect(dependenciesMet('1NF', ['Data Type Profiler'])).toBe(true);
+  });
+
+  it('prerequisitesToAdd lists only what is missing, in add order, ending with the target', () => {
+    expect(prerequisitesToAdd('1NF', []).add).toEqual(['CSV Data Loader', 'Data Cleaner', 'Atomicity Checker', 'Data Type Profiler', '1NF']);
+    const r = prerequisitesToAdd('1NF', ['CSV Data Loader', 'Data Cleaner']);
+    expect(r.add).toEqual(['Atomicity Checker', 'Data Type Profiler', '1NF']);
+    expect(r.prerequisites).toEqual(['Atomicity Checker', 'Data Type Profiler']);
+    expect(prerequisitesToAdd('Data Cleaner', ['CSV Data Loader'])).toEqual({ add: ['Data Cleaner'], prerequisites: [] });
+  });
+
+  it('property: from ANY canvas the canvas itself can reach, clicking any operation works without errors', () => {
+    fc.assert(
+      fc.property(fc.subarray(ALL_OPERATION_NAMES, { minLength: 0 }), fc.constantFrom(...ALL_OPERATION_NAMES), (seed, target) => {
+        // Build a valid canvas from a random set of operations (their closure, in order).
+        const start = seed.length ? planFor(seed).plan : [];
+        const { result, logs } = build(start);
+        if (result.current.placedOperationLabels.includes(target)) return;
+        const { add } = prerequisitesToAdd(target, result.current.placedOperationLabels);
+        act(() => result.current.addOperationsBatch(add));
+        const errors = logs.filter(l => l[0] === 'error');
+        expect(errors, `${start.join(',')} + ${target}: ${JSON.stringify(errors)}`).toEqual([]);
+        expect(result.current.placedOperationLabels).toContain(target);
+      }),
+      { numRuns: 80 },
     );
   });
 });
