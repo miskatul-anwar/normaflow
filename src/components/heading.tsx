@@ -83,20 +83,9 @@ export default function Heading({
 
   return (
     <div className="flex items-center justify-between w-full h-full px-3 py-1.5 relative z-30">
-      {/* Brand & Logo Section */}
+      {/* Brand: icon only */}
       <div className="flex items-center gap-2.5">
-        <img src="/icon.png" alt="NormaFlow Logo" className="h-7 w-7 object-contain drop-shadow-xs" />
-        <div className="flex flex-col">
-          <span
-            className="text-lg font-bold tracking-tight text-gray-900 leading-tight"
-            style={{ fontFamily: "'Inter', sans-serif" }}
-          >
-            NormaFlow
-          </span>
-          <span className="text-[10px] text-gray-500 font-medium tracking-wide uppercase">
-            Relational Normalization Engine
-          </span>
-        </div>
+        <img src="/icon.png" alt="NormaFlow" title="NormaFlow" className="h-9 w-9 object-contain drop-shadow-xs" />
       </div>
 
       {/* Center Action Group: Undo & Redo */}

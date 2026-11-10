@@ -55,6 +55,18 @@ describe('useWorkspaceTabs', () => {
     expect(result.current.tabs[0].title).toBe('My analysis');
   });
 
+  it('sets and clears a tab colour, and ignores invalid values', () => {
+    const { result } = renderHook(() => useWorkspaceTabs());
+    expect(result.current.tabs[0].color).toBeNull();
+    act(() => result.current.setTabColor('t1', '#2563eb'));
+    expect(result.current.tabs[0].color).toBe('#2563eb');
+    act(() => result.current.setTabColor('t1', 'red'));
+    act(() => result.current.setTabColor('t1', 'url(javascript:1)'));
+    expect(result.current.tabs[0].color).toBe('#2563eb');
+    act(() => result.current.setTabColor('t1', null));
+    expect(result.current.tabs[0].color).toBeNull();
+  });
+
   it('cycles with wrap-around', () => {
     const { result } = renderHook(() => useWorkspaceTabs());
     act(() => void result.current.addTab());
@@ -67,11 +79,11 @@ describe('useWorkspaceTabs', () => {
 
 describe('WorkspaceTabBar', () => {
   const tabs = [
-    { id: 'a', title: 'Alpha', autoTitle: true },
-    { id: 'b', title: 'Beta', autoTitle: true },
+    { id: 'a', title: 'Alpha', autoTitle: true, color: null },
+    { id: 'b', title: 'Beta', autoTitle: true, color: null },
   ];
   const setup = () => {
-    const h = { onSelect: vi.fn(), onAdd: vi.fn(), onClose: vi.fn(), onRename: vi.fn() };
+    const h = { onSelect: vi.fn(), onAdd: vi.fn(), onClose: vi.fn(), onRename: vi.fn(), onColor: vi.fn() };
     render(<WorkspaceTabBar tabs={tabs} activeId="a" status={{ b: { running: true, operations: 3 } }} {...h} />);
     return h;
   };
@@ -123,6 +135,37 @@ describe('WorkspaceTabBar', () => {
 
     fireEvent.contextMenu(screen.getByRole('tab', { name: /Alpha/ }));
     fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('picks a preset colour from the dot and closes the picker', () => {
+    const h = setup();
+    fireEvent.click(screen.getByRole('button', { name: 'Color Alpha' }));
+    expect(screen.getByRole('dialog', { name: 'Tab color' })).toBeTruthy();
+    expect(h.onSelect).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Violet' }));
+    expect(h.onColor).toHaveBeenCalledWith('a', '#7c3aed');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('takes a custom colour, clears with None, and closes on Escape', () => {
+    const h = setup();
+    fireEvent.click(screen.getByRole('button', { name: 'Color Beta' }));
+    fireEvent.change(screen.getByLabelText('Custom color'), { target: { value: '#123456' } });
+    expect(h.onColor).toHaveBeenCalledWith('b', '#123456');
+    fireEvent.click(screen.getByRole('button', { name: 'None' }));
+    expect(h.onColor).toHaveBeenLastCalledWith('b', null);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Color Alpha' }));
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('opens the picker from the right-click menu', () => {
+    setup();
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /Alpha/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Color…' }));
+    expect(screen.getByRole('dialog', { name: 'Tab color' })).toBeTruthy();
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
