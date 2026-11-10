@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { CiRedo, CiUndo } from "react-icons/ci";
 import { FaCode, FaUpload } from "react-icons/fa";
 import { MdOutlineOutput } from "react-icons/md";
@@ -13,7 +13,10 @@ interface HeadingProps {
   onRun?: () => void;
   onRunAll?: () => void;
   onFileUpload?: (files: File[]) => void;
+  /** Files the user uploaded (0 while the bundled sample is in use). */
   uploadedFileCount?: number;
+  /** True while the built-in sample dataset is the active input. */
+  usingSample?: boolean;
   onViewOutput?: () => void;
   onSaveState?: () => void;
   onLoadState?: (file: File) => void;
@@ -30,6 +33,7 @@ export default function Heading({
   onRunAll,
   onFileUpload,
   uploadedFileCount = 0,
+  usingSample = false,
   onViewOutput,
   onSaveState,
   onLoadState,
@@ -38,7 +42,6 @@ export default function Heading({
 }: HeadingProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const loadStateInputRef = useRef<HTMLInputElement>(null);
-  const [fileCount, setFileCount] = useState<number>(uploadedFileCount);
 
   const handleUploadClick = () => {
     inputRef.current?.click();
@@ -51,7 +54,6 @@ export default function Heading({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
     if (files.length > 0) {
-      setFileCount(files.length);
       onFileUpload?.(files);
     }
     e.target.value = "";
@@ -74,7 +76,10 @@ export default function Heading({
     window.location.reload();
   };
 
-  const activeFiles = fileCount || uploadedFileCount;
+  const activeFiles = uploadedFileCount;
+  const uploadTitle = usingSample
+    ? 'Using the built-in sample data. Click to upload your own CSV files.'
+    : `${activeFiles} file${activeFiles === 1 ? '' : 's'} loaded. Click to upload different CSV files.`;
 
   return (
     <div className="flex items-center justify-between w-full h-full px-3 py-1.5 relative z-30">
@@ -161,7 +166,7 @@ export default function Heading({
           className="w-9 h-9 rounded-xl bg-white/90 border border-gray-200/80 text-gray-700 hover:text-teal-600 hover:border-teal-400 flex items-center justify-center transition-all shadow-xs active:scale-95 relative disabled:opacity-50"
           onClick={handleUploadClick}
           disabled={isRunning}
-          title="Upload CSV Datasets"
+          title={uploadTitle}
           aria-label="Upload CSV Datasets"
         >
           <FaUpload className="h-4 w-4" />

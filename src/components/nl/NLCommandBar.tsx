@@ -11,12 +11,6 @@ const PLACEHOLDERS = [
   'Give me a full report',
 ];
 
-const BADGE: Record<NLWorkflow['embeddings'], { text: string; cls: string }> = {
-  checking: { text: 'Embeddings: checking…', cls: 'bg-gray-100 text-gray-600' },
-  ready: { text: 'Embeddings: ready', cls: 'bg-teal-100 text-teal-800' },
-  offline: { text: 'Embeddings: offline (using keywords)', cls: 'bg-amber-100 text-amber-800' },
-};
-
 /**
  * Text box that turns a sentence into a pipeline: shows the plan as chips first,
  * then Apply / Apply & Run. Dimmed chips are dependencies added automatically.
@@ -57,7 +51,6 @@ export function NLCommandBar({ nl, active = true }: { nl: NLWorkflow; active?: b
   );
 
   const canExtend = res && nl.hasNodes ? extensionFor(nl.placed, res.plan) !== null : false;
-  const badge = BADGE[nl.embeddings];
 
   return (
     <div className="absolute left-1/2 top-3 z-20 w-[min(720px,calc(100%-2rem))] -translate-x-1/2" role="search">
@@ -68,12 +61,6 @@ export function NLCommandBar({ nl, active = true }: { nl: NLWorkflow; active?: b
         inputId={inputId}
         ariaLabel="Describe the pipeline you want (Ctrl+K)"
       />
-      <div className="mt-1 flex justify-end">
-        <span className={`rounded-full px-2 py-0.5 text-[11px] ${badge.cls}`} data-testid="nl-embedding-badge">
-          {badge.text}
-        </span>
-      </div>
-
       <div aria-live="polite" className="mt-1">
         {nl.busy && <p className="rounded-lg bg-white/90 px-3 py-2 text-sm text-gray-600 shadow">Working it out…</p>}
 

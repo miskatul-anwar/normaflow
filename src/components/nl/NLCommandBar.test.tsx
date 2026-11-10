@@ -103,13 +103,15 @@ describe('NLCommandBar', () => {
     expect(latest!.placedOperationLabels.filter(l => l === 'Data Cleaner').length).toBe(1);
   });
 
-  it('shows the offline badge when embeddings are unavailable', async () => {
+  it('shows no embeddings label, and keywords still work when the model is unavailable', async () => {
     function Offline() {
       const graph = useWorkflowGraph();
       const nl = useNLWorkflow({ graph, run, hasFiles: true, provider: { name: 'x', cacheKey: 'x', embed: async () => { throw new Error('x'); }, status: async () => ({ ready: false }) } as any });
       return <NLCommandBar nl={nl} />;
     }
     render(<Offline />);
-    expect((await screen.findByTestId('nl-embedding-badge')).textContent).toMatch(/offline/);
+    await type('give me 1NF');
+    expect(await screen.findByRole('button', { name: 'Apply' })).toBeTruthy();
+    expect(screen.queryByText(/embeddings/i)).toBeNull();
   });
 });
