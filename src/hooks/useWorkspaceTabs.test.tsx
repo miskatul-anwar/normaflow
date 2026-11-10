@@ -100,6 +100,32 @@ describe('WorkspaceTabBar', () => {
     expect(screen.queryByLabelText('Workspace name')).toBeNull();
   });
 
+  it('renames from the pencil button', () => {
+    const h = setup();
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Alpha' }));
+    fireEvent.change(screen.getByLabelText('Workspace name'), { target: { value: 'Q3 sales' } });
+    fireEvent.blur(screen.getByLabelText('Workspace name'));
+    expect(h.onRename).toHaveBeenCalledWith('a', 'Q3 sales');
+    expect(h.onSelect).not.toHaveBeenCalled();
+  });
+
+  it('renames and closes from the right-click menu, which dismisses on Escape', () => {
+    const h = setup();
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /Beta/ }));
+    expect(h.onSelect).toHaveBeenCalledWith('b');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
+    expect(screen.getByLabelText('Workspace name')).toBeTruthy();
+    fireEvent.keyDown(screen.getByLabelText('Workspace name'), { key: 'Escape' });
+
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /Alpha/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Close' }));
+    expect(h.onClose).toHaveBeenCalledWith('a');
+
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /Alpha/ }));
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
   it('shows a running indicator', () => {
     setup();
     expect(screen.getAllByLabelText('Running').length).toBe(1);

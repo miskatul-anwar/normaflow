@@ -88,7 +88,7 @@ sudo apt update && sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev l
 
 ## Workspace tabs
 
-Work on several datasets at once: each tab is a separate workspace with its own pipeline, files and results, and long runs keep going in the background while you use another tab. `Ctrl/Cmd+T` opens a tab, `Ctrl/Cmd+W` closes it, `Ctrl+Tab` switches, double-click a tab to rename it. Tabs live as long as the app is open (they are not saved between launches; use the Save button to keep a pipeline).
+Work on several datasets at once: each tab is a separate workspace with its own pipeline, files and results, and long runs keep going in the background while you use another tab. `Ctrl/Cmd+T` opens a tab, `Ctrl/Cmd+W` closes it, `Ctrl+Tab` switches, rename a tab with its pencil button, double-click, `F2` or right-click. Tabs live as long as the app is open (they are not saved between launches; use the Save button to keep a pipeline).
 
 ## Natural-language box
 

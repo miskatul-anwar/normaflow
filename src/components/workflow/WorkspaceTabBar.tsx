@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Pencil, Plus, X } from 'lucide-react';
 import { MAX_TABS, type TabStatus, type WorkspaceTab } from '../../hooks/useWorkspaceTabs';
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
 }
 
 /**
- * Browser-style tab strip: click to switch, double-click to rename, middle-click or × to close.
+ * Browser-style tab strip: click to switch; rename with the pencil, double-click, F2 or the right-click menu; middle-click or × to close.
  * Confirming the loss of work is the caller's job (`onClose`).
  */
 export function WorkspaceTabBar({ tabs, activeId, status, onSelect, onAdd, onClose, onRename }: Props) {
@@ -24,6 +24,29 @@ export function WorkspaceTabBar({ tabs, activeId, status, onSelect, onAdd, onClo
   useEffect(() => {
     if (editing) inputRef.current?.select();
   }, [editing]);
+
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+
+  // Dismiss the context menu on any outside click, scroll or Escape.
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    window.addEventListener('click', close);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('click', close);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [menu]);
+
+  const startRename = (tab: WorkspaceTab) => {
+    setMenu(null);
+    setDraft(tab.title);
+    setEditing(tab.id);
+  };
 
   const commit = () => {
     if (editing) onRename(editing, draft);
@@ -42,21 +65,20 @@ export function WorkspaceTabBar({ tabs, activeId, status, onSelect, onAdd, onClo
             role="tab"
             aria-selected={active}
             tabIndex={active ? 0 : -1}
-            title={`${tab.title} (double-click to rename)`}
+            title={`${tab.title} (double-click or F2 to rename, right-click for more)`}
             onClick={() => onSelect(tab.id)}
-            onDoubleClick={() => {
-              setDraft(tab.title);
-              setEditing(tab.id);
+            onDoubleClick={() => startRename(tab)}
+            onContextMenu={e => {
+              e.preventDefault();
+              onSelect(tab.id);
+              setMenu({ id: tab.id, x: e.clientX, y: e.clientY });
             }}
             onAuxClick={e => {
               if (e.button === 1) onClose(tab.id);
             }}
             onKeyDown={e => {
               if (e.key === 'Enter' || e.key === ' ') onSelect(tab.id);
-              if (e.key === 'F2') {
-                setDraft(tab.title);
-                setEditing(tab.id);
-              }
+              if (e.key === 'F2') startRename(tab);
             }}
           >
             {running && <Loader2 size={12} className="nf-tab-spinner" aria-label="Running" />}
@@ -79,6 +101,20 @@ export function WorkspaceTabBar({ tabs, activeId, status, onSelect, onAdd, onClo
             ) : (
               <span className="nf-tab-title">{tab.title}</span>
             )}
+            {editing !== tab.id && (
+              <button
+                type="button"
+                className="nf-tab-rename"
+                aria-label={`Rename ${tab.title}`}
+                title="Rename"
+                onClick={e => {
+                  e.stopPropagation();
+                  startRename(tab);
+                }}
+              >
+                <Pencil size={11} />
+              </button>
+            )}
             <button
               type="button"
               className="nf-tab-close"
@@ -93,6 +129,36 @@ export function WorkspaceTabBar({ tabs, activeId, status, onSelect, onAdd, onClo
           </div>
         );
       })}
+      {menu && (
+        <div
+          className="nf-tab-menu"
+          role="menu"
+          style={{ left: menu.x, top: menu.y }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            autoFocus
+            onClick={() => {
+              const t = tabs.find(x => x.id === menu.id);
+              if (t) startRename(t);
+            }}
+          >
+            Rename
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenu(null);
+              onClose(menu.id);
+            }}
+          >
+            Close
+          </button>
+        </div>
+      )}
       <button
         type="button"
         className="nf-tab-add"
