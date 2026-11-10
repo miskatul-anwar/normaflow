@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import type { Node } from '@xyflow/react';
 
@@ -361,8 +360,8 @@ function AppShell() {
     [closeTab, status, tabs],
   );
 
+  // Tab shortcuts work on both pages.
   useEffect(() => {
-    if (onOutput) return;
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
       if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 't') {
@@ -378,26 +377,27 @@ function AppShell() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [activeId, addTab, cycleTab, onOutput, requestClose]);
+  }, [activeId, addTab, cycleTab, requestClose]);
 
   return (
-    <>
-      <div
-        className={`nf-app${tabs[0]?.id === activeId ? ' is-first-active' : ''}`}
-        hidden={onOutput}
-        // The header takes the active tab's surface colour so the two read as one piece.
-        style={{ ['--nf-chrome-bg' as string]: activeSurface(tabs.find(t => t.id === activeId)?.color ?? null) }}
-      >
-        <WorkspaceTabBar
-          tabs={tabs}
-          activeId={activeId}
-          status={status}
-          onSelect={tabsApi.selectTab}
-          onAdd={addTab}
-          onClose={requestClose}
-          onRename={tabsApi.renameTab}
-          onColor={tabsApi.setTabColor}
-        />
+    <div
+      className={`nf-app${tabs[0]?.id === activeId ? ' is-first-active' : ''}`}
+      // The header takes the active tab's surface colour so the two read as one piece, on both pages.
+      style={{ ['--nf-chrome-bg' as string]: activeSurface(tabs.find(t => t.id === activeId)?.color ?? null) }}
+    >
+      {/* One tab strip above both pages: the tab you pick decides whose pipeline or results you see. */}
+      <WorkspaceTabBar
+        tabs={tabs}
+        activeId={activeId}
+        status={status}
+        onSelect={tabsApi.selectTab}
+        onAdd={addTab}
+        onClose={requestClose}
+        onRename={tabsApi.renameTab}
+        onColor={tabsApi.setTabColor}
+      />
+      {/* Workspaces stay mounted (hidden) while the Output page is open, so graphs, files and running jobs survive. */}
+      <div className="nf-workspaces" hidden={onOutput}>
         {tabs.map(tab => (
           <div key={tab.id} className="nf-tab-pane" role="tabpanel" aria-label={tab.title} hidden={tab.id !== activeId}>
             <ErrorBoundary componentName={`Workspace ${tab.title}`}>
@@ -413,13 +413,12 @@ function AppShell() {
           </div>
         ))}
       </div>
-      <AnimatePresence mode="wait">
-        <Routes>
-          <Route path="/" element={null} />
-          <Route path="/output" element={<OutputPage tabs={tabs} />} />
-        </Routes>
-      </AnimatePresence>
-    </>
+      <Routes>
+        <Route path="/" element={null} />
+        {/* Keyed by tab so each workspace gets its own results, section and scroll position. */}
+        <Route path="/output" element={<OutputPage key={activeId} tabId={activeId} tabs={tabs} />} />
+      </Routes>
+    </div>
   );
 }
 
