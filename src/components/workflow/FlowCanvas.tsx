@@ -5,8 +5,10 @@ import {
   Controls,
   MiniMap,
   ReactFlow,
+  useStore,
   MarkerType,
   type Edge,
+  type MiniMapNodeProps,
   type Node,
   type NodeTypes,
   type OnNodesChange,
@@ -43,8 +45,47 @@ const defaultEdgeOptions = {
 
 function getNodeColor(node: Node): string {
   const phase = node.data?.phase as keyof typeof PHASE_ACCENTS | undefined;
-  if (String(node.data?.label ?? '').toLowerCase() === 'start') return '#34d399';
+  if (String(node.data?.label ?? '').toLowerCase() === 'start') return START_COLOR;
   return (phase && PHASE_ACCENTS[phase]?.accent) || '#0d9488';
+}
+
+const START_COLOR = '#34d399';
+
+/**
+ * A node in the minimap: a scaled-down copy of the real card (white body, phase-coloured outline,
+ * icon chip and two text bars) instead of a flat rectangle, so each step can be told apart.
+ */
+function MiniMapNode({ id, x, y: y0, width, height: h0, color, selected, onClick }: MiniMapNodeProps) {
+  // The minimap is as tall as the visible canvas, so a long one-row pipeline would shrink to a few pixels.
+  // Keep each card at least ~8% of the map's height (centered on the real node) so it stays recognisable.
+  const visibleHeight = useStore(s => s.height / s.transform[2]);
+  const height = Math.min(Math.max(h0, visibleHeight * 0.08), width * 0.7);
+  const y = y0 - (height - h0) / 2;
+  const isStart = color === START_COLOR;
+  const stroke = Math.max(height * 0.07, 2);
+  const pad = height * 0.2;
+  const chip = height - pad * 2;
+  const barX = x + pad * 2 + chip;
+  const barW = Math.max(width - chip - pad * 3.2, 0);
+  const bar = height * 0.14;
+  return (
+    <g onClick={onClick ? e => onClick(e, id) : undefined} data-testid="nf-minimap-node">
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        rx={height * 0.32}
+        fill={isStart ? color : '#ffffff'}
+        stroke={selected ? '#0f172a' : color}
+        strokeWidth={selected ? stroke * 1.6 : stroke}
+        shapeRendering="geometricPrecision"
+      />
+      <rect x={x + pad} y={y + pad} width={chip} height={chip} rx={chip * 0.3} fill={isStart ? '#ffffff' : color} opacity={isStart ? 0.9 : 1} />
+      <rect x={barX} y={y + height * 0.3} width={barW} height={bar} rx={bar / 2} fill={isStart ? '#ffffff' : '#334155'} opacity={0.85} />
+      <rect x={barX} y={y + height * 0.56} width={barW * 0.65} height={bar * 0.8} rx={bar / 2} fill={isStart ? '#ffffff' : color} opacity={isStart ? 0.6 : 0.45} />
+    </g>
+  );
 }
 
 interface FlowCanvasProps {
@@ -92,7 +133,7 @@ export function FlowCanvas({
         isValidConnection={isValidConnection}
         proOptions={proOptions}
         fitView
-        minZoom={0.2}
+        minZoom={0.08}
         maxZoom={2.5}
         deleteKeyCode={['Backspace', 'Delete']}
         className="h-full w-full"
@@ -117,11 +158,16 @@ export function FlowCanvas({
         <MiniMap
           position="bottom-left"
           nodeColor={getNodeColor}
-          nodeStrokeWidth={3}
-          maskColor="rgba(241, 245, 249, 0.82)"
+          nodeComponent={MiniMapNode}
+          // Light mask so the nodes outside the current view keep their colours; the window is outlined instead.
+          maskColor="rgba(148, 163, 184, 0.16)"
+          maskStrokeColor="#0d9488"
+          maskStrokeWidth={2}
           pannable
           zoomable
           style={{
+            width: 300,
+            height: 110,
             backgroundColor: '#ffffff',
             border: '1px solid #e2e8f0',
             borderRadius: '12px',

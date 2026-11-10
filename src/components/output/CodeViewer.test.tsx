@@ -77,20 +77,30 @@ describe('OutputPage workspace badge', () => {
     </MemoryRouter>
   );
 
-  it('names the workspace the results belong to', () => {
+  it('has no workspace or status badges in the header (the tab strip says which workspace it is)', () => {
     render(at('t2'));
-    expect(screen.getByText('Sales data')).toBeTruthy();
-    expect(screen.getByTitle(/workspace “Sales data”/)).toBeTruthy();
+    expect(screen.queryByTitle(/These results come from the workspace/)).toBeNull();
+    expect(screen.queryByText('Complete Pipeline Executed')).toBeNull();
+    expect(screen.queryByText(/Tables Processed/)).toBeNull();
+    expect(screen.getByText(/Analysis results/)).toBeTruthy();
   });
 
-  it('shows a different workspace for a different tab', () => {
-    render(at('t1'));
-    expect(screen.getByText('Workspace 1')).toBeTruthy();
+  it('uses the same shell as the pipeline page: header card, palette-style sidebar, content panel', () => {
+    const { container } = render(at('t1'));
+    expect(container.querySelector('.nf-shell > header.nf-header')).toBeTruthy();
+    expect(container.querySelector('.nf-shell > aside.nf-palette')).toBeTruthy();
+    expect(container.querySelector('.nf-shell > main.nf-canvas-panel')).toBeTruthy();
+    const nav = screen.getByTestId('results-sidebar');
+    expect(nav.textContent).toContain('Results');
+    expect(nav.textContent).toContain('Summary');
+    expect(nav.textContent).toContain('Analysis');
+    expect(nav.textContent).toContain('Generated');
+    expect(nav.textContent).toContain('DDL for your schema'); // row description, like the operations palette
   });
 
-  it('shows no badge when the tab no longer exists', () => {
+  it('still renders for a tab that no longer exists', () => {
     render(at('gone'));
-    expect(screen.queryByText('Workspace')).toBeNull();
+    expect(screen.getByText(/Analysis results/)).toBeTruthy();
   });
 
   it('never shows one tab\'s fresh results under another tab', () => {

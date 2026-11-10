@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  CheckCircle, ArrowLeft, Copy, Download, Layers, GitBranch,
-  Code, Activity, Database, FileText, BarChart3, Shield, Key, Cpu, Table
+  ArrowLeft, Copy, Download, Layers, GitBranch,
+  Code, Activity, Database, FileText, BarChart3, Shield, Key, Cpu
 } from 'lucide-react';
 import 'github-markdown-css/github-markdown-light.css';
 
@@ -158,12 +158,16 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
   const sidebarItems: SidebarItem[] = [
     {
       id: "overview",
+      group: "summary",
+      description: "Summary of this run",
       label: "Overview",
       icon: <Activity className="w-4 h-4" />,
       hasData: true
     },
     {
       id: "normal-forms",
+      group: "analysis",
+      description: "1NF to BCNF relations",
       label: "Normal Forms",
       icon: <Layers className="w-4 h-4" />,
       count: (relations1NF.length || 0) + (relations2NF.length || 0) + (relationData.length || 0) + (relationsBCNF.length || 0),
@@ -171,6 +175,8 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
     },
     {
       id: "functional-dependencies",
+      group: "analysis",
+      description: "Mined dependencies",
       label: "Functional Dependencies",
       icon: <GitBranch className="w-4 h-4" />,
       count: fdData.length,
@@ -178,6 +184,8 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
     },
     {
       id: "cardinality",
+      group: "analysis",
+      description: "Links between tables",
       label: "Cardinality & Relations",
       icon: <BarChart3 className="w-4 h-4" />,
       count: crossTableRelationships.length || Object.keys(cardinalityAnalysis).length,
@@ -185,36 +193,48 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
     },
     {
       id: "keys",
+      group: "analysis",
+      description: "Candidate keys",
       label: "Keys & Superkeys",
       icon: <Key className="w-4 h-4" />,
       hasData: Boolean(keyData) || isMultiTable
     },
     {
       id: "quality",
+      group: "analysis",
+      description: "Lossless and preservation",
       label: "Quality Assurance",
       icon: <Shield className="w-4 h-4" />,
       hasData: Boolean(losslessCheck || dependencyPreservation) || isMultiTable
     },
     {
       id: "erd",
+      group: "generated",
+      description: "Entity-relationship diagram",
       label: "ERD Diagram",
       icon: <GitBranch className="w-4 h-4" />,
       hasData: Boolean(erdContent)
     },
     {
       id: "sql",
+      group: "generated",
+      description: "DDL for your schema",
       label: "SQL Schema",
       icon: <Database className="w-4 h-4" />,
       hasData: Boolean(sqlFile?.content)
     },
     {
       id: "report",
+      group: "generated",
+      description: "Full written report",
       label: "Full Report",
       icon: <FileText className="w-4 h-4" />,
       hasData: Boolean(reportFile?.content)
     },
     {
       id: "files",
+      group: "generated",
+      description: "Everything generated",
       label: "Generated Files",
       icon: <Code className="w-4 h-4" />,
       count: safeResults?.outputFiles?.length || 0,
@@ -224,7 +244,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
 
   if (!safeResults) {
     return (
-      <div className="nf-output-page bg-gray-50 flex items-center justify-center p-4">
+      <div className="nf-output-page flex items-center justify-center p-4" style={{ background: "#e5e7eb" }}>
         <div className="bg-white rounded-xl border border-gray-200 p-8 max-w-md w-full text-center shadow-sm">
           <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 mx-auto mb-4">
             <Activity className="w-6 h-6" />
@@ -245,53 +265,35 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
   }
 
   return (
-    <div className="nf-output-page flex flex-col bg-gray-100 overflow-hidden">
-      {/* Top Header */}
-      <header className="nf-output-header border-b border-gray-200 px-6 py-3.5 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <Button onClick={() => navigate('/')} title="Return to the workflow canvas" aria-label="Back to the workflow canvas">
-            <ArrowLeft />
-            Back to workflow
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
-              NormaFlow Analysis Results {isMultiTable && '(Multi-CSV Dataset)'}
-            </h1>
-            <p className="text-xs text-gray-500 font-mono">
-              Generated: {currentDateTime.utc}
-            </p>
+    // Same shell as the pipeline page: header card, sidebar card, content panel.
+    <div
+      className="nf-shell nf-output-page"
+      style={{ ['--nf-palette-width' as string]: '300px' }}
+    >
+      <header className="nf-header">
+        <div className="flex w-full items-center justify-between gap-3 px-3 py-1.5">
+          <div className="flex min-w-0 items-center gap-3">
+            <img src="/icon.png" alt="NormaFlow" title="NormaFlow" className="h-9 w-9 shrink-0 object-contain drop-shadow-xs" />
+            <Button onClick={() => navigate('/')} title="Return to the workflow canvas" aria-label="Back to the workflow canvas">
+              <ArrowLeft />
+              <span>Back to workflow</span>
+            </Button>
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {sourceTab && (
-            <span
-              className="bg-white text-gray-800 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 border max-w-[16rem]"
-              style={{ borderColor: sourceTab.color ?? '#d1d5db' }}
-              title={`These results come from the workspace “${sourceTab.title}”`}
-            >
-              <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full shrink-0" style={{ background: sourceTab.color ?? '#94a3b8' }} />
-              <span className="text-gray-500 font-medium">Workspace</span>
-              <span className="truncate">{sourceTab.title}</span>
-            </span>
-          )}
-          {isMultiTable && (
-            <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
-              <Table className="w-3.5 h-3.5" /> {multiTables.length} Tables Processed
-            </span>
-          )}
-          <span className="bg-teal-100 text-teal-800 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
-            <CheckCircle className="w-3.5 h-3.5" /> Complete Pipeline Executed
-          </span>
+          <div className="min-w-0 text-right leading-tight">
+            <h1 className="truncate text-sm font-semibold text-gray-900">
+              Analysis results{isMultiTable ? ` · ${multiTables.length} tables` : ''}
+            </h1>
+            <p className="truncate text-xs tabular-nums text-gray-500">Opened {currentDateTime.utc}</p>
+          </div>
         </div>
       </header>
 
-      {/* Main Grid */}
-      <div className="flex-1 flex overflow-hidden">
-        <aside className="w-64 flex-shrink-0">
-          <CustomSidebar items={sidebarItems} activeTab={activeTab} onTabChange={setActiveTab} />
-        </aside>
+      <aside className="nf-palette" aria-label="Result sections">
+        <CustomSidebar items={sidebarItems} activeTab={activeTab} onTabChange={setActiveTab} />
+      </aside>
 
-        <main className="flex-1 p-6 overflow-y-auto">
+      <main className="nf-canvas-panel">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -429,8 +431,8 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
           {activeTab === 'files' && safeResults?.outputFiles && (
             <GeneratedFilesSection outputFiles={safeResults.outputFiles} />
           )}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
