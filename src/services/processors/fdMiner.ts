@@ -31,10 +31,13 @@ export interface MinedFD {
   uniqueGroups: number;
 }
 
+/**
+ * Stripped partition: only equivalence classes with two or more rows are
+ * stored (singletons carry no information for refinement). `classCount` still
+ * counts every class, singletons included.
+ */
 interface Partition {
-  /** Row-index groups; singletons included. */
   groups: number[][];
-  /** Number of groups (equivalence classes). */
   classCount: number;
 }
 
@@ -97,7 +100,7 @@ function encodeColumns(
   });
 }
 
-/** Build the initial partition for one attribute (every row is placed). */
+/** Build the stripped partition for one attribute. */
 function partitionOfColumn(codes: number[], rowCount: number): Partition {
   const byCode = new Map<number, number[]>();
   for (let row = 0; row < rowCount; row++) {
@@ -106,25 +109,32 @@ function partitionOfColumn(codes: number[], rowCount: number): Partition {
     if (group) group.push(row);
     else byCode.set(code, [row]);
   }
-  const groups = Array.from(byCode.values());
-  return { groups, classCount: groups.length };
+  const groups: number[][] = [];
+  let covered = 0;
+  for (const g of byCode.values()) {
+    if (g.length >= 2) {
+      groups.push(g);
+      covered += g.length;
+    }
+  }
+  return { groups, classCount: groups.length + rowCount - covered };
 }
 
 /**
- * Refine an existing partition with an extra column. Returns both the new
- * partition and violation statistics for `column → nothing` agreement:
- * rows falling into newly split subgroups beyond the first occurrence count
- * as violations of "LHS → column".
+ * Refine a stripped partition with an extra column. Also counts violations of
+ * "partition attributes -> column": rows beyond the largest sub-group of each
+ * class that splits.
  */
-function refinePartition(partition: Partition, codes: number[]): { refined: Partition; splitRows: number } {
+function refinePartition(
+  partition: Partition,
+  codes: number[],
+  rowCount: number,
+): { refined: Partition; splitRows: number } {
   const newGroups: number[][] = [];
+  let covered = 0;
   let splitRows = 0;
 
   for (const group of partition.groups) {
-    if (group.length === 1) {
-      newGroups.push(group);
-      continue;
-    }
     const byCode = new Map<number, number[]>();
     for (const row of group) {
       const code = codes[row];
@@ -134,18 +144,24 @@ function refinePartition(partition: Partition, codes: number[]): { refined: Part
     }
     if (byCode.size <= 1) {
       newGroups.push(group);
-    } else {
-      // Group splits — every row beyond the largest subgroup is a violation.
-      let largest = 0;
-      for (const sub of byCode.values()) {
-        if (sub.length > largest) largest = sub.length;
-      }
-      splitRows += group.length - largest;
-      for (const sub of byCode.values()) newGroups.push(sub);
+      covered += group.length;
+      continue;
     }
+    let largest = 0;
+    for (const sub of byCode.values()) {
+      if (sub.length > largest) largest = sub.length;
+      if (sub.length >= 2) {
+        newGroups.push(sub);
+        covered += sub.length;
+      }
+    }
+    splitRows += group.length - largest;
   }
 
-  return { refined: { groups: newGroups, classCount: newGroups.length }, splitRows };
+  return {
+    refined: { groups: newGroups, classCount: newGroups.length + rowCount - covered },
+    splitRows,
+  };
 }
 
 /** Canonical combination generator (indices in ascending order, no duplicates). */
@@ -226,6 +242,11 @@ export function mineFunctionalDependencies(
   const rowCount = data.length;
 
   const basePartitions = encoded.map(codes => partitionOfColumn(codes, rowCount));
+  // A constant column never makes a larger determinant minimal (X and X+const determine the same things).
+  const constant = new Set<number>();
+  basePartitions.forEach((p, i) => {
+    if (p.classCount === 1) constant.add(i);
+  });
 
   const results: MinedFD[] = [];
   let evaluated = 0;
@@ -256,6 +277,8 @@ export function mineFunctionalDependencies(
         break search;
       }
 
+      if (level > 1 && combo.some(i => constant.has(i))) continue;
+
       // Key pruning: if a strict subset of combo is already a known superkey,
       // no superset can yield minimal functional dependencies.
       if (level > 1 && knownSuperkeys.some(k => k.every(attr => combo.includes(attr)))) {
@@ -269,7 +292,7 @@ export function mineFunctionalDependencies(
       if (!partition) {
         const parentKey = keyOf(combo.slice(0, -1));
         const parent = partitionCache.get(parentKey) ?? EMPTY_PARTITION;
-        partition = refinePartition(parent, encoded[combo[combo.length - 1]]).refined;
+        partition = refinePartition(parent, encoded[combo[combo.length - 1]], rowCount).refined;
         partitionCache.set(cacheKey, partition);
       }
 
@@ -306,7 +329,7 @@ export function mineFunctionalDependencies(
           splitRows = 0;
           confidence = 1;
         } else {
-          const { refined, splitRows: sr } = refinePartition(base, encoded[rhs]);
+          const { refined, splitRows: sr } = refinePartition(base, encoded[rhs], rowCount);
           splitRows = sr;
           holdsExactly = refined.classCount === baseCount;
 

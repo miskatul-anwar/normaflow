@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { runEngine, type EngineRun } from '../services/api/engineClient';
 import DatabaseService, { ProcessingResult, ProcessingState } from '../services/api/databaseService';
 
 export interface UseNormalizationReturn {
@@ -18,6 +19,7 @@ export const useNormalization = (): UseNormalizationReturn => {
   const [progress, setProgress] = useState<ProcessingState | null>(null);
   const [results, setResults] = useState<ProcessingResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const runRef = useRef<EngineRun | null>(null);
 
   const processFiles = useCallback(async (files: File[], operations: string[]): Promise<ProcessingResult> => {
     setIsProcessing(true);
@@ -26,12 +28,9 @@ export const useNormalization = (): UseNormalizationReturn => {
     setProgress({ phase: 'PREP', operation: 'csv-loader', progress: 0, message: `Starting multi-CSV pipeline for ${files.length} files...` });
 
     try {
-      const result = await DatabaseService.processFiles(
-        files,
-        operations,
-        setProgress,
-        { maxLhsSize: 4 }
-      );
+      const run = runEngine(files, operations, setProgress, { maxLhsSize: 4 });
+      runRef.current = run;
+      const result = await run.promise;
 
       setResults(result);
       if (!result.success) {
@@ -56,6 +55,7 @@ export const useNormalization = (): UseNormalizationReturn => {
       setResults(failedResult);
       return failedResult;
     } finally {
+      runRef.current = null;
       setIsProcessing(false);
       setProgress(null);
     }
@@ -66,7 +66,7 @@ export const useNormalization = (): UseNormalizationReturn => {
   }, [processFiles]);
 
   const cancelProcessing = useCallback(() => {
-    DatabaseService.cancelProcessing();
+    runRef.current?.cancel();
     setIsProcessing(false);
     setProgress(null);
   }, []);

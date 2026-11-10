@@ -15,6 +15,7 @@ import { buildMultiTableReport } from '../processors/multiTableReport';
 import { IdentifierRegistry } from '../utils/identifiers';
 import { Logger } from '../utils/logger';
 import { FileUtils } from '../utils/fileUtils';
+import { createDecoder } from '../utils/encoding';
 import { TableData } from '../../types';
 
 /** Upper bound on rows held in memory for one file; the whole file is read up to this. */
@@ -509,69 +510,11 @@ export class DatabaseService {
       this.addPerformanceCheckpoint('Phase 5 Start: Optimized Output Generation');
       this.logger.info('Phase 5: Optimized Output Generation');
 
-      // Step 12: Enhanced ERD Generator
-      if (selectedOperations.includes('ERD Generator')) {
-        onProgress?.({ 
-          phase: 'OUTPUT', 
-          operation: 'erd-generator', 
-          progress: 90, 
-          message: 'Generating enhanced Entity Relationship Diagram...',
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.90, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          const erdResult = await NormalizationEngine.generateERD(relations3NF);
-          erdContent = erdResult.content;
-          this.addPerformanceCheckpoint('ERD Generation Complete');
-          this.logger.success('Enhanced ERD generation completed');
-        } catch (error) {
-          this.logger.error('Enhanced ERD generation failed', error);
-          throw new Error(`ERD generation failed: ${(error as Error).message}`);
-        }
-      }
-
-      // Step 13: Optimized Relation Generator
-      if (selectedOperations.includes('Relation Generator')) {
-        onProgress?.({ 
-          phase: 'OUTPUT', 
-          operation: 'relation-generator', 
-          progress: 95, 
-          message: 'Generating optimized relation schemas...',
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.95, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          relationSchemas = await NormalizationEngine.generateRelationSchemas(relations3NF);
-          this.addPerformanceCheckpoint('Relation Schema Generation Complete');
-          this.logger.success('Optimized relation schemas generated');
-        } catch (error) {
-          this.logger.error('Optimized relation schema generation failed', error);
-          throw new Error(`Relation schema generation failed: ${(error as Error).message}`);
-        }
-      }
-
-      // Step 14: Enhanced SQL Generator
-      if (selectedOperations.includes('SQL Generator')) {
-        onProgress?.({ 
-          phase: 'OUTPUT', 
-          operation: 'sql-generator', 
-          progress: 98, 
-          message: 'Generating enhanced SQL DDL...',
-          estimatedTimeRemaining: this.estimateTimeRemaining(0.98, startTime),
-          memoryUsage: this.getMemoryUsage()
-        });
-        
-        try {
-          sqlDDL = await NormalizationEngine.generateSQLDDL(relations3NF);
-          this.addPerformanceCheckpoint('SQL DDL Generation Complete');
-          this.logger.success('Enhanced SQL DDL generated');
-        } catch (error) {
-          this.logger.error('Enhanced SQL DDL generation failed', error);
-          throw new Error(`SQL DDL generation failed: ${(error as Error).message}`);
-        }
-      }
+      // Output operations are table-driven: each selected one runs its generator on the final relations.
+      const outputs = await this.runOutputSteps(selectedOperations, relations3NF, startTime, onProgress);
+      erdContent = outputs.erdContent;
+      relationSchemas = outputs.relationSchemas;
+      sqlDDL = outputs.sqlDDL;
 
       // Step 15: Enhanced Report Generator
       onProgress?.({ 
@@ -685,6 +628,75 @@ export class DatabaseService {
         selectedOperations
       };
     }
+  }
+
+  /** Output-generating operations: one entry per canvas node, run in this order. */
+  private static readonly OUTPUT_STEPS: Array<{
+    operation: string;
+    id: string;
+    progress: number;
+    message: string;
+    label: string;
+    key: 'erdContent' | 'relationSchemas' | 'sqlDDL';
+    generate: (relations: any[]) => Promise<string>;
+  }> = [
+    {
+      operation: 'ERD Generator',
+      id: 'erd-generator',
+      progress: 90,
+      message: 'Generating enhanced Entity Relationship Diagram...',
+      label: 'ERD generation',
+      key: 'erdContent',
+      generate: async r => (await NormalizationEngine.generateERD(r)).content,
+    },
+    {
+      operation: 'Relation Generator',
+      id: 'relation-generator',
+      progress: 95,
+      message: 'Generating optimized relation schemas...',
+      label: 'Relation schema generation',
+      key: 'relationSchemas',
+      generate: r => NormalizationEngine.generateRelationSchemas(r),
+    },
+    {
+      operation: 'SQL Generator',
+      id: 'sql-generator',
+      progress: 98,
+      message: 'Generating enhanced SQL DDL...',
+      label: 'SQL DDL generation',
+      key: 'sqlDDL',
+      generate: r => NormalizationEngine.generateSQLDDL(r),
+    },
+  ];
+
+  private async runOutputSteps(
+    selectedOperations: string[],
+    relations: any[],
+    startTime: number,
+    onProgress?: (state: ProcessingState) => void,
+  ): Promise<{ erdContent: string; relationSchemas: string; sqlDDL: string }> {
+    const out = { erdContent: '', relationSchemas: '', sqlDDL: '' };
+    for (const step of DatabaseService.OUTPUT_STEPS) {
+      if (!selectedOperations.includes(step.operation)) continue;
+      this.throwIfAborted();
+      onProgress?.({
+        phase: 'OUTPUT',
+        operation: step.id,
+        progress: step.progress,
+        message: step.message,
+        estimatedTimeRemaining: this.estimateTimeRemaining(step.progress / 100, startTime),
+        memoryUsage: this.getMemoryUsage(),
+      });
+      try {
+        out[step.key] = await step.generate(relations);
+        this.addPerformanceCheckpoint(`${step.label} Complete`);
+        this.logger.success(`${step.label} completed`);
+      } catch (error) {
+        this.logger.error(`${step.label} failed`, error);
+        throw new Error(`${step.label} failed: ${(error as Error).message}`);
+      }
+    }
+    return out;
   }
 
   // ========== SHARED PER-TABLE ANALYSIS ==========
@@ -1041,7 +1053,7 @@ export class DatabaseService {
    */
   private async streamCSVProcessing(file: File, maxRows: number): Promise<{ data: any[]; metadata?: any }> {
     const reader = file.stream().getReader();
-    const decoder = new TextDecoder();
+    let decoder: TextDecoder | null = null;
     const rows: Record<string, any>[] = [];
     let headers: string[] = [];
 
@@ -1059,7 +1071,7 @@ export class DatabaseService {
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          const finalChunk = decoder.decode(undefined, { stream: false });
+          const finalChunk = decoder ? decoder.decode(undefined, { stream: false }) : '';
           if (finalChunk) {
             parser.feed(finalChunk);
           }
@@ -1067,6 +1079,13 @@ export class DatabaseService {
           break;
         }
 
+        if (!decoder) {
+          const created = createDecoder(value);
+          decoder = created.decoder;
+          if (created.encoding !== 'utf-8') {
+            this.logger.info(`${file.name}: detected ${created.encoding} encoding`);
+          }
+        }
         const chunkText = decoder.decode(value, { stream: true });
         const shouldContinue = parser.feed(chunkText);
         if (!shouldContinue) {

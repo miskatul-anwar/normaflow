@@ -1,0 +1,230 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden output > multi-file DDL (postgres) 1`] = `
+"-- NormaFlow Relational Schema DDL
+-- Dialect: POSTGRESQL
+-- Generated: <time>
+
+BEGIN;
+
+CREATE TABLE "customers" (
+  "customer_id" INTEGER PRIMARY KEY,
+  "name" VARCHAR(16) NOT NULL
+);
+
+CREATE TABLE "orders" (
+  "order_id" INTEGER PRIMARY KEY,
+  "customer_id" INTEGER NOT NULL,
+  "order_date" DATE NOT NULL,
+  "total" DECIMAL(6,2) NOT NULL,
+  CONSTRAINT "fk_orders_customer_id" FOREIGN KEY ("customer_id") REFERENCES "customers"("customer_id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+COMMIT;
+"
+`;
+
+exports[`golden output > multi-file DDL (sqlite) 1`] = `
+"-- NormaFlow Relational Schema DDL
+-- Dialect: SQLITE
+-- Generated: <time>
+
+PRAGMA foreign_keys = OFF;
+BEGIN TRANSACTION;
+
+CREATE TABLE "customers" (
+  "customer_id" INTEGER PRIMARY KEY,
+  "name" TEXT NOT NULL
+);
+
+CREATE TABLE "orders" (
+  "order_id" INTEGER PRIMARY KEY,
+  "customer_id" INTEGER NOT NULL,
+  "order_date" TEXT NOT NULL,
+  "total" DECIMAL(6,2) NOT NULL,
+  CONSTRAINT "fk_orders_customer_id" FOREIGN KEY ("customer_id") REFERENCES "customers"("customer_id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+COMMIT;
+PRAGMA foreign_keys = ON;
+"
+`;
+
+exports[`golden output > multi-file ER diagram 1`] = `
+"erDiagram
+    customers {
+        int customer_id PK
+        string name
+    }
+    orders {
+        int order_id PK
+        int customer_id FK
+        date order_date
+        decimal total
+    }
+    customers ||--o{ orders : "customer_id"
+"
+`;
+
+exports[`golden output > single-file ER diagram and DDL 1`] = `
+"erDiagram
+    %% Comprehensive ERD - ALL Functional Dependencies Preserved
+    %% Legend: [H] = High Confidence (≥95%), [M] = Medium (80-94%), [L] = Low (<80%)
+
+    %% === PRIMARY ENTITIES (High Importance) ===
+    orders {
+        varchar order_id "PK"
+        varchar order_date ""
+        varchar total ""
+        string confidence "[H] FD: 100%"
+    }
+
+    %% === RELATIONSHIPS (All Confidence Levels) ===
+
+    %% === METADATA ===
+    %% Total Relations: 1 | Displayed: 1
+    %% FD Distribution: HIGH: 1 | MEDIUM: 0 | LOW: 0
+    %% Clusters: 0
+    %% Generated: <time>
+    %% ALL functional dependencies preserved (no lossy joins)"
+`;
+
+exports[`golden output > single-file ER diagram and DDL 2`] = `
+"-- ================================================================
+-- MATHEMATICALLY VALIDATED DATABASE SCHEMA DDL (ALL FDs PRESERVED)
+-- Author: miskatul-anwar
+-- Validation Confidence: 100.0%
+-- Schema Complexity: Simple
+-- GUARANTEES: Lossless Join + Dependency Preservation
+-- ================================================================
+
+-- Functional Dependency Preservation Summary:
+--   Total Relations: 1
+--   HIGH confidence FDs (≥95%): 1
+--   MEDIUM confidence FDs (80-94%): 0
+--   LOW confidence FDs (<80%): 0
+--   Total FDs preserved: 1
+--   Validation Confidence: 100.0%
+--   Validation Errors: 0
+--   Validation Warnings: 0
+
+-- Database Settings for Safe Execution
+SET FOREIGN_KEY_CHECKS = 0;
+SET UNIQUE_CHECKS = 0;
+SET AUTOCOMMIT = 0;
+SET sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+
+START TRANSACTION;
+
+-- ================================================================
+-- VALIDATED TABLE CREATION (Dependency-Ordered)
+-- ================================================================
+
+-- Table: orders
+-- Source: 3NF
+-- Attributes: 3, Rows: 12
+CREATE TABLE orders (
+    order_id INTEGER NOT NULL COMMENT 'Primary Key, Date Value, Unique values',
+    order_date DATE NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Date Value, Unique values',
+    total DECIMAL(6,2) NOT NULL DEFAULT 1 COMMENT 'Pattern: decimal, Unique values',
+    CONSTRAINT PK_orders PRIMARY KEY (order_id)
+)
+ENGINE=InnoDB
+ROW_FORMAT=DYNAMIC
+CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='3NF relation: 3 cols, 12 rows';
+
+
+-- ================================================================
+-- VALIDATED FOREIGN KEY CONSTRAINTS
+-- ================================================================
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+
+-- ================================================================
+-- PERFORMANCE-OPTIMIZED INDEXES
+-- ================================================================
+
+-- Intelligent Indexes for orders
+-- High cardinality index (100.0% unique)
+CREATE INDEX IDX_orders_order date
+    ON orders(order_date);
+-- High cardinality index (100.0% unique)
+CREATE INDEX IDX_orders_total
+    ON orders(total);
+
+COMMIT;
+
+
+-- ================================================================
+-- DATA VALIDATION QUERIES
+-- ================================================================
+
+-- Reset foreign key checks
+SET FOREIGN_KEY_CHECKS = 1;
+SET UNIQUE_CHECKS = 1;
+SET AUTOCOMMIT = 1;
+
+-- Validation Summary
+SELECT 
+    'Schema Validation Summary' as validation_type,
+    1 as total_tables,
+    COUNT(*) as created_tables
+FROM information_schema.tables 
+WHERE table_schema = DATABASE()
+    AND table_name IN ('orders');
+
+-- Validate orders
+SELECT 
+    'orders' as table_name,
+    COUNT(*) as row_count,
+    COUNT(DISTINCT order_id) as unique_keys,
+    CASE WHEN COUNT(*) = COUNT(DISTINCT order_id) THEN 'VALID' ELSE 'INVALID' END as pk_validation
+FROM orders;
+
+
+-- ================================================================
+-- UTILITY SCRIPTS (ALL FDs PRESERVED)
+-- ================================================================
+
+-- Reset Database Settings
+SET FOREIGN_KEY_CHECKS = 1;
+SET UNIQUE_CHECKS = 1;
+SET AUTOCOMMIT = 1;
+COMMIT;
+
+-- Functional Dependency Verification Queries
+-- Verify FD: order_id -> total (100.0%)
+SELECT 
+    'orders' as relation_name,
+    'order_id -> total' as functional_dependency,
+    COUNT(*) as total_rows,
+    COUNT(DISTINCT order_id) as lhs_groups,
+    COUNT(DISTINCT total) as rhs_values,
+    CASE 
+        WHEN COUNT(DISTINCT order_id) = COUNT(DISTINCT CONCAT(order_id, '|', total)) 
+        THEN 'VALID' 
+        ELSE 'INVALID' 
+    END as fd_validation
+FROM orders
+GROUP BY 'orders';
+
+-- Data Verification Queries
+-- Verify orders
+SELECT COUNT(*) as row_count, 
+       COUNT(DISTINCT order_id) as unique_keys
+FROM orders;
+
+-- Performance Monitoring
+SHOW ENGINE InnoDB STATUS\\G
+SELECT table_name, table_rows, data_length, index_length 
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+ORDER BY data_length DESC;
+
+-- End of Generated DDL (ALL FUNCTIONAL DEPENDENCIES PRESERVED)
+-- Total execution time estimate: 1 seconds
+-- Schema preserves 1 functional dependencies
+"
+`;
