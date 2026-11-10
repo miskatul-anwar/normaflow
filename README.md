@@ -23,7 +23,7 @@
 
 NormaFlow is a **free & open-source cross-platform desktop app** that reverse-engineers relational databases from CSV exports.
 
-Drop in one or many CSV files and NormaFlow will:
+Drop in one or many CSV or spreadsheet files (Excel `.xlsx` `.xlsm` `.xlsb` `.xls`, LibreOffice `.ods`; every sheet becomes a table) and NormaFlow will:
 
 - 🧹 **Clean & validate** your data (atomicity checks, null handling, type profiling)
 - ⛏️ **Mine functional dependencies** with a fast partition-refinement algorithm (TANE-inspired lattice pruning)
@@ -81,7 +81,7 @@ sudo apt update && sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev l
 
 ## Quick start
 
-1. Launch NormaFlow and upload one or more CSV files with the **Upload** button.
+1. Launch NormaFlow and upload one or more CSV or spreadsheet files with the **Upload** button.
 2. Build your pipeline by clicking operations in the sidebar (a locked step adds the steps it needs), by describing it in the text box, or with **Full 3NF** for the whole pipeline.
 3. Press **Run**.
 4. Open the **Output** tab to browse the ERD, SQL DDL, FDs, keys, cardinalities and the full report — then download what you need.

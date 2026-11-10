@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { FileOutput, FolderOpen, Play, Redo2, RotateCcw, Save, Undo2, Upload, Zap } from "lucide-react";
 import { Button, IconButton } from "@/components/ui/button";
+import { INPUT_ACCEPT } from "@/services/processors/spreadsheetProcessor";
 
 interface HeadingProps {
   onUndo?: () => void;
@@ -10,7 +11,7 @@ interface HeadingProps {
   onRun?: () => void;
   onRunAll?: () => void;
   onFileUpload?: (files: File[]) => void;
-  /** Number of CSV files the user has uploaded. */
+  /** Number of data files the user has uploaded. */
   uploadedFileCount?: number;
   onViewOutput?: () => void;
   onSaveState?: () => void;
@@ -72,8 +73,8 @@ export default function Heading({
 
   const activeFiles = uploadedFileCount;
   const uploadTitle = activeFiles === 0
-    ? 'Upload CSV files to analyse'
-    : `${activeFiles} file${activeFiles === 1 ? '' : 's'} loaded. Click to upload different CSV files.`;
+    ? 'Upload CSV or spreadsheet files to analyse'
+    : `${activeFiles} file${activeFiles === 1 ? '' : 's'} loaded. Click to upload different files.`;
 
   // Labels collapse to icons on narrow windows; the tooltip and aria-label keep the name.
   const label = (text: string) => <span className="hidden min-[1180px]:inline">{text}</span>;
@@ -92,7 +93,7 @@ export default function Heading({
       </div>
 
       <div className="flex items-center gap-2">
-        <input ref={inputRef} type="file" multiple accept=".csv" className="hidden" onChange={handleFileChange} />
+        <input ref={inputRef} type="file" multiple accept={INPUT_ACCEPT} className="hidden" onChange={handleFileChange} />
         <input ref={loadStateInputRef} type="file" accept=".json" className="hidden" onChange={handleLoadStateFileChange} />
 
         <Button onClick={handleLoadStateClick} disabled={isRunning} title="Load a saved workflow (.json)" aria-label="Open workflow">
@@ -103,7 +104,7 @@ export default function Heading({
           <Save />
           {label("Save")}
         </Button>
-        <Button onClick={handleUploadClick} disabled={isRunning} title={uploadTitle} aria-label="Upload CSV Datasets" className="relative">
+        <Button onClick={handleUploadClick} disabled={isRunning} title={uploadTitle} aria-label="Upload Datasets" className="relative">
           <Upload />
           {label("Upload")}
           {activeFiles > 0 && (

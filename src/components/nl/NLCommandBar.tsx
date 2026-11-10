@@ -127,7 +127,7 @@ export function NLCommandBar({ nl, active = true }: { nl: NLWorkflow; active?: b
                   <Button
                     size="sm"
                     disabled={!nl.hasFiles}
-                    title={nl.hasFiles ? 'Build the pipeline and run it' : 'Upload a CSV file first'}
+                    title={nl.hasFiles ? 'Build the pipeline and run it' : 'Upload a data file first'}
                     onClick={() => nl.apply(res, { run: true, mode: nl.hasNodes && canExtend ? 'extend' : 'replace' })}
                   >
                     Apply &amp; Run

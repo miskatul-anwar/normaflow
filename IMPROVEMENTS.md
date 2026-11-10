@@ -33,7 +33,7 @@ through.
 | P0-8 | Done | `chooseKey`: unique and complete columns only, identifier-looking names first. |
 | P0-9 | Done | A surrogate `row_id` is materialized (rows, attributes, FDs) when no usable key exists. |
 | P0-10 | Done | Inclusion dependencies scored on containment, coverage, name and type; dense-id false positives rejected; nullable FKs marked. Composite FKs are detected against composite primary keys (each column needs name evidence). Junction tables are recognised and noted in the ER diagram and report. |
-| P0-11 | Done | `.xlsx` no longer accepted. Real support is P3-10. |
+| P0-11 | Done | `.xlsx` was removed, then implemented: Excel (all versions) and OpenDocument spreadsheets load via SheetJS, one table per sheet. |
 | P0-12 | Done | LLM claims removed from the docs. Rebuilding the feature is P3-5. |
 | P0-13 | Done | NER and Relation Detector run in the shared routine / multi-file pipeline. |
 | P0-14 | Done | Column-level multi-valued detection (no more flags for "and", "&", "+", brackets, name/address commas). With the 1NF node selected, multi-valued columns move into child tables `<table>_<column>` keyed by the parent key, and the parent loses the column. |

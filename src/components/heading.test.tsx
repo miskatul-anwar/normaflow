@@ -8,14 +8,14 @@ afterEach(cleanup);
 describe('upload button badge', () => {
   it('shows no count before anything is uploaded', () => {
     render(<Heading uploadedFileCount={0} />);
-    const btn = screen.getByRole('button', { name: 'Upload CSV Datasets' });
+    const btn = screen.getByRole('button', { name: 'Upload Datasets' });
     expect(btn.textContent).toBe('Upload'); // the label only, no count
-    expect(btn.getAttribute('title')).toBe('Upload CSV files to analyse');
+    expect(btn.getAttribute('title')).toBe('Upload CSV or spreadsheet files to analyse');
   });
 
   it('counts only files the user uploaded', () => {
     render(<Heading uploadedFileCount={2} />);
-    const btn = screen.getByRole('button', { name: 'Upload CSV Datasets' });
+    const btn = screen.getByRole('button', { name: 'Upload Datasets' });
     expect(btn.textContent).toBe('Upload2');
     expect(btn.getAttribute('title')).toMatch(/2 files loaded/);
   });

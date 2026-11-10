@@ -30,7 +30,7 @@ const DIALECTS: SQLDialect[] = ['postgresql', 'mysql', 'sqlite', 'ansi'];
 
 export function parseArgs(argv: string[]): Args | { error: string } {
   const [command, ...rest] = argv;
-  if (command !== 'analyze') return { error: 'usage: normaflow analyze <file.csv>... [--out dir] [--dialect d] [--ops a,b] [--json]' };
+  if (command !== 'analyze') return { error: 'usage: normaflow analyze <file.csv|xlsx|ods>... [--out dir] [--dialect d] [--ops a,b] [--json]' };
   const args: Args = { files: [], out: 'normaflow-out', dialect: 'sqlite', ops: ALL_OPERATION_NAMES, maxLhs: 4, json: false, verbose: false };
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (spreadsheet input)
+- Excel and LibreOffice/OpenDocument workbooks can be loaded next to, or instead of, CSV files: `.xlsx .xlsm .xlsb .xltx .xltm .xlam`, `.xls .xlt .xla .xlw` (Excel 2.x to 2003), Excel 2003 XML, `.ods .ots .fods`. Formats are read from the file's bytes, so a wrongly named file still loads.
+- Each visible, non-empty sheet becomes one table (`book.csv`, or `book_Sheet.csv` when there are several), so multi-sheet workbooks get cross-table foreign-key detection. Hidden and empty sheets are skipped and logged.
+- Dates become ISO 8601, cached formula results are used (formulas are never evaluated, macros never read), error cells become empty, float noise (`0.30000000000000004`) is removed, and text ids keep their leading zeros.
+- Damaged, truncated and password-protected files are rejected with a message naming the file; tab-separated text saved as `.xls` is read as CSV.
+- New dependency: SheetJS `xlsx` 0.20.3, installed from the SheetJS CDN (the npm `xlsx@0.18.5` has known CVEs). Loaded on demand (about 160 kB gzipped), only when a spreadsheet is opened.
+- Workers are now built as ES modules (`worker.format: 'es'`), matching how they are already created, so they can lazy-load code.
+
 ### Changed (sidebar)
 - The operations sidebar is now a list: every operation with its name and a one-line description, grouped by phase with per-phase and overall progress (`8/19`), and a filter box. Narrowing it gives an icon-only rail with tooltips; widths from 64 to 360 px; arrow keys move between operations.
 - Each operation shows what a click will do: added (check mark), ready, or locked (a prerequisite is missing). Clicking a locked step now adds the steps it needs, in order, instead of failing with an error: "Added 3NF with 7 prerequisites: …".
@@ -14,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed about 425 lines of the old icon-grid and tooltip CSS.
 
 ### Removed
-- The built-in sample dataset. Nothing is preloaded any more, so results always come from files you upload. Run, Full 3NF and Output now say "Upload a CSV file" instead of silently analysing four sample rows.
+- The built-in sample dataset. Nothing is preloaded any more, so results always come from files you upload. Run, Full 3NF and Output now ask for an uploaded file instead of silently analysing four sample rows.
 
 ### Changed (UI consistency)
 - One shared `Button` (primary / secondary / ghost, one radius, two heights) replaces the dozens of hand-styled buttons. Documented in `docs/DESIGN.md`.
