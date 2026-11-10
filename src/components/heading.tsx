@@ -78,19 +78,24 @@ export default function Heading({
   const label = (text: string) => <span className="hidden min-[1180px]:inline">{text}</span>;
 
   return (
-    <div className="flex items-center justify-between w-full h-full px-3 py-1.5 relative z-30">
-      {/* Brand: icon only */}
-      <div className="flex items-center gap-2.5">
-        <img src="/icon.png" alt="NormaFlow" title="NormaFlow" className="h-9 w-9 object-contain drop-shadow-xs" />
+    // Three zones: history and reset on the left, file actions centred, run and results on the right.
+    <div className="grid h-full w-full grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 py-1.5 relative z-30">
+      <div className="flex min-w-0 items-center gap-2.5">
+        {/* Brand: icon only */}
+        <img src="/icon.png" alt="NormaFlow" title="NormaFlow" className="h-9 w-9 shrink-0 object-contain drop-shadow-xs" />
+
+        <div className="flex items-center gap-1">
+          <IconButton label="Undo (Ctrl+Z)" icon={<Undo2 />} onClick={onUndo} disabled={!canUndo || isRunning} />
+          <IconButton label="Redo (Ctrl+Y)" icon={<Redo2 />} onClick={onRedo} disabled={!canRedo || isRunning} />
+        </div>
+
+        <Button onClick={handleRefresh} disabled={isRunning} title="Reload the app and reset every workspace" aria-label="Reset workspace">
+          <RotateCcw />
+          {label("Reset")}
+        </Button>
       </div>
 
-      {/* Undo / redo */}
-      <div className="flex items-center gap-1">
-        <IconButton label="Undo (Ctrl+Z)" icon={<Undo2 />} onClick={onUndo} disabled={!canUndo || isRunning} />
-        <IconButton label="Redo (Ctrl+Y)" icon={<Redo2 />} onClick={onRedo} disabled={!canRedo || isRunning} />
-      </div>
-
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-center gap-2">
         <input ref={inputRef} type="file" multiple accept={INPUT_ACCEPT} className="hidden" onChange={handleFileChange} />
         <input ref={loadStateInputRef} type="file" accept=".json" className="hidden" onChange={handleLoadStateFileChange} />
 
@@ -111,13 +116,9 @@ export default function Heading({
             </span>
           )}
         </Button>
-        <Button onClick={handleRefresh} disabled={isRunning} title="Reload the app and reset every workspace" aria-label="Reset workspace">
-          <RotateCcw />
-          {label("Reset")}
-        </Button>
+      </div>
 
-        <div className="mx-1 h-5 w-px bg-gray-300" aria-hidden />
-
+      <div className="flex items-center justify-end gap-2">
         <Button
           variant="primary"
           onClick={onRun}
