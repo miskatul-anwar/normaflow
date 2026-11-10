@@ -15,8 +15,8 @@ stable reference.
 ## Resolution status
 
 The sections below are the original findings. This table records what has
-since been done (all changes are uncommitted in the working tree). After the
-changes: `tsc` clean, 430 Vitest tests pass, `vite build` succeeds, and
+since been done (first round uncommitted at the time, second round in the next commits). After the
+second round: `tsc` clean, 456 Vitest tests pass, `vite build` succeeds, and
 `cargo fmt --check`, `cargo clippy -D warnings` and `cargo check` pass on the
 (now minimal) Rust shell. The built desktop app was not launched or clicked
 through.
@@ -25,35 +25,39 @@ through.
 |---|---|---|
 | P0-1 | Done | One TypeScript engine; the Rust analysis engine was deleted. Multi-file runs mine FDs, find keys and normalize. |
 | P0-2 | Done | `schemaGraph.ts` builds the ERD, DDL and report from the normalized relations with cross-file FKs on the relations that hold the columns. The conceptual (M:N, weak entity) view is still P3-4. |
-| P0-3 | Partly | `analyzeRows` is shared by single and multi-file runs and honours the selected nodes. A registry-driven executor and removal of the output blocks inside `processFile` are not done. |
-| P0-4 | Done | Only exact FDs feed keys and normal forms (`acceptApproximateFDs` opts in); the report shows the chase verdict and a re-join on the data. Not done: a `fast-check` property test. |
+| P0-3 | Mostly | `analyzeRows` is shared by single and multi-file runs and honours the selected nodes. Single-file outputs (ERD, relation schemas, SQL) now run from a table-driven step list (`OUTPUT_STEPS`). Multi-file output still uses its own emitters because they need the cross-file schema graph. |
+| P0-4 | Done | Only exact FDs feed keys and normal forms (`acceptApproximateFDs` opts in); the report shows the chase verdict and a re-join on the data. `losslessProperty.test.ts` checks with `fast-check` that 3NF synthesis and BCNF decomposition re-join to the input on random tables. |
 | P0-5 | Done | `nullSemantics: 'equal' \| 'distinct'`; no rows are dropped; missing = null, undefined or blank. |
-| P0-6 | Partly | The 100-row cap and dead `timeout` are gone; FD search has a 30 s budget and reports truncation. Files over 10 MB are still analysed on 10 000–50 000 rows (with a warning); candidate FDs are not re-validated on all rows. |
+| P0-6 | Done | The whole file is read (up to 1 000 000 rows). Above 10 000 rows FDs are mined on a seeded reservoir sample, every reported FD is validated on all rows, and rows that refute a candidate are added to the sample and mining repeats (up to 6 rounds). Exact FDs reported are true on the full file; the report says so. |
 | P0-7 | Done | The sampling FK code was deleted with the Rust engine; the TypeScript detector uses complete distinct-value sets. |
 | P0-8 | Done | `chooseKey`: unique and complete columns only, identifier-looking names first. |
 | P0-9 | Done | A surrogate `row_id` is materialized (rows, attributes, FDs) when no usable key exists. |
-| P0-10 | Mostly | Inclusion dependencies scored on containment, coverage, name and type; dense-id false positives rejected; nullable FKs marked. Open: composite FKs, junction-table M:N detection. |
+| P0-10 | Done | Inclusion dependencies scored on containment, coverage, name and type; dense-id false positives rejected; nullable FKs marked. Composite FKs are detected against composite primary keys (each column needs name evidence). Junction tables are recognised and noted in the ER diagram and report. |
 | P0-11 | Done | `.xlsx` no longer accepted. Real support is P3-10. |
 | P0-12 | Done | LLM claims removed from the docs. Rebuilding the feature is P3-5. |
 | P0-13 | Done | NER and Relation Detector run in the shared routine / multi-file pipeline. |
-| P0-14 | Partly | Column-level multi-valued detection (no more flags for "and", "&", "+", brackets, name/address commas). 1NF is still non-destructive: it reports, it does not split into a child table. |
+| P0-14 | Done | Column-level multi-valued detection (no more flags for "and", "&", "+", brackets, name/address commas). With the 1NF node selected, multi-valued columns move into child tables `<table>_<column>` keyed by the parent key, and the parent loses the column. |
 | P0-15 | Done | The per-FD lists and the verdict now come from the same projected-closure test. |
-| P1-1 | Partly | Cancellation and the time budget reach the FD miner. Not done: moving the engine into a Web Worker. |
-| P1-2 | Partly | Only the previous lattice level is kept in memory. Not done: stripped partitions, C⁺ pruning, constant/unique column pre-filter, HyFD. |
+| P1-1 | Done | The engine runs in a Web Worker (`engine.worker.ts`, `engineClient.ts`); cancel terminates the worker. It falls back to the main thread when workers are unavailable or the result cannot be cloned. Checked in headless Chromium against the built bundle; not in a Tauri window. |
+| P1-2 | Partly | Previous level only in memory; stripped partitions; constant columns are not combined into larger determinants; superkey pruning; sampling with full validation (P0-6) covers the HyFD idea. A differential test compares the miner with brute force. Not done: TANE's C⁺ pruning, parallel validation; LHS size is still capped at 4. |
 | P1-3 | N/A | The IPC string copy disappeared with the Rust engine. Path-based loading is not needed until files exceed webview memory. |
-| P1-4 | Partly | The Rust reader is gone. The TypeScript parser sniffs delimiters and repairs duplicate headers; encoding/BOM detection is open. |
-| P1-5 | Partly | One inference spec (`sqlTypes.ts`) drives multi-file DDL and the ERD. The single-file DDL generator still uses the older rules. |
+| P1-4 | Done | The Rust reader is gone. The TypeScript parser sniffs delimiters and repairs duplicate headers; `encoding.ts` detects UTF-8/UTF-16 (with or without BOM) and falls back to Windows-1252. |
+| P1-5 | Done | One inference spec (`sqlTypes.ts`) drives both single-file and multi-file DDL. |
 | P1-6 | Done | SQLite history removed (it was never used and `:memory:` with a pool could not work). A History panel is P3-12. |
 | P1-7 | Done | Strict CSP, `rehype-raw` removed, Mermaid `securityLevel: 'strict'`, escaped Markdown. |
 | P1-8 | Done | Results live in memory; `sessionStorage` holds a row-capped copy and failures are handled. |
-| P1-9 | Partly | `IdentifierRegistry` is used by multi-file ERD and DDL. The single-file generators still sanitize without de-duplicating. |
+| P1-9 | Done | `IdentifierRegistry` is used by single-file and multi-file ERD and DDL. |
 | P2-1 | Done | TypeScript is the single engine (decision recorded in `docs/ARCHITECTURE.md`). |
 | P2-2 | Open | `databaseService.ts` and `normalizationEngine.ts` are still very large. |
 | P2-3 | Done | Deleted: Console, AskAI, consoleCommands, CompatibilityChecker, useOperationValidation, outputDataValidator, jsonUtils, aiFlowGenerator, OperationDependencies. |
-| P2-4 | Open | `any` still pervades the engine and IPC-free result types. |
-| P2-5 | Partly | New suites: `pipelineSoundness`, `atomicityColumns`, null-semantics and abort tests. CI Rust job now runs on Linux, Windows and macOS. Note: `src/fdMiner.test.ts` is **not** a duplicate of the one in `services/processors/`; both stay. The logger's trailing `undefined` in test output is still there. |
+| P2-4 | Partly | ESLint is set up (`npm run lint`, run in CI) with `no-explicit-any` as a warning and a `--max-warnings` cap that may only go down (about 390 now, almost all `any`). The pipeline context is not typed yet. |
+| P2-5 | Mostly | New suites: `pipelineSoundness`, `atomicityColumns`, null-semantics, abort, golden-file (ERD/DDL snapshots), property and differential tests. The logger no longer prints a trailing `undefined`. `src/fdMiner.test.ts` and `src/semanticProfiler.test.ts` now sit next to their modules. CI Rust job runs on Linux, Windows and macOS. |
 | P2-6 | Done | `target/` untracked, notes moved to `docs/notes/`, badge and docs corrected. The `.mmd`/`.mermaid` mismatch is gone with the Rust engine. |
-| P3-* | Open | All feature proposals. |
+| P3-2 | Started | `npm run bench` scores primary keys, foreign keys and recovered relations on two synthetic ground-truth schemas (retail, university; composite keys and a junction table) with runtime. TPC-H, Northwind, Chinook and Sakila are not included. See `docs/EVALUATION.md`. |
+| P3-6 | Done | Multi-file runs ship one deduplicated CSV per relation, `data_inserts.sql` (parents first), and `verify_foreign_keys.sql` (orphan counts). Loaded into SQLite with zero orphans. Not done: a populated `.db` file, PostgreSQL `COPY`, a migration script from the flat table. |
+| P3-8 | Open | `sqlDialect` is available in the API and the CLI (`--dialect`); there is still no control in the UI. |
+| P3-9 | Done | `npm run cli -- analyze a.csv b.csv --out out/ --dialect postgresql --json`. |
+| P3-* | Open | Everything else: P3-1, P3-3, P3-4, P3-5, P3-7, P3-10 to P3-14. |
 ## Contents
 
 - [Priority legend](#priority-legend)

@@ -16,6 +16,7 @@ import { IdentifierRegistry } from '../utils/identifiers';
 import { Logger } from '../utils/logger';
 import { FileUtils } from '../utils/fileUtils';
 import { createDecoder } from '../utils/encoding';
+import { exportNormalizedData } from '../processors/dataExport';
 import { TableData } from '../../types';
 
 /** Upper bound on rows held in memory for one file; the whole file is read up to this. */
@@ -160,6 +161,10 @@ export interface DecomposedRelation {
   notNull?: Record<string, boolean>;
   /** Non-key columns that other tables reference; emitted as UNIQUE. */
   unique?: string[];
+  /** Name of the relation this was built from (before identifier sanitizing). */
+  sourceName?: string;
+  /** Sanitized column name -> original column name. */
+  columnSources?: Record<string, string>;
 }
 
 export const SQL_RESERVED_KEYWORDS = new Set([
@@ -3424,6 +3429,20 @@ export class DatabaseService {
           size: sqlDDL.length,
           category: 'SQL',
         });
+        // Normalized data for loading: one CSV per relation, INSERTs, and orphan checks.
+        for (const f of exportNormalizedData(schema, dialect)) {
+          outputFiles.push({
+            name: f.name,
+            type: f.type,
+            description:
+              f.type === 'csv'
+                ? 'Normalized rows for one relation (duplicates removed)'
+                : f.name.startsWith('verify') ? 'Queries that count orphan rows per foreign key (expect 0)' : 'INSERT statements in dependency order',
+            content: f.content,
+            size: f.content.length,
+            category: f.type === 'csv' ? 'Data' : 'SQL',
+          });
+        }
       }
       outputFiles.push({
         name: 'multi_csv_normalization_report.md',

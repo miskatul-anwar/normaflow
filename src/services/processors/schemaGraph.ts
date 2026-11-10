@@ -285,8 +285,10 @@ export function toDecomposedRelations(schema: BuiltSchema): DecomposedRelation[]
     const columnTypes: Record<string, string> = {};
     const notNull: Record<string, boolean> = {};
     const unique: string[] = [];
+    const columnSources: Record<string, string> = {};
     for (const a of r.attributes) {
       const c = colOf(r.name, a);
+      columnSources[c] = a;
       columnTypes[c] = inferred[a].sqlType;
       notNull[c] = inferred[a].notNull;
       if (schema.referencedUnique.has(`${r.name}.${a}`)) unique.push(c);
@@ -304,6 +306,8 @@ export function toDecomposedRelations(schema: BuiltSchema): DecomposedRelation[]
       columnTypes,
       notNull,
       unique,
+      sourceName: r.name,
+      columnSources,
     };
   });
 }

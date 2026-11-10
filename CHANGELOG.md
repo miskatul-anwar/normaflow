@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Command-line mode: `npm run cli -- analyze data/*.csv --out out/ --dialect postgresql --json` runs the same engine as the app.
+- Evaluation harness (`npm run bench`): precision/recall/F1 for primary keys, foreign keys and recovered relations on ground-truth schemas, with runtime.
+- Normalized data export for multi-file runs: one deduplicated CSV per relation, `INSERT` script in dependency order, and orphan-check queries per foreign key.
+- Composite foreign keys and junction (many-to-many) tables are detected; junction tables are noted in the ER diagram and report.
+- 1NF moves multi-valued columns into child tables.
+- Character-encoding detection for CSV input: UTF-8, UTF-16 (BOM or not) and Windows-1252.
+- ESLint with a warning cap that may only go down (`npm run lint`, also in CI).
+- Property-based tests (`fast-check`) for lossless decomposition and a differential test of the FD miner against brute force; golden-file tests for ERD and DDL.
+
+### Changed (second round)
+- Large files are read completely. FDs are mined on a reservoir sample and every reported FD is validated on all rows; rows that refute a candidate are added to the sample and mining repeats.
+- The engine runs in a Web Worker; Cancel terminates it. It falls back to the main thread when needed.
+- FD miner uses stripped partitions and skips constant columns in larger determinants.
+- Single-file ER diagram and DDL use the shared sized-type inference and collision-free identifiers; single-file outputs run from a step table instead of inline blocks.
+- Removed unused dependencies: `uuid`, `@tauri-apps/api`, `@tauri-apps/plugin-opener` (JS side), `@fontsource/dm-sans`, `@fontsource/dm-serif-display`, `autoprefixer`, `postcss`, `tw-animate-css`.
+- CSP allows `worker-src 'self' blob:`.
+- The logger no longer prints a trailing `undefined`.
+
 ### Changed
 - One analysis engine. Multi-file runs no longer go to the native Rust engine, which only parsed files and never mined dependencies or normalized. Every file now runs through the same TypeScript routine as a single file and honours the nodes on the canvas.
 - Multi-file ER diagram, DDL and report are built from the *normalized* relations, with cross-file foreign keys attached to the relations that hold the columns.
