@@ -348,50 +348,41 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 /* Circular logo button */
 .nf-rail-button {
   position: relative;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  border: 2px solid #e2e8f0;
-  background:
-    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.95) 0%, transparent 45%),
-    linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.07);
+  width: 40px;
+  height: 40px;
+  border-radius: 8px; /* same radius as every other button */
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease,
-    border-color 0.22s ease, background 0.22s ease;
-}
-
-.nf-rail-button:active {
-  cursor: pointer;
-  transform: translateY(0) scale(0.94);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .nf-rail-button:hover:not(:disabled) {
-  transform: translateY(-3px) scale(1.08);
   border-color: var(--nf-accent, #0d9488);
-  box-shadow: 0 10px 20px -6px color-mix(in srgb, var(--nf-accent, #0d9488) 45%, transparent),
-    0 2px 6px rgba(15, 23, 42, 0.08);
-  background:
-    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.9) 0%, transparent 50%),
-    linear-gradient(145deg, #ffffff 0%, var(--nf-accent-soft, #f0fdfa) 100%);
+  background: var(--nf-accent-soft, #f0fdfa);
+}
+
+.nf-rail-button:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 1px;
 }
 
 .nf-rail-icon {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #475569;
-  transition: color 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: color 0.15s ease;
 }
 
 .nf-rail-button:hover:not(:disabled) .nf-rail-icon {
   color: var(--nf-accent, #0d9488);
-  transform: scale(1.12) rotate(-6deg);
 }
 
 .nf-rail-glyph {
@@ -414,9 +405,9 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 .nf-rail-button.is-active,
 .nf-rail-button:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.6;
   border-color: #99f6e4;
-  background: linear-gradient(145deg, #f0fdfa 0%, #ccfbf1 100%);
+  background: #f0fdfa;
 }
 
 .nf-rail-check {
@@ -1776,28 +1767,6 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 }
 
 
-/* Natural-language command bar buttons */
-.nf-nl-btn {
-  border: 1px solid #99f6e4;
-  background: #f0fdfa;
-  color: #115e59;
-  border-radius: 9999px;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-}
-.nf-nl-btn:hover:not(:disabled) {
-  background: #ccfbf1;
-}
-.nf-nl-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.nf-nl-btn:focus-visible {
-  outline: 2px solid #0d9488;
-  outline-offset: 2px;
-}
 
 /* Workspace tabs */
 .nf-app {

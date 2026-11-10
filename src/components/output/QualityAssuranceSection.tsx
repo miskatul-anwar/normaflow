@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Shield, Lock, Unlock, Zap, CheckCircle, AlertCircle, BarChart3, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface QualityAssuranceSectionProps {
   losslessCheck?: any;
@@ -151,12 +152,15 @@ export function QualityAssuranceSection({ losslessCheck, dependencyPreservation 
                       Preserved Dependencies ({dependencyPreservation.preserved.length})
                     </h5>
                     {dependencyPreservation.preserved.length > 12 && (
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-expanded={showAllPreserved}
                         onClick={() => setShowAllPreserved(!showAllPreserved)}
-                        className="text-xs text-green-600 hover:text-green-700 flex items-center gap-1 transition-colors"
                       >
-                        {showAllPreserved ? <> <ChevronUp className="w-3 h-3" /> Show Less </> : <> <ChevronDown className="w-3 h-3" /> Show All </>}
-                      </button>
+                        {showAllPreserved ? <ChevronUp /> : <ChevronDown />}
+                        {showAllPreserved ? 'Show less' : 'Show all'}
+                      </Button>
                     )}
                   </div>
 
@@ -228,12 +232,15 @@ export function QualityAssuranceSection({ losslessCheck, dependencyPreservation 
                       Lost Dependencies ({dependencyPreservation.lost.length})
                     </h5>
                     {dependencyPreservation.lost.length > 12 && (
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-expanded={showAllLost}
                         onClick={() => setShowAllLost(!showAllLost)}
-                        className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1 transition-colors"
                       >
-                        {showAllLost ? <> <ChevronUp className="w-3 h-3" /> Show Less </> : <> <ChevronDown className="w-3 h-3" /> Show All </>}
-                      </button>
+                        {showAllLost ? <ChevronUp /> : <ChevronDown />}
+                        {showAllLost ? 'Show less' : 'Show all'}
+                      </Button>
                     )}
                   </div>
 

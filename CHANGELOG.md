@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (UI consistency)
+- One shared `Button` (primary / secondary / ghost, one radius, two heights) replaces the dozens of hand-styled buttons. Documented in `docs/DESIGN.md`.
+- Header: every action now has an icon and a label (labels collapse to icons on narrow windows); "Run" is the only primary button and "Synthesize 3NF" became "Full 3NF". Undo and redo are the only icon-only buttons.
+- Natural-language box: the particle-effect input is replaced by a plain text field and a "Build" button; Apply / Replace is primary, Apply & Run secondary, Cancel ghost.
+- Output page: Back, Copy and Download use the shared buttons (emerald and gradient variants are gone); per-row actions are labelled icon buttons.
+- Operation palette: rounded squares with the same radius and border as other buttons instead of bouncing circles.
+- Removed unused UI code (the shadcn sidebar, sheet, tabs, tooltip, skeleton, separator, input, code-block and entity-analysis components) and the `react-icons`, `@tabler/icons-react` and four Radix dependencies that only they used. Icons are lucide-only.
+
 ### Fixed
 - App icon: the source image had a 1 px semi-transparent grey line down its left edge, which was carried into every generated size (taskbar, dock, installer). The edge is cleared and the whole set regenerated with `tauri icon`; `bundle.icon` now lists the files the Tauri docs recommend (`32x32.png`, `128x128.png`, `128x128@2x.png`, `icon.icns`, `icon.ico` with the 32 px layer first) instead of `logo.ico` and a `.webp`.
 - The upload button no longer shows a `1` badge before any upload: the preloaded sample dataset is not counted, and the button's tooltip says when the sample is in use. The count is now exactly the files you uploaded.

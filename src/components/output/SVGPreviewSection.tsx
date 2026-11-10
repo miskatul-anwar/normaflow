@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import mermaid from 'mermaid';
 import { Copy, Download, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Diagrams are built from untrusted CSV headers: never let Mermaid run scripts or raw HTML.
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
@@ -100,20 +101,14 @@ export function SVGPreviewSection({ erdContent }: SVGPreviewSectionProps) {
             Entity Relationship Diagram
           </h4>
           <div className="flex gap-2">
-            <button
-              onClick={copyToClipboard}
-              className="bg-white hover:bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 flex items-center gap-2 text-sm font-medium text-gray-700 transition-colors"
-            >
-              <Copy className="w-4 h-4" />
+            <Button size="sm" onClick={copyToClipboard}>
+              <Copy />
               Copy Code
-            </button>
-            <button
-              onClick={downloadSVG}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 py-1.5 flex items-center gap-2 text-sm font-medium transition-colors"
-            >
-              <Download className="w-4 h-4" />
+            </Button>
+            <Button variant="primary" size="sm" onClick={downloadSVG}>
+              <Download />
               Download SVG
-            </button>
+            </Button>
           </div>
         </div>
       </div>

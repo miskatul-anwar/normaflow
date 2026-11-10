@@ -17,6 +17,7 @@ import { KeysSection } from './output/KeysSection';
 import { GeneratedFilesSection } from './output/GeneratedFilesSection';
 import { MarkdownRenderer } from './output/MarkdownRenderer';
 import { SVGPreviewSection } from './output/SVGPreviewSection';
+import { Button } from '@/components/ui/button';
 import { loadCachedResult, saveCachedResult } from '../utils/resultCache';
 
 export default function OutputPage() {
@@ -228,13 +229,10 @@ export default function OutputPage() {
           <p className="text-gray-600 mb-6" style={{ fontFamily: "'Inter', sans-serif" }}>
             Please execute a normalization workflow from the main application before viewing outputs.
           </p>
-          <button
-            onClick={() => navigate('/')}
-            className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Workflow Canvas
-          </button>
+          <Button variant="primary" className="w-full" onClick={() => navigate('/')}>
+            <ArrowLeft />
+            Back to workflow
+          </Button>
         </div>
       </div>
     );
@@ -245,14 +243,10 @@ export default function OutputPage() {
       {/* Top Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-3.5 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/')}
-            className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-teal-50 border border-gray-200 hover:border-teal-300 text-gray-700 hover:text-teal-600 flex items-center justify-center transition-all shadow-xs active:scale-95 group"
-            title="Return to Main Workflow Canvas"
-            aria-label="Back to Main Application"
-          >
-            <ArrowLeft className="w-4.5 h-4.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
-          </button>
+          <Button onClick={() => navigate('/')} title="Return to the workflow canvas" aria-label="Back to the workflow canvas">
+            <ArrowLeft />
+            Back to workflow
+          </Button>
           <div>
             <h1 className="text-xl font-bold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
               NormaFlow Analysis Results {isMultiTable && '(Multi-CSV Dataset)'}
@@ -385,13 +379,12 @@ export default function OutputPage() {
                   SQL Data Definition Language (DDL) {isMultiTable && '(Consolidated Multi-Table)'}
                 </h4>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => navigator.clipboard.writeText(sqlFile.content)}
-                    className="bg-white hover:bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 flex items-center gap-2 text-sm font-medium text-gray-700"
-                  >
-                    <Copy className="w-4 h-4" /> Copy SQL
-                  </button>
-                  <button
+                  <Button size="sm" onClick={() => navigator.clipboard.writeText(sqlFile.content)}>
+                    <Copy /> Copy SQL
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={() => {
                       const blob = new Blob([sqlFile.content], { type: 'application/sql' });
                       const url = URL.createObjectURL(blob);
@@ -401,10 +394,9 @@ export default function OutputPage() {
                       a.click();
                       URL.revokeObjectURL(url);
                     }}
-                    className="bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-3 py-1.5 flex items-center gap-2 text-sm font-medium"
                   >
-                    <Download className="w-4 h-4" /> Download .sql
-                  </button>
+                    <Download /> Download .sql
+                  </Button>
                 </div>
               </div>
               <div className="p-4">

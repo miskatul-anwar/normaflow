@@ -23,7 +23,7 @@ export function CustomSidebar({ items, activeTab, onTabChange }: CustomSidebarPr
             key={item.id}
             onClick={() => onTabChange(item.id)}
             disabled={!item.hasData}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 active:scale-98 ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
               activeTab === item.id
                 ? 'bg-teal-50 text-teal-800 border border-teal-300 shadow-xs font-semibold'
                 : item.hasData

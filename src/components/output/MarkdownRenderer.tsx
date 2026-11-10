@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Copy, Download, CheckCircle } from 'lucide-react';
 import 'github-markdown-css/github-markdown-light.css';
+import { Button } from '@/components/ui/button';
 
 interface MarkdownRendererProps {
   content: string;
@@ -35,20 +36,14 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, filena
           {filename}
         </h4>
         <div className="flex gap-2">
-          <button
-            onClick={handleCopy}
-            className="bg-white hover:bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 flex items-center gap-2 text-sm font-medium text-gray-700 transition-colors"
-          >
-            {copied ? <CheckCircle className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+          <Button size="sm" onClick={handleCopy}>
+            {copied ? <CheckCircle className="text-teal-600" /> : <Copy />}
             {copied ? 'Copied!' : 'Copy Markdown'}
-          </button>
-          <button
-            onClick={handleDownload}
-            className="bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-3 py-1.5 flex items-center gap-2 text-sm font-medium transition-colors"
-          >
-            <Download className="w-4 h-4" />
+          </Button>
+          <Button variant="primary" size="sm" onClick={handleDownload}>
+            <Download />
             Download MD
-          </button>
+          </Button>
         </div>
       </div>
       <div className="p-8 markdown-body text-gray-800 font-sans overflow-auto max-h-[800px]">

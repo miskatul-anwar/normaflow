@@ -112,7 +112,7 @@ export function FlowCanvas({
         <Controls
           position="bottom-right"
           showInteractive={true}
-          className="!bg-white/95 !backdrop-blur-md !border !border-gray-200/90 !shadow-md !rounded-xl !overflow-hidden"
+          className="!bg-white/95 !backdrop-blur-md !border !border-gray-200/90 !shadow-sm !rounded-lg !overflow-hidden"
         />
         <MiniMap
           position="bottom-left"

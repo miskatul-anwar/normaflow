@@ -1,6 +1,6 @@
 {
   "name": "normaflow",
-  "description": "Turn raw CSV files into normalized database schemas \u2014 ERDs, SQL DDL and normalization reports. Local-first desktop app built with Tauri + React.",
+  "description": "Turn raw CSV files into normalized database schemas — ERDs, SQL DDL and normalization reports. Local-first desktop app built with Tauri + React.",
   "keywords": [
     "erd",
     "entity-relationship-diagram",
@@ -40,7 +40,7 @@
     "cli": "tsx scripts/cli.ts",
     "bench": "tsx scripts/bench.ts",
     "bench:nl": "tsx scripts/bench-nl.ts",
-    "lint": "eslint . --max-warnings 390",
+    "lint": "eslint . --max-warnings 383",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "fmt:rust": "cargo fmt --all --manifest-path src-tauri/Cargo.toml"
@@ -48,12 +48,7 @@
   "dependencies": {
     "@fontsource/inter": "^5.2.6",
     "@huggingface/transformers": "^4.3.2",
-    "@radix-ui/react-dialog": "^1.1.14",
-    "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
-    "@radix-ui/react-tabs": "^1.1.12",
-    "@radix-ui/react-tooltip": "^1.2.7",
-    "@tabler/icons-react": "^3.34.1",
     "@tailwindcss/vite": "^4.1.11",
     "@xyflow/react": "^12.8.2",
     "class-variance-authority": "^0.7.1",
@@ -64,7 +59,6 @@
     "mermaid": "^11.9.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-icons": "^5.5.0",
     "react-markdown": "^9.1.0",
     "react-router-dom": "^7.18.2",
     "react-syntax-highlighter": "^16.1.1",
@@ -86,7 +80,6 @@
     "@vitest/ui": "^3.2.4",
     "eslint": "^10.14.0",
     "fast-check": "^4.10.2",
-    "globals": "^17.14.0",
     "jsdom": "^31.0.0",
     "tailwindcss": "^4.1.11",
     "tsx": "^4.23.15",

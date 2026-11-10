@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Files, FolderOpen, Code, Table, FileText, Database, GitBranch, Image, Download, ChevronRight, ChevronDown, Copy } from 'lucide-react';
 import { OutputFile } from '../../types';
+import { Button, IconButton } from '@/components/ui/button';
 
 interface GeneratedFilesSectionProps {
   outputFiles: OutputFile[];
@@ -107,20 +108,18 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
 
         <div className="flex flex-wrap gap-2 mb-4">
           {categories.map(category => (
-            <button
+            <Button
               key={category}
+              size="sm"
+              variant={selectedCategory === category ? 'primary' : 'secondary'}
+              aria-pressed={selectedCategory === category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                selectedCategory === category
-                  ? 'bg-teal-100 text-teal-700 border border-teal-300'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
             >
-              {category === 'all' ? 'All Files' : category}
-              <span className="ml-1 text-xs">
-                ({category === 'all' ? outputFiles.length : outputFiles.filter(f => f.category === category).length})
+              {category === 'all' ? 'All files' : category}
+              <span className="text-xs opacity-80">
+                {category === 'all' ? outputFiles.length : outputFiles.filter(f => f.category === category).length}
               </span>
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -144,20 +143,20 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
                       <div>{formatFileSize(typeof file.content === 'string' ? file.content.length : 100)}</div>
                     </div>
                     <div className="flex gap-2">
-                      <button
+                      <IconButton
+                        variant="ghost"
+                        size="icon-sm"
+                        label={expandedFile === file.name ? `Hide preview of ${file.name}` : `Preview ${file.name}`}
+                        aria-expanded={expandedFile === file.name}
+                        icon={expandedFile === file.name ? <ChevronDown /> : <ChevronRight />}
                         onClick={() => setExpandedFile(expandedFile === file.name ? null : file.name)}
-                        className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                        title="Preview"
-                      >
-                        {expandedFile === file.name ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      </button>
-                      <button
+                      />
+                      <IconButton
+                        size="icon-sm"
+                        label={`Download ${file.name}`}
+                        icon={<Download />}
                         onClick={() => downloadFile(file)}
-                        className="p-2 bg-teal-100 text-teal-600 hover:bg-teal-200 rounded-lg transition-colors"
-                        title="Download"
-                      >
-                        <Download className="w-4 h-4" />
-                      </button>
+                      />
                     </div>
                   </div>
                 </div>
@@ -175,16 +174,17 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
                       <div className="bg-gray-900 rounded-lg overflow-hidden">
                         <div className="bg-gray-800 px-4 py-2 flex items-center justify-between">
                           <span className="text-sm text-gray-300 font-mono">{file.name}</span>
-                          <button
+                          <IconButton
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-gray-300 hover:bg-gray-700 hover:text-white"
+                            label={`Copy ${file.name}`}
+                            icon={<Copy />}
                             onClick={() => {
                               const content = getFileContentString(file);
                               navigator.clipboard.writeText(content);
                             }}
-                            className="text-gray-400 hover:text-gray-200 transition-colors"
-                            title="Copy content"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
+                          />
                         </div>
                         <div className="p-4 max-h-64 overflow-y-auto">
                           <pre className="text-sm text-gray-100 whitespace-pre-wrap">

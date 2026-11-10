@@ -1,15 +1,10 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { PlaceholdersAndVanishInput } from '../ui/placeholders-and-vanish-input';
+import { Send, Sparkles } from 'lucide-react';
+import { Button } from '../ui/button';
 import { dependencyClosure } from '../../services/nlp/workflow/planner';
 import { extensionFor, type NLWorkflow } from '../../hooks/useNLWorkflow';
 
-const PLACEHOLDERS = [
-  'Convert it to 1NF',
-  'Normalize to 3NF and generate SQL',
-  'Clean the data',
-  'Find the functional dependencies',
-  'Give me a full report',
-];
+const PLACEHOLDER = 'Describe a pipeline, e.g. “Convert it to 1NF”';
 
 /**
  * Text box that turns a sentence into a pipeline: shows the plan as chips first,
@@ -54,18 +49,32 @@ export function NLCommandBar({ nl, active = true }: { nl: NLWorkflow; active?: b
 
   return (
     <div className="absolute left-1/2 top-3 z-20 w-[min(720px,calc(100%-2rem))] -translate-x-1/2" role="search">
-      <PlaceholdersAndVanishInput
-        placeholders={PLACEHOLDERS}
-        onChange={onChange}
+      <form
         onSubmit={onSubmit}
-        inputId={inputId}
-        ariaLabel="Describe the pipeline you want (Ctrl+K)"
-      />
-      <div aria-live="polite" className="mt-1">
-        {nl.busy && <p className="rounded-lg bg-white/90 px-3 py-2 text-sm text-gray-600 shadow">Working it out…</p>}
+        className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-1.5 shadow-sm focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-600/30"
+      >
+        <Sparkles className="ml-2 size-4 shrink-0 text-teal-600" aria-hidden />
+        <input
+          id={inputId}
+          type="text"
+          value={draft}
+          onChange={onChange}
+          placeholder={PLACEHOLDER}
+          aria-label="Describe the pipeline you want (Ctrl+K)"
+          autoComplete="off"
+          spellCheck={false}
+          className="h-9 min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+        />
+        <Button type="submit" variant="primary" disabled={nl.busy || !draft.trim()} title="Build the pipeline (Enter)">
+          <Send />
+          <span className="hidden sm:inline">Build</span>
+        </Button>
+      </form>
+      <div aria-live="polite">
+        {nl.busy && <p className="mt-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 shadow">Working it out…</p>}
 
         {res && !nl.busy && (
-          <section className="rounded-xl border border-gray-200 bg-white p-3 shadow-lg" aria-label="Proposed pipeline">
+          <section className="mt-1.5 rounded-lg border border-gray-200 bg-white p-3 shadow-lg" aria-label="Proposed pipeline">
             {res.plan.length > 0 ? (
               <>
                 <p className="mb-2 text-xs text-gray-500">
@@ -81,7 +90,7 @@ export function NLCommandBar({ nl, active = true }: { nl: NLWorkflow; active?: b
                         {i > 0 && <span aria-hidden className="text-gray-300">→</span>}
                         <span
                           title={dep ? `Added because ${needed ?? 'a later step'} requires it` : 'You asked for this'}
-                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                          className={`rounded-md px-2 py-1 text-xs font-medium ${
                             dep ? 'bg-gray-100 text-gray-500' : 'bg-teal-100 text-teal-800'
                           }`}
                         >
@@ -95,57 +104,55 @@ export function NLCommandBar({ nl, active = true }: { nl: NLWorkflow; active?: b
                 {res.options.dialect && (
                   <p className="mt-1 text-xs text-gray-500">SQL dialect: {res.options.dialect}</p>
                 )}
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   {nl.hasNodes ? (
                     <>
-                      <button type="button" className="nf-nl-btn" onClick={() => nl.apply(res, { run: false, mode: 'replace' })}>
+                      <Button variant="primary" size="sm" onClick={() => nl.apply(res, { run: false, mode: 'replace' })}>
                         Replace workflow
-                      </button>
-                      <button
-                        type="button"
-                        className="nf-nl-btn"
+                      </Button>
+                      <Button
+                        size="sm"
                         disabled={!canExtend}
                         title={canExtend ? 'Append the missing steps' : 'The current workflow cannot simply be extended'}
                         onClick={() => nl.apply(res, { run: false, mode: 'extend' })}
                       >
                         Extend workflow
-                      </button>
+                      </Button>
                     </>
                   ) : (
-                    <button type="button" className="nf-nl-btn" onClick={() => nl.apply(res, { run: false })}>
+                    <Button variant="primary" size="sm" onClick={() => nl.apply(res, { run: false })}>
                       Apply
-                    </button>
+                    </Button>
                   )}
-                  <button
-                    type="button"
-                    className="nf-nl-btn"
+                  <Button
+                    size="sm"
                     disabled={!nl.hasFiles}
                     title={nl.hasFiles ? 'Build the pipeline and run it' : 'Upload a CSV file first'}
                     onClick={() => nl.apply(res, { run: true, mode: nl.hasNodes && canExtend ? 'extend' : 'replace' })}
                   >
                     Apply &amp; Run
-                  </button>
-                  <button type="button" className="nf-nl-btn" onClick={nl.dismiss}>
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={nl.dismiss}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </>
             ) : (
               <>
                 <p className="text-sm text-gray-700">{res.message ?? 'I could not understand that.'}</p>
                 {res.candidates.length > 0 && res.confidence === 'low' && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     {res.candidates.map(c => (
-                      <button key={c.operation} type="button" className="nf-nl-btn" onClick={() => void nl.pickCandidate(c.operation)}>
+                      <Button key={c.operation} size="sm" onClick={() => void nl.pickCandidate(c.operation)}>
                         {c.operation}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}
-                <div className="mt-2">
-                  <button type="button" className="nf-nl-btn" onClick={nl.dismiss}>
+                <div className="mt-3">
+                  <Button variant="ghost" size="sm" onClick={nl.dismiss}>
                     Close
-                  </button>
+                  </Button>
                 </div>
               </>
             )}
