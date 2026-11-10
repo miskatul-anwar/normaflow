@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed (header)
+- The **Full 3NF** button. Build the pipeline from the sidebar or the text box instead.
+
 ### Added (spreadsheet input)
 - Excel and LibreOffice/OpenDocument workbooks can be loaded next to, or instead of, CSV files: `.xlsx .xlsm .xlsb .xltx .xltm .xlam`, `.xls .xlt .xla .xlw` (Excel 2.x to 2003), Excel 2003 XML, `.ods .ots .fods`. Formats are read from the file's bytes, so a wrongly named file still loads.
 - Each visible, non-empty sheet becomes one table (`book.csv`, or `book_Sheet.csv` when there are several), so multi-sheet workbooks get cross-table foreign-key detection. Hidden and empty sheets are skipped and logged.

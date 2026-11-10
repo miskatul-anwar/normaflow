@@ -268,7 +268,6 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
           canUndo={graph.canUndo}
           canRedo={graph.canRedo}
           onRun={handleRun}
-          onRunAll={() => void handleRunAll()}
           onFileUpload={handleFileUpload}
           uploadedFileCount={uploadedFiles.length}
           onViewOutput={() => void handleViewOutput()}

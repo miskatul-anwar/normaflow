@@ -82,7 +82,7 @@ sudo apt update && sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev l
 ## Quick start
 
 1. Launch NormaFlow and upload one or more CSV or spreadsheet files with the **Upload** button.
-2. Build your pipeline by clicking operations in the sidebar (a locked step adds the steps it needs), by describing it in the text box, or with **Full 3NF** for the whole pipeline.
+2. Build your pipeline by clicking operations in the sidebar (a locked step adds the steps it needs), by describing it in the text box, or by typing a request such as "normalize to 3NF and generate SQL".
 3. Press **Run**.
 4. Open the **Output** tab to browse the ERD, SQL DDL, FDs, keys, cardinalities and the full report — then download what you need.
 
