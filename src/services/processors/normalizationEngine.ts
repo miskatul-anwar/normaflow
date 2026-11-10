@@ -13,7 +13,9 @@
 
 import { DataUtils } from '../utils/dataUtils';
 import { Logger } from '../utils/logger';
-import { mineFunctionalDependencies as mineFDFast } from './fdMiner';
+import { IdentifierRegistry } from '../utils/identifiers';
+import { inferColumnSqlType } from '../utils/sqlTypes';
+import { mineFunctionalDependenciesSampled, type SamplingInfo } from './fdMiner';
 
 export interface FunctionalDependency {
   lhs: string[];
@@ -195,6 +197,8 @@ interface DataAnalysis {
   nullabilityRatio: Map<string, number>;
   uniquenessRatio: Map<string, number>;
   sampleValues: Map<string, any[]>;
+  /** Sized SQL type inferred from the column values (shared with multi-file output). */
+  sqlTypes?: Map<string, string>;
 }
 
 interface ConstraintValidation {
@@ -287,7 +291,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
   static async mineFunctionalDependencies(
     data: any[],
     maxLhsSize: number = 4,
-    mineOptions: { nullSemantics?: 'equal' | 'distinct'; signal?: AbortSignal; timeBudgetMs?: number } = {},
+    mineOptions: { nullSemantics?: 'equal' | 'distinct'; signal?: AbortSignal; timeBudgetMs?: number; sampleSize?: number } = {},
   ): Promise<FunctionalDependency[]> {
     return (await this.mineFunctionalDependenciesDetailed(data, maxLhsSize, mineOptions)).fds;
   }
@@ -299,8 +303,8 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
   static async mineFunctionalDependenciesDetailed(
     data: any[],
     maxLhsSize: number = 4,
-    mineOptions: { nullSemantics?: 'equal' | 'distinct'; signal?: AbortSignal; timeBudgetMs?: number } = {},
-  ): Promise<{ fds: FunctionalDependency[]; truncated: boolean; levelReached: number; maxLhsSize: number }> {
+    mineOptions: { nullSemantics?: 'equal' | 'distinct'; signal?: AbortSignal; timeBudgetMs?: number; sampleSize?: number } = {},
+  ): Promise<{ fds: FunctionalDependency[]; truncated: boolean; levelReached: number; maxLhsSize: number; sampling?: SamplingInfo }> {
     if (!data || data.length === 0) {
       this.logger.warn('No data provided for FD mining');
       return { fds: [], truncated: false, levelReached: 0, maxLhsSize };
@@ -317,7 +321,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     // Yield to keep the UI responsive before the (synchronous) compute burst.
     await this.yieldControl();
 
-    const { fds, durationMs, combinationsEvaluated, exactCount, truncated, levelReached } = mineFDFast(data, {
+    const { fds, durationMs, combinationsEvaluated, exactCount, truncated, levelReached, sampling } = mineFunctionalDependenciesSampled(data, {
       maxLhsSize,
       minConfidence: 0.85,
       ...mineOptions,
@@ -341,7 +345,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
       );
     }
 
-    return { fds: mapped, truncated: Boolean(truncated), levelReached: levelReached ?? 0, maxLhsSize };
+    return { fds: mapped, truncated: Boolean(truncated), levelReached: levelReached ?? 0, maxLhsSize, sampling };
   }
 
   /** Dependencies that hold on every row (no violations). */
@@ -2807,6 +2811,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
    * FIXED: Generate ERD using ALL functional dependencies (including low confidence)
    */
   static async generateERD(relations: RelationSchema[]): Promise<{ content: string; metadata: any }> {
+    this.resetIdentifiers(relations || []);
     this.logger.info('Generating ERD using ALL functional dependencies (preserving low confidence FDs)...');
     
     if (!relations || relations.length === 0) {
@@ -3500,6 +3505,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
    * ENHANCED SQL DDL Generation with Mathematical Validation - PRESERVES ALL FDs
    */
   static async generateSQLDDL(relations: RelationSchema[]): Promise<string> {
+    this.resetIdentifiers(relations);
     this.logger.info('Starting mathematically validated SQL DDL generation (ALL FDs preserved)...');
     
     if (relations.length === 0) {
@@ -3757,7 +3763,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     for (const relation of relations.slice(0, 8)) { // Limit to avoid clutter
       if (relation.originalFD) {
         fdCount++;
-        const tableName = this.sanitizeSQLIdentifier(relation.name);
+        const tableName = this.sanitizeSQLTable(relation.name);
         const lhsCols = relation.originalFD.lhs.map(attr => this.sanitizeSQLIdentifier(attr)).join(', ');
         const rhsCol = this.sanitizeSQLIdentifier(relation.originalFD.rhs);
         
@@ -3785,7 +3791,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     // Generate data verification queries
     sql += '-- Data Verification Queries\n';
     for (const relation of relations.slice(0, 5)) { // Limit to avoid clutter
-      const tableName = this.sanitizeSQLIdentifier(relation.name);
+      const tableName = this.sanitizeSQLTable(relation.name);
       sql += `-- Verify ${relation.name}\n`;
       sql += `SELECT COUNT(*) as row_count, \n`;
       sql += `       COUNT(DISTINCT ${relation.primaryKey?.map(pk => this.sanitizeSQLIdentifier(pk)).join(', ') || '*'}) as unique_keys\n`;
@@ -4071,6 +4077,8 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     dataAnalysis: DataAnalysis
   ): string {
     const fullKey = `${relation.name}.${attr}`;
+    const inferred = dataAnalysis.sqlTypes?.get(fullKey);
+    if (inferred) return inferred;
     const pattern = dataAnalysis.patterns.get(fullKey) || 'text';
     const actualLength = dataAnalysis.actualLengths.get(fullKey) || 255;
     const uniquenessRatio = dataAnalysis.uniquenessRatio.get(fullKey) || 0;
@@ -4224,12 +4232,14 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     const nullabilityRatio = new Map<string, number>();
     const uniquenessRatio = new Map<string, number>();
     const sampleValues = new Map<string, any[]>();
+    const sqlTypes = new Map<string, string>();
 
     for (const relation of relations) {
       if (!relation.rows || relation.rows.length === 0) continue;
 
       for (const attr of relation.attributes) {
         const fullKey = `${relation.name}.${attr}`;
+        sqlTypes.set(fullKey, inferColumnSqlType(relation.rows.map(row => row[attr])).sqlType);
         const values = relation.rows.map(row => row[attr]).filter(v => v !== null && v !== undefined);
         
         if (values.length === 0) continue;
@@ -4260,7 +4270,8 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
       patterns,
       nullabilityRatio,
       uniquenessRatio,
-      sampleValues
+      sampleValues,
+      sqlTypes
     };
   }
   private static async resolveDependenciesRobustly(relations: RelationSchema[]): Promise<{
@@ -4551,7 +4562,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     dataAnalysis: DataAnalysis,
     analysis: any
   ): Promise<string> {
-    const tableName = this.sanitizeSQLIdentifier(relation.name);
+    const tableName = this.sanitizeSQLTable(relation.name);
     let sql = `-- Table: ${tableName}\n`;
     sql += `-- Source: ${relation.sourceType}\n`;
     sql += `-- Attributes: ${relation.attributes.length}, Rows: ${relation.metadata.rowCount.toLocaleString()}\n`;
@@ -4706,8 +4717,8 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     
     for (const fk of relation.foreignKeys) {
       const constraintName = this.generateConstraintName(relation.name, fk.references);
-      const sourceTable = this.sanitizeSQLIdentifier(relation.name);
-      const targetTable = this.sanitizeSQLIdentifier(fk.references);
+      const sourceTable = this.sanitizeSQLTable(relation.name);
+      const targetTable = this.sanitizeSQLTable(fk.references);
       const sourceColumns = fk.attributes.map(attr => this.sanitizeSQLIdentifier(attr));
       const targetColumns = fk.referencedKey.map(attr => this.sanitizeSQLIdentifier(attr));
       
@@ -4785,7 +4796,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     _analysis: any
   ): Promise<string> {
     let sql = `-- Intelligent Indexes for ${relation.name}\n`;
-    const tableName = this.sanitizeSQLIdentifier(relation.name);
+    const tableName = this.sanitizeSQLTable(relation.name);
     
     if (relation.foreignKeys) {
       for (const fk of relation.foreignKeys) {
@@ -4882,10 +4893,10 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     sql += '    COUNT(*) as created_tables\n';
     sql += 'FROM information_schema.tables \n';
     sql += 'WHERE table_schema = DATABASE()\n';
-    sql += `    AND table_name IN (${relations.map(r => `'${this.sanitizeSQLIdentifier(r.name)}'`).join(', ')});\n\n`;
+    sql += `    AND table_name IN (${relations.map(r => `'${this.sanitizeSQLTable(r.name)}'`).join(', ')});\n\n`;
     
     for (const relation of relations.slice(0, 5)) {
-      const tableName = this.sanitizeSQLIdentifier(relation.name);
+      const tableName = this.sanitizeSQLTable(relation.name);
       sql += `-- Validate ${relation.name}\n`;
       sql += `SELECT \n`;
       sql += `    '${tableName}' as table_name,\n`;
@@ -4927,7 +4938,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     sql += '\n';
     
     for (const relation of relations) {
-      const tableName = this.sanitizeSQLIdentifier(relation.name);
+      const tableName = this.sanitizeSQLTable(relation.name);
       sql += `-- Table: ${tableName} (${relation.attributes.length} attributes)\n`;
       sql += `CREATE TABLE IF NOT EXISTS ${tableName} (\n`;
       
@@ -4964,17 +4975,37 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     return Math.ceil(tableCreationTime + constraintTime + indexTime);
   }
 
-  // Keep existing helper methods for sanitization and mapping
+  // Identifier handling: different originals never collapse into one name
+  // (`Order Date` vs `Order-Date`). One registry for tables, one for columns;
+  // the same original always maps to the same name across the whole output.
+  private static tableNames = new IdentifierRegistry();
+  private static columnNames = new IdentifierRegistry();
+
+  private static resetIdentifiers(relations: RelationSchema[]): void {
+    this.tableNames = new IdentifierRegistry();
+    this.columnNames = new IdentifierRegistry();
+    for (const r of relations) {
+      this.tableNames.assign(r.name);
+      for (const a of r.attributes) this.columnNames.assign(a);
+    }
+  }
+
   private static sanitizeEntityName(name: string): string {
-    return name.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^(\d)/, '_$1');
+    return this.tableNames.assign(name);
   }
 
   private static sanitizeAttributeName(name: string): string {
-    return name.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^(\d)/, '_$1');
+    return this.columnNames.assign(name);
   }
 
+  /** Column identifier. */
   private static sanitizeSQLIdentifier(name: string): string {
-    return name.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^(\d)/, '_$1');
+    return this.columnNames.assign(name);
+  }
+
+  /** Table identifier. */
+  private static sanitizeSQLTable(name: string): string {
+    return this.tableNames.assign(name);
   }
 
   private static mapToMermaidType(type: string): string {

@@ -87,7 +87,7 @@ export function buildMultiTableReport(args: {
     out.push('| :--- | :--- | :--- | :--- | :--- | :--- |');
     for (const l of links) {
       out.push(
-        `| ${code(`${l.sourceTable}.${l.sourceColumn}`)} | ${code(`${l.targetTable}.${l.targetColumn}`)} | ` +
+        `| ${code(`${l.sourceTable}.${(l.sourceColumns ?? [l.sourceColumn]).join(' + ')}`)} | ${code(`${l.targetTable}.${(l.targetColumns ?? [l.targetColumn]).join(' + ')}`)} | ` +
           `${l.cardinality} | ${l.optional ? 'yes' : 'no'} | ${pct(l.matchRatio)} | ${pct(l.confidence)} |`,
       );
     }
@@ -96,11 +96,19 @@ export function buildMultiTableReport(args: {
   }
   out.push('');
 
+  if (schema.junctions.length > 0) {
+    out.push('### Many-to-many relationships (junction tables)', '');
+    for (const j of schema.junctions) {
+      out.push(`- ${code(j.relation)} links ${j.between.map(code).join(' ↔ ')}`);
+    }
+    out.push('');
+  }
+
   if (schema.unplaced.length > 0) {
     out.push('### Links that could not be placed', '');
     for (const u of schema.unplaced) {
       out.push(
-        `- ${code(`${u.link.sourceTable}.${u.link.sourceColumn}`)} → ${code(`${u.link.targetTable}.${u.link.targetColumn}`)}: ${mdEscape(u.reason)}`,
+        `- ${code(`${u.link.sourceTable}.${(u.link.sourceColumns ?? [u.link.sourceColumn]).join(' + ')}`)} → ${code(`${u.link.targetTable}.${(u.link.targetColumns ?? [u.link.targetColumn]).join(' + ')}`)}: ${mdEscape(u.reason)}`,
       );
     }
     out.push('');

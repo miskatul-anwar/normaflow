@@ -384,3 +384,206 @@ export function mineFunctionalDependencies(
     levelReached,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Sampling with full-data validation (HyFD style)
+// ---------------------------------------------------------------------------
+
+/** Deterministic PRNG so repeated runs sample the same rows. */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Uniform reservoir sample of `size` row indices out of `total`, ascending. */
+export function reservoirSampleIndices(total: number, size: number, seed = 42): number[] {
+  if (size >= total) return Array.from({ length: total }, (_, i) => i);
+  const rand = mulberry32(seed);
+  const reservoir = Array.from({ length: size }, (_, i) => i);
+  for (let i = size; i < total; i++) {
+    const j = Math.floor(rand() * (i + 1));
+    if (j < size) reservoir[j] = i;
+  }
+  return reservoir.sort((a, b) => a - b);
+}
+
+export interface FDValidation {
+  /** Statistics measured on every row. */
+  fd: MinedFD;
+  /** Row indices of one violating pair (empty when the FD holds exactly). */
+  witness: number[];
+}
+
+/**
+ * Check dependencies against *all* rows. Returns the true confidence,
+ * violation count and group count for each, plus a witness pair of rows for
+ * every dependency that fails (used to refine a sample).
+ */
+export function validateFunctionalDependencies(
+  data: Record<string, unknown>[],
+  fds: MinedFD[],
+  nullSemantics: NullSemantics = 'equal',
+): FDValidation[] {
+  if (fds.length === 0 || data.length === 0) return [];
+  const attributes = Object.keys(data[0]);
+  const index = new Map(attributes.map((a, i) => [a, i]));
+  const needed = new Set<number>();
+  for (const fd of fds) {
+    for (const a of fd.lhs) if (index.has(a)) needed.add(index.get(a)!);
+    if (index.has(fd.rhs)) needed.add(index.get(fd.rhs)!);
+  }
+  // Encode only the columns that appear in some dependency.
+  const encodedAll = encodeColumns(data, attributes.filter((_, i) => needed.has(i)), nullSemantics);
+  const byName = new Map<string, number[]>();
+  attributes.filter((_, i) => needed.has(i)).forEach((a, i) => byName.set(a, encodedAll[i]));
+  const rows = data.length;
+
+  return fds.map(fd => {
+    const lhsCols = fd.lhs.map(a => byName.get(a));
+    const rhsCol = byName.get(fd.rhs);
+    if (!rhsCol || lhsCols.some(c => !c)) return { fd, witness: [] };
+    const cols = lhsCols as number[][];
+    // Fast pass: first row and first RHS code per LHS group.
+    const first = new Map<string, number>();
+    let conflict: number[] = [];
+    for (let r = 0; r < rows; r++) {
+      let key = '';
+      for (let c = 0; c < cols.length; c++) key += cols[c][r] + ',';
+      const prev = first.get(key);
+      if (prev === undefined) first.set(key, r);
+      else if (rhsCol[prev] !== rhsCol[r] && conflict.length === 0) conflict = [prev, r];
+    }
+    if (conflict.length === 0) {
+      return {
+        fd: { ...fd, confidence: 1, violations: 0, uniqueGroups: first.size, coverage: first.size / rows },
+        witness: [],
+      };
+    }
+    // Slow pass: count rows outside the majority RHS value of each group.
+    const counts = new Map<string, Map<number, number>>();
+    for (let r = 0; r < rows; r++) {
+      let key = '';
+      for (let c = 0; c < cols.length; c++) key += cols[c][r] + ',';
+      let m = counts.get(key);
+      if (!m) counts.set(key, (m = new Map()));
+      m.set(rhsCol[r], (m.get(rhsCol[r]) ?? 0) + 1);
+    }
+    let violations = 0;
+    for (const m of counts.values()) {
+      if (m.size <= 1) continue;
+      let total = 0;
+      let max = 0;
+      for (const n of m.values()) {
+        total += n;
+        if (n > max) max = n;
+      }
+      violations += total - max;
+    }
+    return {
+      fd: {
+        ...fd,
+        confidence: 1 - violations / rows,
+        violations,
+        uniqueGroups: counts.size,
+        coverage: counts.size / rows,
+      },
+      witness: conflict,
+    };
+  });
+}
+
+export interface SamplingInfo {
+  sampled: true;
+  totalRows: number;
+  sampleSize: number;
+  /** Mine → validate → refine rounds that ran. */
+  rounds: number;
+  /** Rows added to the sample because they refuted a candidate. */
+  rowsAdded: number;
+  /** Candidates that held on the sample but not on the full data. */
+  refuted: number;
+}
+
+export interface SampledMineOptions extends MineOptions {
+  /** Rows to mine on; at or above `data.length` no sampling happens. */
+  sampleSize?: number;
+  /** Maximum mine/validate rounds (default 6). */
+  maxRounds?: number;
+  seed?: number;
+}
+
+/**
+ * Mine on a reservoir sample, then validate every reported dependency on all
+ * rows. A candidate refuted by the full data contributes its violating rows to
+ * the sample and mining repeats, so exact dependencies reported are always
+ * true on the whole file. Dependencies still failing after the last round keep
+ * their measured confidence (or are dropped below `minConfidence`).
+ */
+export function mineFunctionalDependenciesSampled(
+  data: Record<string, unknown>[],
+  options: SampledMineOptions = {},
+): MineResult & { sampling?: SamplingInfo } {
+  const sampleSize = options.sampleSize ?? 10_000;
+  if (data.length <= sampleSize) return mineFunctionalDependencies(data, options);
+
+  const started = Date.now();
+  const minConfidence = options.minConfidence ?? 0.85;
+  const maxRounds = options.maxRounds ?? 6;
+  const chosen = new Set(reservoirSampleIndices(data.length, sampleSize, options.seed ?? 42));
+  let rowsAdded = 0;
+  let refuted = 0;
+  let rounds = 0;
+  let result: MineResult = { fds: [], durationMs: 0, combinationsEvaluated: 0, exactCount: 0 };
+  let validated: FDValidation[] = [];
+
+  for (; rounds < maxRounds; ) {
+    rounds++;
+    const rows = Array.from(chosen)
+      .sort((a, b) => a - b)
+      .map(i => data[i]);
+    result = mineFunctionalDependencies(rows, options);
+    validated = validateFunctionalDependencies(data, result.fds, options.nullSemantics ?? 'equal');
+    const failedExact: FDValidation[] = [];
+    result.fds.forEach((fd, i) => {
+      if (fd.confidence === 1 && validated[i].fd.confidence < 1) failedExact.push(validated[i]);
+    });
+    if (failedExact.length === 0 || result.truncated || options.signal?.aborted) break;
+    let added = 0;
+    for (const f of failedExact) {
+      for (const r of f.witness) {
+        if (!chosen.has(r)) {
+          chosen.add(r);
+          added++;
+        }
+      }
+    }
+    rowsAdded += added;
+    if (added === 0) break;
+  }
+
+  const finalFds: MinedFD[] = [];
+  result.fds.forEach((fd, i) => {
+    const v = validated[i]?.fd ?? fd;
+    if (fd.confidence === 1 && v.confidence < 1) refuted++;
+    if (v.confidence === 1 || v.confidence >= minConfidence) finalFds.push(v);
+  });
+  finalFds.sort((a, b) => {
+    if (b.confidence !== a.confidence) return b.confidence - a.confidence;
+    if (a.lhs.length !== b.lhs.length) return a.lhs.length - b.lhs.length;
+    return b.coverage - a.coverage;
+  });
+
+  return {
+    ...result,
+    fds: finalFds,
+    exactCount: finalFds.filter(f => f.confidence === 1).length,
+    durationMs: Date.now() - started,
+    sampling: { sampled: true, totalRows: data.length, sampleSize: chosen.size, rounds, rowsAdded, refuted },
+  };
+}
