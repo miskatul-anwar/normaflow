@@ -37,7 +37,7 @@ Drop in one or many CSV files and NormaFlow will:
 
 | | |
 |---|---|
-| 🔒 **Private by design** | All processing happens locally; no network calls are made. |
+| 🔒 **Private by design** | All processing happens locally. The only optional network use is a loopback call to a local Ollama for the natural-language box; CSV data is never sent. |
 | ⚡ **One engine** | The same TypeScript analysis runs for one file or many, in the desktop app and in the browser. |
 | 🧮 **Sound algorithms** | Functional-dependency mining, closure-based key discovery, 3NF synthesis. Only dependencies that hold on every row shape the schema. |
 | 🖱️ **Visual pipelines** | Build workflows on an interactive React Flow canvas — click or drag the operations you want. |
@@ -85,6 +85,16 @@ sudo apt update && sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev l
 2. Build your pipeline by clicking or dragging operations from the palette onto the canvas, or hit **Run All** for the full pipeline.
 3. Run the pipeline.
 4. Open the **Output** tab to browse the ERD, SQL DDL, FDs, keys, cardinalities and the full report — then download what you need.
+
+## Natural-language box
+
+Type a request such as *“Can you pls convert it to 1NF”* in the bar above the canvas (`Ctrl/Cmd+K` focuses it). NormaFlow shows the pipeline it would build, including the steps added because others need them, and you press **Apply** or **Apply & Run**. It works with keywords alone. For paraphrases the keywords miss, install [Ollama](https://ollama.com) and run:
+
+```bash
+ollama pull embeddinggemma-2:270m
+```
+
+The badge under the box shows whether embeddings are ready. Only your typed sentence is sent, and only to `localhost`. Accuracy numbers: [docs/EVALUATION.md](docs/EVALUATION.md).
 
 ## Command line
 

@@ -6,7 +6,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', 'scripts/**/*.ts'],
     rules: {
       // Ratchet: warnings are capped in `npm run lint` (see --max-warnings) and lowered over time.
       '@typescript-eslint/no-explicit-any': 'warn',
@@ -19,7 +19,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/**/*.test.ts', 'src/tests/**'],
+    files: ['src/**/*.test.{ts,tsx}', 'src/tests/**'],
     rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },
 );

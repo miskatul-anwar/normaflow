@@ -5,8 +5,13 @@ export function PlaceholdersAndVanishInput({
   placeholders,
   onChange,
   onSubmit,
+  inputId,
+  ariaLabel,
 }: {
   placeholders: string[];
+  /** DOM id of the text input (lets a keyboard shortcut focus it). */
+  inputId?: string;
+  ariaLabel?: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
 }) {
@@ -19,6 +24,7 @@ export function PlaceholdersAndVanishInput({
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const newDataRef = useRef<any[]>([]);
 
   const startAnimation = () => {
@@ -149,8 +155,11 @@ export function PlaceholdersAndVanishInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !animating && value.trim()) {
-      vanishAndSubmit();
+    if (e.key === "Enter") {
+      // Submit through the form so `onSubmit` runs once. (Starting the animation here
+      // first used to flip `animating`, and the form handler then skipped `onSubmit`.)
+      e.preventDefault();
+      if (!animating && value.trim()) formRef.current?.requestSubmit();
     }
   };
 
@@ -187,6 +196,7 @@ export function PlaceholdersAndVanishInput({
   return (
     <div className="w-full max-w-3xl mx-auto">
       <form
+        ref={formRef}
         className={`relative transition-all duration-300 ${isFocused
           ? "transform scale-[1.02] drop-shadow-lg"
           : "drop-shadow-sm hover:drop-shadow-md"
@@ -213,6 +223,8 @@ export function PlaceholdersAndVanishInput({
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               ref={inputRef}
+              id={inputId}
+              aria-label={ariaLabel}
               value={value}
               type="text"
               className={`w-full bg-transparent text-gray-700 h-14 px-6 rounded-l-full focus:outline-none transition-all duration-200 text-base placeholder-transparent ${animating ? "text-transparent" : ""
