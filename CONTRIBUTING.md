@@ -30,16 +30,8 @@ By participating you agree to abide by the [Code of Conduct](CODE_OF_CONDUCT.md)
 | ✨ Feature request | Open an issue using the [feature template](.github/ISSUE_TEMPLATE/feature_request.yml) |
 | 📝 Documentation | Improve README/docs — typos count too |
 | 💻 Code | Pick an issue labeled [`good first issue`](https://github.com/miskatul-anwar/normaflow/labels/good%20first%20issue) or propose your own |
-| 🧪 Tests | More coverage in `src/*.test.ts` or `src-tauri/src/#[cfg(test)]` modules is always appreciated |
-
-## Getting started
-
-Prerequisites:
-
-- **Node.js ≥ 18** (LTS recommended)
-- **Rust ≥ 1.77** (`rustup` recommended)
-- Tauri v2 system dependencies — see the [official prerequisites](https://tauri.app/start/prerequisites/) for your OS
-
+| 🧪 Tests | More coverage in `src/*.test.ts` or `src-tauri/src/
+└── lib.rs            # Tauri shell (window, plugins); all analysis lives in src/services
 ```bash
 # 1. Fork & clone
 git clone https://github.com/<your-username>/normaflow.git
@@ -96,10 +88,8 @@ src/
 ├── types/            # Shared TypeScript types
 └── utils/            # Pure functions (validation, JSON extraction…)
 src-tauri/src/
-├── engine/           # CSV parsing, type inference, FK detection (parallel)
+├── engine/           # CSV parsing, type inference, FK detection, ERD/SQL/report generators
 ├── ner.rs            # Semantic classification
-├── erd.rs / sql.rs   # Output generators
-├── ollama.rs         # Local LLM client
 └── db.rs             # SQLite history
 ```
 
@@ -168,3 +158,4 @@ Please use the issue templates so we can reproduce quickly. For bugs include:
 ## Releasing
 
 Maintainers only — see [`docs/RELEASING.md`](docs/RELEASING.md). In short: bump versions, update `CHANGELOG.md`, tag `vX.Y.Z`, and CI builds installers for all platforms automatically.
+

@@ -7,7 +7,7 @@
 **Turn raw CSV files into normalized database schemas — ERDs, SQL DDL and full normalization reports — in seconds.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-115e59.svg)](LICENSE)
-[![Release: v2.5.0](https://img.shields.io/badge/Release-v2.5.0-0284c7.svg?logo=github)](https://github.com/miskatul-anwar/normaflow/releases)
+[![Release: v2.6.0](https://img.shields.io/badge/Release-v2.6.0-0284c7.svg?logo=github)](https://github.com/miskatul-anwar/normaflow/releases)
 [![CI](https://github.com/miskatul-anwar/normaflow/actions/workflows/ci.yml/badge.svg)](https://github.com/miskatul-anwar/normaflow/actions/workflows/ci.yml)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Built with Tauri](https://img.shields.io/badge/Built%20with-Tauri%202-FFC131?logo=tauri&logoColor=black)](https://tauri.app)
@@ -28,22 +28,20 @@ Drop in one or many CSV files and NormaFlow will:
 - 🧹 **Clean & validate** your data (atomicity checks, null handling, type profiling)
 - ⛏️ **Mine functional dependencies** with a fast partition-refinement algorithm (TANE-inspired lattice pruning)
 - 🔑 **Discover candidate keys** using attribute-closure search over the FD lattice
-- 🧩 **Decompose to 3NF** with lossless-join verification (Bernstein synthesis) and dependency-preservation analysis
-- 🕸️ **Detect cross-table foreign keys** by name heuristics *and* value-overlap sampling across tables
+- 🧩 **Decompose to 3NF / BCNF** with lossless-join verification (chase, plus a re-join on your data) and dependency-preservation analysis
+- 🕸️ **Detect cross-table foreign keys** from the data (inclusion dependencies scored by containment, coverage, name and type evidence)
 - 🧠 **Classify columns semantically** (NLP profiler: names, e-mails, prices, dates, locations, organizations…)
 - 📊 **Generate Mermaid ERDs**, consolidated SQL DDL, and a Markdown normalization report
-- 🤖 **Optionally enrich everything with a local LLM** via [Ollama](https://ollama.com) — no cloud, no API keys, no data exfiltration
 
 ## Highlights
 
 | | |
 |---|---|
-| 🔒 **Private by design** | All processing happens locally. Ollama integration talks to `localhost` only. |
-| ⚡ **Rust core engine** | CSV parsing, NER tagging and FK detection run natively via Tauri 2 — parallelized per file. |
-| 🧮 **Sound algorithms** | Real functional-dependency mining, Armstrong closure key discovery, 3NF synthesis with lossless-join check. |
-| 🖱️ **Visual pipelines** | Build workflows on an interactive React Flow canvas — drag nodes manually or describe what you want in plain English. |
-| 💬 **Natural-language workflows** | *"Normalize my orders export to 3NF and give me SQL"* — the AI agent picks the right operations for you. |
-| 📦 **Portable outputs** | Mermaid `.mmd`, `.sql`, `.md` and workflow `.json` files you can commit to your repo. |
+| 🔒 **Private by design** | All processing happens locally; no network calls are made. |
+| ⚡ **One engine** | The same TypeScript analysis runs for one file or many, in the desktop app and in the browser. |
+| 🧮 **Sound algorithms** | Functional-dependency mining, closure-based key discovery, 3NF synthesis. Only dependencies that hold on every row shape the schema. |
+| 🖱️ **Visual pipelines** | Build workflows on an interactive React Flow canvas — click or drag the operations you want. |
+| 📦 **Portable outputs** | Mermaid, `.sql`, `.md` and workflow `.json` files you can commit to your repo. |
 | 🪶 **Lightweight** | Native binary, tiny footprint compared to Electron alternatives. |
 
 ## Installation
@@ -81,43 +79,26 @@ sudo apt update && sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev l
 ```
 </details>
 
-### Optional: local AI
-
-Install [Ollama](https://ollama.com) and pull a model:
-
-```bash
-ollama pull qwen3:4b   # or llama3.2, gemma3, mistral…
-```
-
-NormaFlow auto-detects Ollama at `http://localhost:11434`. Without it, everything still works — the built-in rule engine takes over.
-
 ## Quick start
 
 1. Launch NormaFlow and upload one or more CSV files (a sample dataset is preloaded).
-2. Build your pipeline:
-   - **Manually** — click/drag operations from the palette onto the canvas, or
-   - **With AI** — type *"clean, normalize to 3NF, generate ERD and SQL"* in the Ask-AI bar.
-3. Hit **Run All** and watch the console stream progress.
+2. Build your pipeline by clicking or dragging operations from the palette onto the canvas, or hit **Run All** for the full pipeline.
+3. Run the pipeline.
 4. Open the **Output** tab to browse the ERD, SQL DDL, FDs, keys, cardinalities and the full report — then download what you need.
 
 ## Architecture at a glance
 
 ```
-┌───────────────────────────── Browser (WebView) ─────────────────────────────┐
-│  React 18 + TypeScript + Tailwind + React Flow                              │
-│  ├─ Workflow canvas (nodes = pipeline operations)                           │
-│  ├─ Console / validation side panel                                         │
-│  └─ TS fallback engine: FD mining · key discovery · 3NF synthesis           │
-└──────────────────────────────────┬──────────────────────────────────────────┘
-                    invoke() IPC   │
-┌──────────────────────────────────▼──────────────────────────────────────────┐
-│  Rust core (Tauri 2)                                                        │
-│  ├─ engine: parallel CSV parsing, type inference, value-sampled FK detect   │
-│  ├─ ner: semantic column classification                                     │
-│  ├─ erd/sql/report generators                                               │
-│  ├─ ollama client (localhost only)                                          │
-│  └─ SQLite pipeline history                                                 │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────── WebView (frontend) ────────────────────────────┐
+│  React 18 + TypeScript + Tailwind + React Flow                             │
+│  ├─ Workflow canvas (nodes = pipeline operations)                          │
+│  └─ Engine: CSV ingest · FD mining · keys · 2NF/3NF/BCNF · lossless and    │
+│     preservation checks · foreign keys · ERD · SQL · report                │
+└──────────────────────────────────┬─────────────────────────────────────────┘
+                                   │ window only
+┌──────────────────────────────────▼─────────────────────────────────────────┐
+│  Rust shell (Tauri 2): native window, CSP                                  │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Read the full story in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -129,10 +110,10 @@ normaflow/
 ├── src/                  # React frontend
 │   ├── components/       # UI components (canvas nodes, panels, output views)
 │   ├── hooks/            # Reusable state logic (workflow graph, execution)
-│   ├── services/         # Engine services (FD mining, NLP profiler, Ollama)
+│   ├── services/         # Engine services (FD mining, NLP profiler)
 │   ├── config/           # Operation registry
-│   └── utils/            # Pure helpers (validation, JSON extraction…)
-├── src-tauri/            # Rust backend (engine, ner, erd, db, ollama modules)
+│   └── utils/            # Pure helpers (validation, edge rules, result cache)
+├── src-tauri/            # Rust shell (window, CSP)
 ├── docs/                 # Architecture & release docs
 └── .github/              # CI, release automation, issue/PR templates
 ```
@@ -160,3 +141,4 @@ If NormaFlow saves you time, please consider giving the repo a ⭐ — it helps 
 [Report Bug](https://github.com/miskatul-anwar/normaflow/issues/new?template=bug_report.yml) · [Request Feature](https://github.com/miskatul-anwar/normaflow/issues/new?template=feature_request.yml)
 
 </div>
+

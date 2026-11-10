@@ -30,11 +30,10 @@ Credit is given to reporters unless anonymity is requested.
 NormaFlow processes files entirely locally. Areas of particular interest:
 
 - The Tauri IPC surface (`src-tauri/src/*.rs` commands) — input validation on file contents passed from the WebView
-- The Ollama HTTP client — SSRF/URL handling (`OLLAMA_HOST` configuration)
 - Workflow state import/export (`*.json` files loaded into the app)
 - CSP and capability configuration in `src-tauri/tauri.conf.json`
 
 ## Known design boundaries
 
-- The app intentionally talks to `http://localhost:11434` (Ollama). Changing this host via `OLLAMA_HOST` sends data wherever that host points — users should treat non-local endpoints as untrusted.
+- The app makes no network requests; all analysis runs on the local machine.
 - CSV parsing is bound-checked, but extremely large/malformed files can exhaust memory; the app is designed for typical tabular datasets rather than adversarial inputs.
