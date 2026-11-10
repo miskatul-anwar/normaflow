@@ -11,10 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Output page now uses the same layout as the pipeline page: a rounded header card, a sidebar card styled like the operations palette (titled header, grouped sections, tinted icon tiles, name and one-line description per row) and a white rounded content panel.
 - Removed the header labels "Workspace …", "Complete Pipeline Executed" and "N Tables Processed". The tab strip already says which workspace you are in, and the header now just reads "Analysis results" with the time the page was opened.
 
-### Fixed (minimap)
-- The minimap drew each step as a tiny flat rectangle and washed out everything outside the visible window with a heavy mask, so it looked like faint coloured shadows. Each step is now a miniature of the real card (white body, phase-coloured outline, icon chip, label bars), the mask is light with the visible window outlined, the map is wider (300 × 110), and long one-row pipelines keep a minimum card height so they stay legible.
-- Zooming out is allowed down to 8% (was 20%), so "Fit view" now shows a full 19-step pipeline instead of cutting it off.
-
 ### Changed (tabs on every page)
 - The workspace tab strip now sits above both the pipeline and the Output page, so you can switch, add, rename, recolour and close tabs from either one, in any order. Ctrl/Cmd+T, Ctrl/Cmd+W and Ctrl+Tab work on both pages.
 - The Output page follows the active tab: each tab shows its own results (and resets to its Overview), and a tab that has not run yet shows "No results yet for …" with a button back to its pipeline. One tab's fresh results are never shown under another tab.
