@@ -27,6 +27,9 @@ export default defineConfig(async () => ({
       '@': path.resolve(__dirname, 'src'), // <-- This enables @/ alias
     },
   },
+  // Workers are created with { type: 'module' }; build them as ES modules so they can
+  // lazy-load code (the spreadsheet parser) instead of bundling it into every start.
+  worker: { format: 'es' as const },
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   clearScreen: false,
   server: {

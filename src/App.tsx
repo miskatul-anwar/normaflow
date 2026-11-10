@@ -23,6 +23,7 @@ import { OPERATIONS } from './config/operations';
 import { validateSequence } from './utils/workflowValidation';
 import { clearCachedResult, loadCachedResult, saveCachedResult } from './utils/resultCache';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { isSupportedInputName } from './services/processors/spreadsheetProcessor';
 import './styles/App.css';
 
 const logger = new Logger();
@@ -83,14 +84,14 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
   const handleFileUpload = useCallback(
     (files: File[]) => {
       const valid = files.filter(
-        f => f.name.toLowerCase().endsWith('.csv') || f.type === 'text/csv',
+        f => isSupportedInputName(f.name, f.type),
       );
       if (valid.length > 0) {
         setUploadedFiles(valid);
         onSuggestTitle(tabId, valid[0].name.replace(/\.[^.]+$/, ''));
         logMessage('success', `Loaded ${valid.length} dataset file(s): ${valid.map(f => f.name).join(', ')}`, 'FILE');
       } else {
-        logMessage('error', `No valid CSV files among: ${files.map(f => f.name).join(', ')}`, 'FILE');
+        logMessage('error', `No CSV or spreadsheet files among: ${files.map(f => f.name).join(', ')}`, 'FILE');
       }
     },
     [logMessage, onSuggestTitle, tabId],
@@ -202,7 +203,7 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
       return;
     }
     if (!hasFiles) {
-      logMessage('error', 'Nothing to show yet. Upload a CSV file and run the pipeline first.', 'NAVIGATION');
+      logMessage('error', 'Nothing to show yet. Upload a data file and run the pipeline first.', 'NAVIGATION');
       return;
     }
     logMessage('info', 'Synthesizing pipeline to generate output…', 'NAVIGATION');

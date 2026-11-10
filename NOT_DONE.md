@@ -47,7 +47,7 @@ second round. Everything not listed here was addressed; see the status table in
 - **P3-5** Optional local-LLM assistance
 - **P3-7** Step-by-step explanation of each decomposition
 - **P3-8** SQL options in the UI (dialect works in the API and CLI; no UI control)
-- **P3-10** More inputs (Excel, JSON, Parquet, existing databases)
+- **P3-10** More inputs (JSON, Parquet, existing databases). Excel and LibreOffice spreadsheets are done.
 - **P3-11** More dependency types (UCCs, n-ary INDs, MVDs / 4NF)
 - **P3-12** Project files and persistent run history
 - **P3-13** Data-quality report

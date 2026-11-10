@@ -42,7 +42,7 @@ The canvas selects which operations run. `DatabaseService.analyzeRows`
 executes them for one table; `processFile` and `processFiles` call it for one
 file or for every file.
 
-1. **Ingest** — `CSVProcessor` parses each file (delimiter sniffing, quoted
+1. **Ingest** — `spreadsheetProcessor` first turns each visible sheet of an Excel or OpenDocument workbook into an in-memory CSV (so a workbook is a multi-file run with one table per sheet); then `CSVProcessor` parses each file (delimiter sniffing, quoted
    fields, duplicate header repair; large files stream).
 2. **Clean / profile** — empty and null-like cells are normalized; column
    types and multi-valued columns are reported. A column counts as

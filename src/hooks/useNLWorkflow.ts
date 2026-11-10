@@ -147,7 +147,7 @@ export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseN
     if (graph.placedOperationLabels.length >= pendingRun.current) {
       pendingRun.current = null;
       if (hasFiles) run();
-      else toast.error('Upload a CSV file to run the pipeline.');
+      else toast.error('Upload a data file to run the pipeline.');
     }
   }, [graph.nodes, graph.placedOperationLabels.length, hasFiles, run]);
 

@@ -16,6 +16,7 @@ import { IdentifierRegistry } from '../utils/identifiers';
 import { Logger } from '../utils/logger';
 import { FileUtils } from '../utils/fileUtils';
 import { createDecoder } from '../utils/encoding';
+import { expandSpreadsheets, isSpreadsheetFile, isSupportedInputName } from '../processors/spreadsheetProcessor';
 import { exportNormalizedData } from '../processors/dataExport';
 import { TableData } from '../../types';
 
@@ -413,7 +414,12 @@ export class DatabaseService {
     onProgress?: (state: ProcessingState) => void,
     options: ProcessingOptions = {}
   ): Promise<ProcessingResult> {
-    
+    // A workbook becomes one CSV per sheet; several sheets are several tables.
+    if (await isSpreadsheetFile(file)) {
+      const sheets = await expandSpreadsheets([file], n => this.logger.warn(n));
+      return this.processFiles(sheets, selectedOperations, onProgress, options);
+    }
+
     const startTime = Date.now();
     this.performanceMonitor.startTime = startTime;
     this.performanceMonitor.checkpoints = [];
@@ -3063,8 +3069,11 @@ export class DatabaseService {
       }
 
       // Check file type
-      if (!file.name.toLowerCase().endsWith('.csv')) {
-        return { valid: false, error: 'Only CSV files are supported' };
+      if (!isSupportedInputName(file.name, file.type)) {
+        return { valid: false, error: 'Only CSV and spreadsheet files (Excel, OpenDocument) are supported' };
+      }
+      if (await isSpreadsheetFile(file)) {
+        return { valid: true }; // binary formats are validated when they are read
       }
 
       // Quick content validation with streaming
@@ -3257,6 +3266,7 @@ export class DatabaseService {
       if (!files || files.length === 0) {
         throw new Error('No files uploaded for processing.');
       }
+      files = await expandSpreadsheets(files, n => this.logger.warn(n));
 
       if (files.length === 1) {
         return await this.processFile(files[0], selectedOperations, onProgress, options);
