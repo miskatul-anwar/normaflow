@@ -8,12 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- App icon: the source image had a 1 px semi-transparent grey line down its left edge, which was carried into every generated size (taskbar, dock, installer). The edge is cleared and the whole set regenerated with `tauri icon`; `bundle.icon` now lists the files the Tauri docs recommend (`32x32.png`, `128x128.png`, `128x128@2x.png`, `icon.icns`, `icon.ico` with the 32 px layer first) instead of `logo.ico` and a `.webp`.
 - The upload button no longer shows a `1` badge before any upload: the preloaded sample dataset is not counted, and the button's tooltip says when the sample is in use. The count is now exactly the files you uploaded.
 
 ### Changed
+- The active workspace tab now joins the header with no gap: they share one surface colour and the header sits directly under the tab strip.
+- The header shows only the app icon; the "NormaFlow" title and subtitle are gone.
 - Removed the "Embeddings: ready/offline" label under the natural-language box. The bundled model needs no setup, and keyword matching works regardless.
 
 ### Added
+- Tab colours: a dot on each tab opens a picker (nine presets, a custom colour, or none). The colour marks the tab and tints the header of the active tab. Also in the right-click menu.
 - Workspace tabs: several independent workspaces in one window, each with its own canvas, files, results and running job. Click to switch, rename with the pencil on the tab, double-click, `F2` or the right-click menu (a new tab is named after its first uploaded file), `×` or middle-click to close (asks first if it holds a pipeline), `+` or `Ctrl/Cmd+T` for a new one, `Ctrl/Cmd+W` to close, `Ctrl+Tab` to cycle. Up to 12 tabs. Tabs and their state now also survive a visit to the Output page, which previously reset the canvas.
 - Natural-language workflow builder: type a request ("convert it to 1NF"), preview the minimal pipeline with its dependencies, then Apply or Apply & Run; one-click Undo. Keywords match first; a bundled all-MiniLM-L6-v2 model (23 MB, runs in-app on WebAssembly) handles paraphrases. Nothing to install and no network use. The installer grows by about 37 MB (model plus WASM runtime); the CSP adds `'wasm-unsafe-eval'`.
 - `npm run bench:nl` and a 77-case labelled eval set.

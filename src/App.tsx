@@ -14,6 +14,7 @@ import { useNLWorkflow } from './hooks/useNLWorkflow';
 import { NLCommandBar } from './components/nl/NLCommandBar';
 import { WorkspaceTabBar } from './components/workflow/WorkspaceTabBar';
 import { useWorkspaceTabs, type TabStatus } from './hooks/useWorkspaceTabs';
+import { activeSurface } from './utils/tabColors';
 import { usePaletteResize } from './hooks/usePaletteResize';
 import { useWorkflowGraph, type WorkflowSnapshot, buildChainEdges } from './hooks/useWorkflowGraph';
 import { Logger } from './services/utils/logger';
@@ -374,7 +375,12 @@ function AppShell() {
 
   return (
     <>
-      <div className="nf-app" hidden={onOutput}>
+      <div
+        className={`nf-app${tabs[0]?.id === activeId ? ' is-first-active' : ''}`}
+        hidden={onOutput}
+        // The header takes the active tab's surface colour so the two read as one piece.
+        style={{ ['--nf-chrome-bg' as string]: activeSurface(tabs.find(t => t.id === activeId)?.color ?? null) }}
+      >
         <WorkspaceTabBar
           tabs={tabs}
           activeId={activeId}
@@ -383,6 +389,7 @@ function AppShell() {
           onAdd={addTab}
           onClose={requestClose}
           onRename={tabsApi.renameTab}
+          onColor={tabsApi.setTabColor}
         />
         {tabs.map(tab => (
           <div key={tab.id} className="nf-tab-pane" role="tabpanel" aria-label={tab.title} hidden={tab.id !== activeId}>

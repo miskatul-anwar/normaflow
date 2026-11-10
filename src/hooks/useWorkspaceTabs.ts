@@ -6,6 +6,7 @@
  * pure (React StrictMode runs them twice).
  */
 import { useCallback, useRef, useState } from 'react';
+import { isHexColor } from '../utils/tabColors';
 
 export const MAX_TABS = 12;
 
@@ -14,6 +15,8 @@ export interface WorkspaceTab {
   title: string;
   /** True until the user renames it; an uploaded file name may then become the title. */
   autoTitle: boolean;
+  /** Accent colour (`#rrggbb`), or null for the default look. */
+  color: string | null;
 }
 
 export interface TabStatus {
@@ -25,7 +28,7 @@ const IDLE: TabStatus = { running: false, operations: 0 };
 
 export function useWorkspaceTabs() {
   const counter = useRef(1);
-  const [tabs, setTabs] = useState<WorkspaceTab[]>(() => [{ id: 't1', title: 'Workspace 1', autoTitle: true }]);
+  const [tabs, setTabs] = useState<WorkspaceTab[]>(() => [{ id: 't1', title: 'Workspace 1', autoTitle: true, color: null }]);
   const [activeId, setActiveId] = useState('t1');
   const [status, setStatusMap] = useState<Record<string, TabStatus>>({});
   const tabsRef = useRef(tabs);
@@ -36,7 +39,7 @@ export function useWorkspaceTabs() {
   const addTab = useCallback((): string | null => {
     if (tabsRef.current.length >= MAX_TABS) return null;
     const n = ++counter.current;
-    const tab: WorkspaceTab = { id: `t${n}`, title: `Workspace ${n}`, autoTitle: true };
+    const tab: WorkspaceTab = { id: `t${n}`, title: `Workspace ${n}`, autoTitle: true, color: null };
     tabsRef.current = [...tabsRef.current, tab];
     setTabs(tabsRef.current);
     setActiveId(tab.id);
@@ -52,7 +55,7 @@ export function useWorkspaceTabs() {
     let nextActive = activeRef.current;
     if (next.length === 0) {
       const n = ++counter.current;
-      next = [{ id: `t${n}`, title: `Workspace ${n}`, autoTitle: true }];
+      next = [{ id: `t${n}`, title: `Workspace ${n}`, autoTitle: true, color: null }];
       nextActive = next[0].id;
     } else if (activeRef.current === id) {
       nextActive = (next[index] ?? next[index - 1]).id;
@@ -79,6 +82,12 @@ export function useWorkspaceTabs() {
     setTabs(t => t.map(x => (x.id === id && x.autoTitle && x.title !== clean ? { ...x, title: clean } : x)));
   }, []);
 
+  /** Colour a tab (`#rrggbb`), or pass null to clear it. Anything else is ignored. */
+  const setTabColor = useCallback((id: string, color: string | null) => {
+    if (color !== null && !isHexColor(color)) return;
+    setTabs(t => t.map(x => (x.id === id ? { ...x, color } : x)));
+  }, []);
+
   const selectTab = useCallback((id: string) => {
     if (tabsRef.current.some(t => t.id === id)) setActiveId(id);
   }, []);
@@ -97,5 +106,5 @@ export function useWorkspaceTabs() {
     });
   }, []);
 
-  return { tabs, activeId, status, addTab, closeTab, renameTab, suggestTitle, selectTab, cycleTab, setStatus };
+  return { tabs, activeId, status, addTab, closeTab, renameTab, setTabColor, suggestTitle, selectTab, cycleTab, setStatus };
 }

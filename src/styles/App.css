@@ -1838,8 +1838,9 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   font-size: 12px;
   font-weight: 500;
   color: #475569;
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--tab-bg, rgba(255, 255, 255, 0.55));
   border: 1px solid #d1d5db;
+  border-top: 3px solid var(--tab-accent, transparent);
   border-bottom: none;
   border-radius: 10px 10px 0 0;
   cursor: pointer;
@@ -1850,7 +1851,15 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 }
 .nf-tab.is-active {
   color: #0f172a;
-  background: #f8fafc;
+  background: var(--tab-bg, #f8fafc);
+  border-left-color: transparent;
+  border-right-color: transparent;
+  /* Overlap the header by 1px so the two surfaces join without a seam. */
+  position: relative;
+  z-index: 2;
+  margin-bottom: -1px;
+  padding-bottom: 7px;
+  box-shadow: -1px 0 0 rgba(15, 23, 42, 0.07), 1px 0 0 rgba(15, 23, 42, 0.07);
 }
 .nf-tab:focus-visible {
   outline: 2px solid #0d9488;
@@ -1963,4 +1972,121 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 .nf-tab-menu button:focus-visible {
   background: #f0fdfa;
   outline: none;
+}
+
+/* Seamless tab → header: the header takes the active tab's surface and sits directly under the strip. */
+.nf-app {
+  --nf-chrome-bg: #f8fafc;
+}
+.nf-app .nf-shell {
+  padding-top: 0;
+}
+.nf-app .nf-header {
+  background: var(--nf-chrome-bg);
+  backdrop-filter: none;
+  transition: background-color 0.15s ease;
+}
+/* A first tab shares the header's left edge, so that corner must be square. */
+.nf-app.is-first-active .nf-header {
+  border-top-left-radius: 0;
+}
+.nf-tab {
+  transition: background-color 0.15s ease;
+}
+
+/* Tab colour dot and picker */
+.nf-tab-color {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.nf-tab:hover .nf-tab-color,
+.nf-tab.is-active .nf-tab-color,
+.nf-tab-color.is-set,
+.nf-tab-color:focus-visible {
+  display: inline-flex;
+}
+.nf-tab-color:hover {
+  background: rgba(15, 23, 42, 0.08);
+}
+.nf-tab-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(15, 23, 42, 0.35);
+  box-sizing: border-box;
+}
+.nf-tab-picker {
+  position: fixed;
+  z-index: 60;
+  width: 188px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+}
+.nf-tab-swatches {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.nf-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
+  cursor: pointer;
+}
+.nf-swatch:hover {
+  transform: scale(1.1);
+}
+.nf-swatch[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px #0f172a;
+}
+.nf-swatch:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 2px;
+}
+.nf-tab-picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 12px;
+  color: #475569;
+}
+.nf-tab-picker-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.nf-tab-picker-row input[type='color'] {
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+.nf-tab-picker-none {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.nf-tab-picker-none:hover {
+  background: #f1f5f9;
 }
