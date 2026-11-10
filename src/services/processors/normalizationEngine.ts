@@ -284,16 +284,32 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
    * magnitude faster on real datasets while producing exact FDs (plus
    * high-confidence approximate ones).
    */
-  static async mineFunctionalDependencies(data: any[], maxLhsSize: number = 4): Promise<FunctionalDependency[]> {
+  static async mineFunctionalDependencies(
+    data: any[],
+    maxLhsSize: number = 4,
+    mineOptions: { nullSemantics?: 'equal' | 'distinct'; signal?: AbortSignal; timeBudgetMs?: number } = {},
+  ): Promise<FunctionalDependency[]> {
+    return (await this.mineFunctionalDependenciesDetailed(data, maxLhsSize, mineOptions)).fds;
+  }
+
+  /**
+   * Same as {@link mineFunctionalDependencies}, but also reports whether the
+   * search was cut short and how far it got.
+   */
+  static async mineFunctionalDependenciesDetailed(
+    data: any[],
+    maxLhsSize: number = 4,
+    mineOptions: { nullSemantics?: 'equal' | 'distinct'; signal?: AbortSignal; timeBudgetMs?: number } = {},
+  ): Promise<{ fds: FunctionalDependency[]; truncated: boolean; levelReached: number; maxLhsSize: number }> {
     if (!data || data.length === 0) {
       this.logger.warn('No data provided for FD mining');
-      return [];
+      return { fds: [], truncated: false, levelReached: 0, maxLhsSize };
     }
 
     const attributes = Object.keys(data[0] || {});
     if (attributes.length < 2) {
       this.logger.warn('Not enough attributes for FD mining');
-      return [];
+      return { fds: [], truncated: false, levelReached: 0, maxLhsSize };
     }
 
     this.logger.info(`FD mining (partition refinement): ${data.length} rows × ${attributes.length} attributes`);
@@ -301,9 +317,10 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     // Yield to keep the UI responsive before the (synchronous) compute burst.
     await this.yieldControl();
 
-    const { fds, durationMs, combinationsEvaluated, exactCount } = mineFDFast(data, {
+    const { fds, durationMs, combinationsEvaluated, exactCount, truncated, levelReached } = mineFDFast(data, {
       maxLhsSize,
       minConfidence: 0.85,
+      ...mineOptions,
     });
 
     const mapped: FunctionalDependency[] = fds.map(fd => ({
@@ -318,8 +335,18 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     this.logger.success(
       `FD mining completed in ${durationMs}ms: ${mapped.length} FDs (${exactCount} exact) from ${combinationsEvaluated} evaluated candidates`,
     );
+    if (truncated) {
+      this.logger.warn(
+        `FD search stopped early after LHS size ${levelReached}; larger determinants were not explored.`,
+      );
+    }
 
-    return mapped;
+    return { fds: mapped, truncated: Boolean(truncated), levelReached: levelReached ?? 0, maxLhsSize };
+  }
+
+  /** Dependencies that hold on every row (no violations). */
+  static exactFDs(fds: FunctionalDependency[]): FunctionalDependency[] {
+    return fds.filter(fd => fd.violations === 0 && fd.confidence >= 1);
   }
 
   /**
@@ -1747,7 +1774,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     // Step 7: Synthesize Foreign Keys
     await this.establishForeignKeys(nonRedundant);
 
-    this.logger.success(`Bernstein 3NF synthesis completed: ${nonRedundant.length} relations synthesized (LOSSLESS JOIN GUARANTEED)`);
+    this.logger.success(`Bernstein 3NF synthesis completed: ${nonRedundant.length} relations synthesized (lossless with respect to the supplied FDs; verify on data)`);
     return nonRedundant;
   }
 

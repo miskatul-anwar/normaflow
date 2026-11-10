@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
@@ -77,13 +77,13 @@ function Workspace() {
   const handleFileUpload = useCallback(
     (files: File[]) => {
       const valid = files.filter(
-        f => f.name.toLowerCase().endsWith('.csv') || f.name.toLowerCase().endsWith('.xlsx') || f.type === 'text/csv',
+        f => f.name.toLowerCase().endsWith('.csv') || f.type === 'text/csv',
       );
       if (valid.length > 0) {
         setUploadedFiles(valid);
         logMessage('success', `Loaded ${valid.length} dataset file(s): ${valid.map(f => f.name).join(', ')}`, 'FILE');
       } else {
-        logMessage('error', `No valid CSV/XLSX files among: ${files.map(f => f.name).join(', ')}`, 'FILE');
+        logMessage('error', `No valid CSV files among: ${files.map(f => f.name).join(', ')}`, 'FILE');
       }
     },
     [logMessage],
@@ -305,13 +305,6 @@ function Workspace() {
 }
 
 export default function App() {
-  // Warm up native database
-  useEffect(() => {
-    import('@tauri-apps/api/core')
-      .then(({ invoke }) => invoke('init_database').catch(() => undefined))
-      .catch(() => undefined);
-  }, []);
-
   return (
     <ErrorBoundary componentName="Application Root">
       <Router>

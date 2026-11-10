@@ -122,7 +122,7 @@ export default function Heading({
           ref={inputRef}
           type="file"
           multiple
-          accept=".csv,.xlsx"
+          accept=".csv"
           className="hidden"
           onChange={handleFileChange}
         />

@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import mermaid from 'mermaid';
 import { Copy, Download, AlertCircle } from 'lucide-react';
 
+// Diagrams are built from untrusted CSV headers: never let Mermaid run scripts or raw HTML.
+mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
+
 interface SVGPreviewSectionProps {
   erdContent: string;
 }

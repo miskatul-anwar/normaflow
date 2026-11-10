@@ -1,7 +1,6 @@
 import { useState, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
 import { Copy, Download, CheckCircle } from 'lucide-react';
 import 'github-markdown-css/github-markdown-light.css';
 
@@ -53,7 +52,8 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, filena
         </div>
       </div>
       <div className="p-8 markdown-body text-gray-800 font-sans overflow-auto max-h-[800px]">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+        {/* Raw HTML is deliberately not enabled: reports embed text from untrusted CSV files. */}
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {content}
         </ReactMarkdown>
       </div>
