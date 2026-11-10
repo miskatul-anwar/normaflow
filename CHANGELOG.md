@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (Output page)
+- The **SQL Schema** tab took seconds to open on large schemas. It used `react-syntax-highlighter` (Prism), which builds a React element for every token of every line before showing anything. It is replaced by a small virtualized viewer (`CodeViewer`) that renders and highlights only the rows on screen, with line numbers, horizontal scroll and its own SQL highlighting. `react-syntax-highlighter` and its types are removed from the dependencies.
+- The Output page now says which workspace its results belong to: a badge with the tab's name and colour in the header (the header and its bottom border take the tab's colour). With several tabs open, results can no longer be mistaken for another tab's.
+
 ### Removed (header)
 - The **Full 3NF** button. Build the pipeline from the sidebar or the text box instead.
 

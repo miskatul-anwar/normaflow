@@ -416,7 +416,7 @@ function AppShell() {
       <AnimatePresence mode="wait">
         <Routes>
           <Route path="/" element={null} />
-          <Route path="/output" element={<OutputPage />} />
+          <Route path="/output" element={<OutputPage tabs={tabs} />} />
         </Routes>
       </AnimatePresence>
     </>
