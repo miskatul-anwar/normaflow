@@ -88,13 +88,14 @@ capped (default 4) and the search stops at the time budget; both are reported.
 
 ```
 NLCommandBar → useNLWorkflow → resolver (keywords, then embeddings) → planner → useWorkflowGraph
-                                   └ EmbeddingProvider: Ollama via Rust command | dev proxy | none
+                                   └ EmbeddingProvider: bundled MiniLM in a Web Worker (ONNX/WASM) | none
 ```
 
 - `src/services/nlp/workflow/` is pure TypeScript with no React: `planner.ts` (dependency closure of the requested operations, sorted by `order`), `anchors.ts` (aliases and example phrases per operation), `lexicalResolver.ts` (clauses, negation, options), `resolver.ts` (hybrid), `anchorIndex.ts` (embeds anchors once, caches in memory and IndexedDB keyed by model, framing and anchor hash), `ollamaProvider.ts`.
 - `src/config/operations.ts` stays the only definition of operations and dependencies; a test fails if an operation has no anchors.
 - The plan is previewed as chips (dimmed = added as a dependency). Apply replaces or extends the canvas; the toast Undo restores the previous snapshot in one step.
-- Default model `embeddinggemma-2:270m` (text-only, ~300 MB), falling back to `embeddinggemma`. Both names were checked on ollama.com/library.
+- The model (`public/models`, 23 MB, sha256-checked) and the ONNX WebAssembly runtime (`public/ort`, copied from `onnxruntime-web` by `scripts/prepare-nl-assets.mjs` before `dev`/`build`) ship inside the installer. `embed.worker.ts` loads them with remote loading disabled. The CSP gains only `'wasm-unsafe-eval'` (WebAssembly compilation, not JavaScript `eval`).
+- Pitfall worth knowing: transformers.js only looks for local tokenizer files when `localModelPath` is a path rather than an http(s) URL, so the worker passes `/models/`.
 
 ## Workflow graphs
 
@@ -114,7 +115,7 @@ in `useWorkflowGraph`.
   in Markdown is not rendered, table/span text is escaped, Mermaid runs with
   `securityLevel: 'strict'`, and the webview has a strict
   Content-Security-Policy (`src-tauri/tauri.conf.json`).
-- No network requests are made by default. The one exception is the optional natural-language box: when a local Ollama server is running it sends the **typed command text and fixed example phrases** (never CSV contents, headers or file names) to `127.0.0.1`/`localhost`/`[::1]` only. The Rust command `embed_texts` (`src-tauri/src/ollama.rs`) refuses any other host, disables redirects and uses plain `http`, so the CSP (`connect-src 'self' ipc: …`) is unchanged. Without Ollama the box falls back to keyword matching.
+- No network requests are made. The natural-language box uses a model bundled with the app; there is no server and no download.
 
 ## Testing
 

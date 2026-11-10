@@ -20,20 +20,18 @@ export interface Resolution {
   message?: string;
 }
 
-/**
- * Decision thresholds on cosine similarity.
- *
- * UNTUNED: these are starting values. They have NOT been measured against a real
- * embedding model yet (no Ollama was available when this was written). Tune with
- * `npm run bench:nl -- --ollama --sweep` and record the result in docs/EVALUATION.md.
- * Until then embedding matches are shown as "best guess" and always need the user to press Apply.
- */
+/** Decision thresholds on cosine similarity. */
 export interface Thresholds {
   accept: number;
   margin: number;
   floor: number;
 }
-export const DEFAULT_THRESHOLDS: Thresholds = { accept: 0.6, margin: 0.03, floor: 0.4 };
+/**
+ * Tuned for the bundled all-MiniLM-L6-v2 model with `npm run bench:nl -- --sweep`: the
+ * middle of a plateau where plan accuracy is 94% and all junk is rejected. Tuned and scored
+ * on the same 77 cases, so expect real-world accuracy to be somewhat lower.
+ */
+export const DEFAULT_THRESHOLDS: Thresholds = { accept: 0.4, margin: 0.02, floor: 0.3 };
 
 export type ResolveMode = 'hybrid' | 'lexical' | 'embedding';
 

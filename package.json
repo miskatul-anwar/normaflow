@@ -1,6 +1,6 @@
 {
   "name": "normaflow",
-  "description": "Turn raw CSV files into normalized database schemas — ERDs, SQL DDL and normalization reports. Local-first desktop app built with Tauri + React.",
+  "description": "Turn raw CSV files into normalized database schemas \u2014 ERDs, SQL DDL and normalization reports. Local-first desktop app built with Tauri + React.",
   "keywords": [
     "erd",
     "entity-relationship-diagram",
@@ -30,7 +30,9 @@
     "node": ">=18"
   },
   "scripts": {
+    "predev": "node scripts/prepare-nl-assets.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/prepare-nl-assets.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
@@ -45,6 +47,7 @@
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.6",
+    "@huggingface/transformers": "^4.3.2",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
@@ -52,7 +55,6 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tabler/icons-react": "^3.34.1",
     "@tailwindcss/vite": "^4.1.11",
-    "@tauri-apps/api": "^2.12.4",
     "@xyflow/react": "^12.8.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

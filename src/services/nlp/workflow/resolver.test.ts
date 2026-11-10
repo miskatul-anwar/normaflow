@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { resolve } from './resolver';
 import { NullProvider, FakeEmbeddingProvider, EmbeddingUnavailableError, type EmbeddingProvider } from './embeddingProvider';
-import { OllamaProvider, isLoopbackUrl } from './ollamaProvider';
+import { LocalModelProvider } from './localModelProvider';
 import { clearAnchorMemoryCache } from './anchorIndex';
 
 describe('hybrid resolver', () => {
@@ -33,7 +33,7 @@ describe('hybrid resolver', () => {
   });
 
   it('a failing provider does not break a keyword result', async () => {
-    const failing = new OllamaProvider({ transport: async () => { throw new Error('connection refused'); } });
+    const failing = new LocalModelProvider(async () => { throw new Error('worker failed to start'); });
     const r = await resolve('please normalize my data', failing);
     expect(r.targets).toEqual(['3NF']);
     expect(r.plan.length).toBeGreaterThan(0);
@@ -54,34 +54,21 @@ describe('hybrid resolver', () => {
   });
 });
 
-describe('ollama provider', () => {
-  it('only accepts loopback URLs', () => {
-    for (const ok of ['http://127.0.0.1:11434', 'http://localhost:11434', 'http://[::1]:11434']) expect(isLoopbackUrl(ok), ok).toBe(true);
-    for (const bad of ['http://example.com', 'https://localhost', 'http://10.0.0.5:11434', 'http://localhost.evil.com', 'http://u:p@localhost']) expect(isLoopbackUrl(bad), bad).toBe(false);
-    expect(() => new OllamaProvider({ transport: async () => [], baseUrl: 'http://example.com' })).toThrow();
+describe('local model provider', () => {
+  it('normalises vectors', async () => {
+    const p = new LocalModelProvider(async texts => texts.map(() => [3, 4]));
+    expect(await p.embed(['hello'], 'query')).toEqual([[0.6, 0.8]]);
+    expect((await p.status()).ready).toBe(true);
   });
 
-  it('falls back to the second model, normalises vectors, and prefixes inputs', async () => {
-    const calls: Array<[string, string[]]> = [];
-    const p = new OllamaProvider({
-      models: ['new-model', 'old-model'],
-      transport: async (_u, model, inputs) => {
-        calls.push([model, inputs]);
-        if (model === 'new-model') throw new Error('model not found');
-        return inputs.map(() => [3, 4]);
-      },
-    });
-    const [v] = await p.embed(['hello'], 'query');
-    expect(v).toEqual([0.6, 0.8]);
-    expect(calls.map(c => c[0])).toEqual(['new-model', 'old-model']);
-    expect(calls[1][1][0]).toBe('task: classification | query: hello');
-    await p.embed(['again'], 'query');
-    expect(calls[calls.length - 1][0]).toBe('old-model');
-  });
-
-  it('turns transport failures into EmbeddingUnavailableError', async () => {
-    const p = new OllamaProvider({ transport: async () => { throw new Error('boom'); } });
+  it('turns extractor failures into EmbeddingUnavailableError and an offline status', async () => {
+    const p = new LocalModelProvider(async () => { throw new Error('boom'); });
     await expect(p.embed(['x'], 'query')).rejects.toBeInstanceOf(EmbeddingUnavailableError);
     expect((await p.status()).ready).toBe(false);
+  });
+
+  it('rejects a mismatched number of vectors', async () => {
+    const p = new LocalModelProvider(async () => [[1, 0]]);
+    await expect(p.embed(['a', 'b'], 'query')).rejects.toBeInstanceOf(EmbeddingUnavailableError);
   });
 });
