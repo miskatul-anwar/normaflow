@@ -98,7 +98,7 @@ export function NLCommandBar({ nl, active = true }: { nl: NLWorkflow; active?: b
                         <span
                           title={dep ? `Added because ${needed ?? 'a later step'} requires it` : 'You asked for this'}
                           className={`rounded-md px-2 py-1 text-xs font-medium ${
-                            dep ? 'bg-gray-100 text-gray-500' : 'bg-teal-100 text-teal-800'
+                            dep ? 'bg-gray-100 text-gray-600' : 'bg-teal-100 text-teal-800'
                           }`}
                         >
                           {op}

@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed about 800 lines of unused legacy CSS.
 
 ### Fixed (accessibility, WCAG 2.1 AA)
+- The "added because a later step needs it" chips in the plan preview failed contrast in light mode; fixed.
+- `npm run audit:ui` checks the whole interface in one pass: the pipeline page (empty and plan preview) and all ten Output tabs, for one table and for three, in light and dark at 900, 1300 and 1700 px (144 views), for page overflow, content running past its panel, console errors and axe violations. Currently clean.
 - The workspace strip is a labelled navigation of real buttons (it nested buttons inside tabs, which screen readers cannot operate).
 - Contrast: the main action (teal 700, 5.5:1), small grey text, locked operations (no longer faded), status badges, code comments and line numbers.
 - Result panels and diagrams are focusable regions, so scrolled content works from the keyboard; the pipeline page has a heading and landmarks.

@@ -45,7 +45,8 @@
     "test:ui": "vitest --ui",
     "fmt:rust": "cargo fmt --all --manifest-path src-tauri/Cargo.toml",
     "audit:a11y": "node scripts/a11y-audit.cjs",
-    "quality": "npm run typecheck && npm run lint && vitest run && npm audit --omit=dev --audit-level=high"
+    "quality": "npm run typecheck && npm run lint && vitest run && npm audit --omit=dev --audit-level=high",
+    "audit:ui": "node scripts/ui-audit.cjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.6",
