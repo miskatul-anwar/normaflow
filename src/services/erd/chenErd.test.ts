@@ -32,8 +32,9 @@ describe('Chen ERD', () => {
     const dot = buildChenDot([customer, order, product, line]);
     expect(dot).toContain('shape=box');
     expect(dot).toContain('shape=diamond');
-    expect(dot).toContain('label="1"');
-    expect(dot).toContain('label="N"');
+    expect(dot).toContain('headlabel="1"');
+    expect(dot).toContain('headlabel="N"');
+    expect(dot).toContain('headlabel="M"');
     expect(dot).not.toContain('label="OrderLine", shape=box'); // junction is not an entity
     expect(dot).toContain('label="OrderLine", shape=diamond');
     expect(dot).not.toMatch(/label="customer_id", shape=ellipse/); // FK columns are relationships, not attributes

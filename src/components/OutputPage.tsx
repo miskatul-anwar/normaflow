@@ -14,7 +14,7 @@ import { KeysSection } from './output/KeysSection';
 import { RelationshipsSection, KeysByTable, QualityByTable } from './output/MultiTableSections';
 import { GeneratedFilesSection } from './output/GeneratedFilesSection';
 import { ReportView, NormalizationJourney } from './output/ReportView';
-import { ChenErdSection } from './output/ChenErdSection';
+import { ErdSection } from './output/ErdSection';
 import { CodeViewer } from './output/CodeViewer';
 import { Button } from '@/components/ui/button';
 import type { WorkspaceTab } from '../hooks/useWorkspaceTabs';
@@ -407,7 +407,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
           )}
 
           {activeTab === 'erd' && erdContent && (
-            <ChenErdSection relations={erdRelations} erdContent={erdContent} />
+            <ErdSection relations={erdRelations} erdContent={erdContent} />
           )}
 
           {activeTab === 'sql' && sqlFile?.content && (

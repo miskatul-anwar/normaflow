@@ -1,12 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Copy, Download, AlertCircle, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { buildChenDot, attributeCount, type ChenRelation } from '../../services/erd/chenErd';
+import { buildChenDot, attributeCount } from '../../services/erd/chenErd';
+import { buildBarkerDot, buildUmlDot, type BoxRelation } from '../../services/erd/boxNotations';
 import { renderDot } from '../../services/erd/renderDot';
 import { SVGPreviewSection } from './SVGPreviewSection';
 
+type Notation = 'chen' | 'crow' | 'barker' | 'uml';
+
+const LABELS: Record<Notation, string> = { chen: 'Chen', crow: "Crow's foot", barker: 'Barker', uml: 'UML' };
+const LEGEND: Record<Exclude<Notation, 'crow'>, string[]> = {
+  chen: ['▭ entity (double border: weak)', '◇ relationship, 1 / M / N', '◯ attribute (underlined: key)'],
+  barker: ['# unique identifier · * mandatory · o optional', 'dashed line: optional relationship', 'crow\'s foot: many (bar: part of the identifier)'],
+  uml: ['+ attribute : type, «PK» / «FK»', 'multiplicity at each end: 1, 0..1, 0..*, 1..*', 'label: the foreign-key columns'],
+};
+
 interface Props {
-  relations: ChenRelation[];
+  relations: BoxRelation[];
   /** Mermaid source, shown as the crow's-foot alternative. */
   erdContent: string;
 }
@@ -20,8 +30,8 @@ function save(blob: Blob, name: string) {
   URL.revokeObjectURL(url);
 }
 
-export function ChenErdSection({ relations, erdContent }: Props) {
-  const [notation, setNotation] = useState<'chen' | 'crow'>('chen');
+export function ErdSection({ relations, erdContent }: Props) {
+  const [notation, setNotation] = useState<Notation>('chen');
   const [showAttributes, setShowAttributes] = useState(() => attributeCount(relations) <= 80);
   const [svg, setSvg] = useState('');
   const [error, setError] = useState('');
@@ -35,14 +45,20 @@ export function ChenErdSection({ relations, erdContent }: Props) {
     return m ? Math.round((Number(m[1]) * 4) / 3) : null;
   }, [svg]);
 
-  const dot = useMemo(() => buildChenDot(relations, { attributes: showAttributes }), [relations, showAttributes]);
+  const dot = useMemo(() => {
+    if (notation === 'barker') return buildBarkerDot(relations, { attributes: showAttributes });
+    if (notation === 'uml') return buildUmlDot(relations, { attributes: showAttributes });
+    return buildChenDot(relations, { attributes: showAttributes });
+  }, [relations, showAttributes, notation]);
+  // Boxes lay out best top-down; Chen's many small shapes spread better with a force layout.
+  const engine = notation === 'chen' ? 'neato' : 'dot';
 
   useEffect(() => {
-    if (notation !== 'chen') return;
+    if (notation === 'crow') return;
     let cancelled = false;
     setLoading(true);
     setError('');
-    renderDot(dot)
+    renderDot(dot, engine)
       .then(out => {
         if (!cancelled) setSvg(out);
       })
@@ -55,11 +71,11 @@ export function ChenErdSection({ relations, erdContent }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [dot, notation]);
+  }, [dot, notation, engine]);
 
-  const tab = (id: 'chen' | 'crow', label: string) => (
-    <Button size="sm" variant={notation === id ? 'primary' : 'secondary'} onClick={() => setNotation(id)} aria-pressed={notation === id}>
-      {label}
+  const tab = (id: Notation) => (
+    <Button key={id} size="sm" variant={notation === id ? 'primary' : 'secondary'} onClick={() => setNotation(id)} aria-pressed={notation === id}>
+      {LABELS[id]}
     </Button>
   );
 
@@ -67,10 +83,11 @@ export function ChenErdSection({ relations, erdContent }: Props) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2" role="group" aria-label="ER notation">
-          {tab('chen', 'Chen')}
-          {erdContent && tab('crow', "Crow's foot")}
+          {(['chen', 'crow', 'barker', 'uml'] as const)
+            .filter(n => n !== 'crow' || erdContent)
+            .map(tab)}
         </div>
-        {notation === 'chen' && (
+        {notation !== 'crow' && (
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center rounded-lg border border-gray-200 bg-white" role="group" aria-label="Zoom">
               <Button size="sm" variant="ghost" onClick={() => setZoom(z => clampZoom(z / 1.25))} aria-label="Zoom out" title="Zoom out"><ZoomOut /></Button>
@@ -85,10 +102,10 @@ export function ChenErdSection({ relations, erdContent }: Props) {
             <Button size="sm" onClick={() => void navigator.clipboard.writeText(dot)}>
               <Copy /> Copy DOT
             </Button>
-            <Button size="sm" onClick={() => save(new Blob([dot], { type: 'text/vnd.graphviz' }), 'erd_chen.dot')}>
+            <Button size="sm" onClick={() => save(new Blob([dot], { type: 'text/vnd.graphviz' }), `erd_${notation}.dot`)}>
               <Download /> DOT
             </Button>
-            <Button variant="primary" size="sm" disabled={!svg} onClick={() => save(new Blob([svg], { type: 'image/svg+xml' }), 'erd_chen.svg')}>
+            <Button variant="primary" size="sm" disabled={!svg} onClick={() => save(new Blob([svg], { type: 'image/svg+xml' }), `erd_${notation}.svg`)}>
               <Download /> SVG
             </Button>
           </div>
@@ -117,9 +134,7 @@ export function ChenErdSection({ relations, erdContent }: Props) {
             </div>
           )}
           <div className="flex flex-wrap gap-x-5 gap-y-1 border-t border-gray-100 bg-gray-50 px-4 py-2 text-xs text-gray-600">
-            <span>▭ entity (double border: weak)</span>
-            <span>◇ relationship, 1 / N cardinality</span>
-            <span>◯ attribute (underlined: key)</span>
+            {LEGEND[notation].map(l => <span key={l}>{l}</span>)}
             <span>Ctrl + scroll to zoom</span>
           </div>
         </div>

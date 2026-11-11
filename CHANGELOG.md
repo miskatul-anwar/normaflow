@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (ERD notations)
+- The ERD tab now offers four notations: **Chen**, **Crow's foot**, **Barker** and **UML**. Barker shows rounded entities with `#` unique identifier / `*` mandatory / `o` optional attributes (optional is read from empty values in your data), dashed lines for optional relationships and a bar on the crow's foot when the relationship is part of the identifier. UML shows class boxes with typed attributes and «PK» / «FK» stereotypes and multiplicities (`1`, `0..1`, `0..*`, `1..*`). Chen, Barker and UML are drawn by the bundled Graphviz, with zoom, optional attribute lists and DOT / SVG download named after the notation. Large schemas lay out left-to-right so they grow downwards. Chen cardinality labels now sit beside the entity instead of under its edge.
+
 ### Changed (Output page polish)
 - **Functional dependencies:** the table now fits its panel (it used to overflow and hide the View column), shows which table each dependency comes from, and has a confidence filter (All / High / Medium / Low), a search box and paging (50 at a time, with Show more / Show all) so hundreds of dependencies stay usable.
 - **Multi-table runs now fill every tab.** Cardinality & Relations lists the foreign keys found between your tables (cardinality, share of values matched, confidence); Keys shows primary and candidate keys per table; Quality Assurance shows lossless-join and dependency-preservation per table with a summary and expandable detail. The report's quality chips use the same per-table verdicts. Before, these tabs said "No data" even though the checks had run.
