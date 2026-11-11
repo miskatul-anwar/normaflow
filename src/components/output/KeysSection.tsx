@@ -23,8 +23,8 @@ export function KeysSection({ keyData }: KeysSectionProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Key className="w-5 h-5 text-yellow-600" />
+            <div className="p-2 bg-gray-100 rounded-lg">
+              <Key className="w-5 h-5 text-gray-700" />
             </div>
             <h4 className="text-base font-semibold text-gray-900">
               Candidate Keys
@@ -39,7 +39,7 @@ export function KeysSection({ keyData }: KeysSectionProps) {
                 <div key={index} className="border border-gray-200 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-gray-900">Key {index + 1}</span>
-                    <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${key.length === 1 ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                    <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${'bg-gray-100 text-gray-700'}`}>
                       {key.length === 1 ? (
                         <> <Hash className="w-3 h-3" /> Simple </>
                       ) : (
@@ -66,8 +66,8 @@ export function KeysSection({ keyData }: KeysSectionProps) {
 
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Database className="w-5 h-5 text-purple-600" />
+            <div className="p-2 bg-gray-100 rounded-lg">
+              <Database className="w-5 h-5 text-gray-700" />
             </div>
             <h4 className="text-base font-semibold text-gray-900">
               Super Keys
@@ -84,7 +84,7 @@ export function KeysSection({ keyData }: KeysSectionProps) {
                 );
 
                 return (
-                  <div key={index} className={`border rounded-lg p-2 ${isCandidate ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200'}`}>
+                  <div key={index} className={`border rounded-lg p-2 ${isCandidate ? 'border-teal-300 bg-teal-50' : 'border-gray-200'}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex flex-wrap gap-1">
                         {key.map((attr, attrIndex) => (
@@ -94,7 +94,7 @@ export function KeysSection({ keyData }: KeysSectionProps) {
                         ))}
                       </div>
                       {isCandidate && (
-                        <span className="text-xs text-yellow-700 font-medium flex items-center gap-1">
+                        <span className="text-xs text-teal-800 font-medium flex items-center gap-1">
                           <Key className="w-3 h-3" /> Candidate
                         </span>
                       )}
@@ -126,7 +126,7 @@ export function KeysSection({ keyData }: KeysSectionProps) {
           {candidateKeys.length > 0 ? (
             <>
               <div className="flex items-start gap-3">
-                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                <CheckCircle className="w-4 h-4 text-teal-600 mt-0.5" />
                 <div>
                   <span className="font-medium">Primary Key Suggestion: </span>
                   {(() => {
@@ -144,7 +144,7 @@ export function KeysSection({ keyData }: KeysSectionProps) {
               </div>
               {candidateKeys.length > 1 && (
                 <div className="flex items-start gap-3">
-                  <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-teal-600 mt-0.5" />
                   <div>
                     <span className="font-medium">Alternative Keys: </span>
                     Other candidate keys can serve as unique constraints
@@ -152,7 +152,7 @@ export function KeysSection({ keyData }: KeysSectionProps) {
                 </div>
               )}
               <div className="flex items-start gap-3">
-                <CheckCircle className="w-4 h-4 text-purple-500 mt-0.5" />
+                <CheckCircle className="w-4 h-4 text-teal-600 mt-0.5" />
                 <div>
                   <span className="font-medium">Index Strategy: </span>
                   Create indexes on all candidate keys for optimal performance

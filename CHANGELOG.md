@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed (pipeline and Output page, a calmer look)
 - **Pipeline canvas:** steps now wrap into rows of five (they used to run in one line, so a full pipeline fitted at an unreadable zoom), the view re-frames when steps are added, and wrapped links route as right-angle steps. Nodes are flat cards with a small accent chip; the glowing emerald Start node, pulsing halo, travelling pulses, marching dashes and teal-to-violet gradient edges are gone.
 - **Output page:** every summary strip uses one neutral `StatCard` (the number in ink, a small dot for good / watch / problem) instead of green / yellow / red / blue tinted boxes; the column-classification pills are neutral except primary and foreign keys; section headings are in order.
+- Cardinality and Keys lose their leftover blue / green / purple / yellow pills and tiles: neutral chips, teal accents only where something is a key.
 - Removed about 800 lines of unused legacy CSS.
 
 ### Fixed (accessibility, WCAG 2.1 AA)

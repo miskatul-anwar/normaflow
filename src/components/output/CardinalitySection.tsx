@@ -99,25 +99,25 @@ export function CardinalitySection({ cardinalityAnalysis }: CardinalitySectionPr
                       <span>{analysis.uniqueValues || 'N/A'}</span>
                       {analysis.cardinality && (
                         <div className="w-12 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-500" style={{ width: `${Math.min(100, (analysis.cardinality || 0) * 100)}%` }} />
+                          <div className="h-full bg-teal-600" style={{ width: `${Math.min(100, (analysis.cardinality || 0) * 100)}%` }} />
                         </div>
                       )}
                     </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 w-fit">
+                    <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 w-fit">
                       <GitBranch className="w-3 h-3" />
                       <span className="lg:hidden">{(/\(([^)]+)\)/.exec(getRelationshipType(analysis)) ?? [])[1] ?? getRelationshipType(analysis)}</span>
                       <span className="hidden lg:inline">{getRelationshipType(analysis)}</span>
                     </span>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-md text-xs font-medium">
+                    <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-md text-xs font-medium">
                       {getConfidence(analysis)}
                     </span>
                   </td>
                   <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-gray-900 xl:table-cell">
-                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-md text-xs font-medium">
+                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-md text-xs font-medium">
                       {analysis.dataType || 'string'}
                     </span>
                   </td>
@@ -171,12 +171,12 @@ export function CardinalitySection({ cardinalityAnalysis }: CardinalitySectionPr
                 }
 
                 return highConfidenceAttrs.map(([attr, analysis]: [string, any]) => (
-                  <div key={attr} className="bg-green-50 px-2 py-1 rounded text-green-700 text-xs">
+                  <div key={attr} className="bg-gray-50 px-2 py-1 rounded text-gray-700 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{attr}</span>
-                      <span className="text-green-700">{getConfidence(analysis)}</span>
+                      <span className="text-gray-700">{getConfidence(analysis)}</span>
                     </div>
-                    <div className="text-green-700 text-xs">{analysis.uniqueValues || 'N/A'} unique of {analysis.totalValues || 'N/A'} total</div>
+                    <div className="text-gray-700 text-xs">{analysis.uniqueValues || 'N/A'} unique of {analysis.totalValues || 'N/A'} total</div>
                   </div>
                 ));
               })()}
@@ -195,13 +195,13 @@ export function CardinalitySection({ cardinalityAnalysis }: CardinalitySectionPr
                 }
 
                 return keyCandidates.map(([attr, analysis]: [string, any]) => (
-                  <div key={attr} className="bg-yellow-50 px-2 py-1 rounded text-yellow-700 text-xs">
+                  <div key={attr} className="bg-gray-50 px-2 py-1 rounded text-gray-700 text-xs">
                     <div className="flex items-center gap-1">
                       <Key className="w-3 h-3" />
                       <span className="font-medium">{attr}</span>
-                      <span className="text-yellow-800">({(getUniquenessRatio(analysis) * 100).toFixed(1)}% unique)</span>
+                      <span className="text-gray-600">({(getUniquenessRatio(analysis) * 100).toFixed(1)}% unique)</span>
                     </div>
-                    <div className="text-yellow-800 text-xs">{getRelationshipType(analysis)}</div>
+                    <div className="text-gray-600 text-xs">{getRelationshipType(analysis)}</div>
                   </div>
                 ));
               })()}
