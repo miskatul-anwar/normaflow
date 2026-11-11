@@ -186,8 +186,8 @@ export function FunctionalDependenciesSection({ fdData }: { fdData: Array<Functi
                 {hasTables && <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Table</th>}
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dependency</th>
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coverage</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quality</th>
+                <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider xl:table-cell">Coverage</th>
+                <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider lg:table-cell">Quality</th>
                 <th className="w-px px-4 py-2.5"><span className="sr-only">Details</span></th>
               </tr>
             </thead>
@@ -212,8 +212,8 @@ export function FunctionalDependenciesSection({ fdData }: { fdData: Array<Functi
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-sm tabular-nums text-gray-900">{confidence}%</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-sm tabular-nums text-gray-900">{coverage}%</td>
-                    <td className="whitespace-nowrap px-4 py-2.5">
+                    <td className="hidden whitespace-nowrap px-4 py-2.5 text-sm tabular-nums text-gray-900 xl:table-cell">{coverage}%</td>
+                    <td className="hidden whitespace-nowrap px-4 py-2.5 lg:table-cell">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${qualityColor}`}>
                         {qualityLevel}
                       </span>

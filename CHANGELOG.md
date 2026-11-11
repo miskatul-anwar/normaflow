@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Foreign keys:** a link is no longer drawn in both directions between a key and its child table (it produced a bogus 1:1 `invoice.InvoiceId -> invoiceline.InvoiceLineId`), and links where not every value matches are listed as unplaced instead of becoming a constraint that fails on load.
 - **CSV:** the delimiter sniffer no longer misreads files with escaped quotes followed by delimiter-heavy text.
 
+### Fixed (Output page, part 5)
+- **Narrow windows:** the dependency table no longer clips its **View** column below ~1000 px (Coverage and Quality columns hide as the window narrows). Checked at 900x640, 1300x820 and 1700x1000.
+- **Quality Assurance:** "Lost Dependencies: 0" is grey instead of an alarming red.
+- **Chen ERD:** the 1 / M / N cardinality labels sit clear of the entity boxes.
+
 ### Fixed (Output page, part 4)
 - **Crow's foot** has the **Show attributes** toggle too (the Mermaid diagram collapses to table names only), so all four ERD notations share the same controls.
 - **Normal Forms** in the sidebar counted relations across all four levels (145 for 11 tables); it now shows the relations in the final schema.

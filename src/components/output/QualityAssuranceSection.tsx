@@ -127,13 +127,18 @@ export function QualityAssuranceSection({ losslessCheck, dependencyPreservation 
                 </div>
                 <div className="text-sm text-green-700">Preserved Dependencies</div>
               </div>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
-                <div className="text-2xl font-bold text-red-600 flex items-center justify-center gap-2">
-                  <AlertCircle className="w-6 h-6" />
-                  {dependencyPreservation.lost?.length || 0}
-                </div>
-                <div className="text-sm text-red-700">Lost Dependencies</div>
-              </div>
+              {(() => {
+                const none = !(dependencyPreservation.lost?.length > 0);
+                return (
+                  <div className={`rounded-lg border p-3 text-center ${none ? 'border-gray-200 bg-gray-50' : 'border-red-200 bg-red-50'}`}>
+                    <div className={`flex items-center justify-center gap-2 text-2xl font-bold ${none ? 'text-gray-500' : 'text-red-600'}`}>
+                      <AlertCircle className="w-6 h-6" />
+                      {dependencyPreservation.lost?.length || 0}
+                    </div>
+                    <div className={`text-sm ${none ? 'text-gray-500' : 'text-red-700'}`}>Lost Dependencies</div>
+                  </div>
+                );
+              })()}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
                 <div className="text-2xl font-bold text-blue-600 flex items-center justify-center gap-2">
                   <BarChart3 className="w-6 h-6" />

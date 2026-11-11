@@ -75,7 +75,7 @@ export function buildChenDot(relations: ChenRelation[], { attributes = true, tre
     const id = next('r');
     lines.push(`  ${id} [label="${esc(label)}", shape=diamond, style="filled", fillcolor="#fef9c3"${identifying ? ', peripheries=2' : ''}];`);
     // A head label sits beside the entity end of the line, clear of the box edge.
-    for (const end of ends) lines.push(`  ${id} -- ${end.id} [headlabel="${end.card}", labeldistance=1.9, labelangle=-40, labelfontsize=11, labelfontcolor="#0f766e", penwidth=1.2];`);
+    for (const end of ends) lines.push(`  ${id} -- ${end.id} [headlabel="${end.card}", labeldistance=2.8, labelangle=-55, labelfontsize=11, labelfontcolor="#0f766e", penwidth=1.2];`);
     return id;
   };
 
