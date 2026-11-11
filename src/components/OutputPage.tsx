@@ -11,6 +11,7 @@ import { NormalFormSection } from './output/NormalFormSection';
 import { CardinalitySection } from './output/CardinalitySection';
 import { QualityAssuranceSection } from './output/QualityAssuranceSection';
 import { KeysSection } from './output/KeysSection';
+import { RelationshipsSection, KeysByTable, QualityByTable } from './output/MultiTableSections';
 import { GeneratedFilesSection } from './output/GeneratedFilesSection';
 import { ReportView } from './output/ReportView';
 import { ChenErdSection } from './output/ChenErdSection';
@@ -109,7 +110,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
       return safeResults.functionalDependencies;
     }
     if (multiTables.length > 0) {
-      return multiTables.flatMap((t: any) => t.functionalDependencies || []);
+      return multiTables.flatMap((t: any) => (t.functionalDependencies || []).map((fd: any) => ({ ...fd, table: t.tableName })));
     }
     if (safeResults?.outputFiles && Array.isArray(safeResults.outputFiles)) {
       const fdFile = safeResults.outputFiles.find((f: any) => f?.name?.includes('functional_dependencies') && f?.type === 'json');
@@ -255,10 +256,10 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
           <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 mx-auto mb-4">
             <Activity className="w-6 h-6" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', sans-serif" }}>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">
             {sourceTab ? `No results yet for “${sourceTab.title}”` : 'No Output Available'}
           </h3>
-          <p className="text-gray-600 mb-6" style={{ fontFamily: "'Inter', sans-serif" }}>
+          <p className="text-gray-600 mb-6">
             Run this workspace's pipeline to see its results here. Use the tabs above to switch to another workspace.
           </p>
           <Button variant="primary" className="w-full" onClick={() => navigate('/')}>
@@ -328,7 +329,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
                 <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                   <div className="flex items-center gap-2 mb-4">
                     <Cpu className="w-5 h-5 text-teal-600" />
-                    <h3 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
+                    <h3 className="text-lg font-bold text-gray-900">
                       Named Entity Recognition (NER) & Schema Classification
                     </h3>
                   </div>
@@ -379,15 +380,19 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
           )}
 
           {activeTab === 'cardinality' && (
-            <CardinalitySection cardinalityAnalysis={cardinalityAnalysis} />
+            isMultiTable
+              ? <RelationshipsSection relationships={crossTableRelationships} />
+              : <CardinalitySection cardinalityAnalysis={cardinalityAnalysis} />
           )}
 
           {activeTab === 'keys' && (
-            <KeysSection keyData={keyData} />
+            isMultiTable ? <KeysByTable tables={multiTables} /> : <KeysSection keyData={keyData} />
           )}
 
           {activeTab === 'quality' && (
-            <QualityAssuranceSection losslessCheck={losslessCheck} dependencyPreservation={dependencyPreservation} />
+            isMultiTable
+              ? <QualityByTable tables={multiTables} />
+              : <QualityAssuranceSection losslessCheck={losslessCheck} dependencyPreservation={dependencyPreservation} />
           )}
 
           {activeTab === 'erd' && erdContent && (
@@ -397,7 +402,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
           {activeTab === 'sql' && sqlFile?.content && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h4 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
+                <h4 className="text-lg font-semibold text-gray-900">
                   SQL Data Definition Language (DDL) {isMultiTable && '(Consolidated Multi-Table)'}
                 </h4>
                 <div className="flex gap-2">

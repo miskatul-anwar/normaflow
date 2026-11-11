@@ -37,3 +37,25 @@ describe('FunctionalDependenciesSection', () => {
     await waitFor(() => expect(panels().length).toBe(0));
   });
 });
+
+describe('FunctionalDependenciesSection list handling', () => {
+  const many = Array.from({ length: 120 }, (_, i) => ({
+    lhs: [`col${i}`], rhs: `out${i}`, confidence: i % 3 === 0 ? 0.8 : 1, coverage: 1, violations: 0, uniqueGroups: 1, table: i < 60 ? 'orders' : 'users',
+  }));
+
+  it('pages long lists, filters by confidence and searches columns and tables', () => {
+    render(<FunctionalDependenciesSection fdData={many as any} />);
+    expect(screen.getByText(/Showing 50 of 120/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /show 50 more/i }));
+    expect(screen.getByText(/Showing 100 of 120/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'low' }));
+    expect(screen.getByText(/40 of 120/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'all' }));
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'users' } });
+    expect(screen.getByText(/60 of 120/)).toBeTruthy();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'nothing-matches' } });
+    expect(screen.getByText(/No dependencies match/)).toBeTruthy();
+  });
+});

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (Output page polish)
+- **Functional dependencies:** the table now fits its panel (it used to overflow and hide the View column), shows which table each dependency comes from, and has a confidence filter (All / High / Medium / Low), a search box and paging (50 at a time, with Show more / Show all) so hundreds of dependencies stay usable.
+- **Multi-table runs now fill every tab.** Cardinality & Relations lists the foreign keys found between your tables (cardinality, share of values matched, confidence); Keys shows primary and candidate keys per table; Quality Assurance shows lossless-join and dependency-preservation per table with a summary and expandable detail. The report's quality chips use the same per-table verdicts. Before, these tabs said "No data" even though the checks had run.
+- **Normal forms:** compact 1NF / 2NF / 3NF / BCNF tabs with counts, smaller card headings and section labels.
+- **ERD:** zoom buttons (and Ctrl + scroll) plus fit-to-width, so large diagrams are readable.
+- **Transitions:** switching sections now eases in (the `nf-fade-in` animation was referenced but never defined, so nothing animated); hover and focus states are consistent, reduced-motion is respected, and leftover gradient headers and inline font styles are gone.
+
 ### Fixed
 - **View** on a functional dependency now opens its analysis directly under that row instead of at the bottom of the whole list, so it works with hundreds of dependencies.
 

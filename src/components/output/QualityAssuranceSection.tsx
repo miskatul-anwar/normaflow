@@ -42,7 +42,7 @@ export function QualityAssuranceSection({ losslessCheck, dependencyPreservation 
     return (
       <div className="text-center py-12 text-gray-500">
         <Shield className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-        <p style={{ fontFamily: "'Inter', sans-serif" }}>No quality assurance data available</p>
+        <p>No quality assurance data available</p>
         <p className="text-sm text-gray-400 mt-2">Quality checks require Lossless Check and Dependency Preservation operations</p>
       </div>
     );
@@ -63,7 +63,7 @@ export function QualityAssuranceSection({ losslessCheck, dependencyPreservation 
               {losslessCheck.isLossless ? <Unlock className="w-5 h-5 text-green-600" /> : <Lock className="w-5 h-5 text-red-600" />}
             </div>
             <div>
-              <h4 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
+              <h4 className="text-lg font-semibold text-gray-900">
                 Lossless Join Property
               </h4>
               <p className="text-sm text-gray-600">Decomposition preserves all original information</p>
@@ -102,7 +102,7 @@ export function QualityAssuranceSection({ losslessCheck, dependencyPreservation 
               <Zap className={`w-5 h-5 ${dependencyPreservation.isPreserved ? 'text-green-600' : 'text-red-600'}`} />
             </div>
             <div>
-              <h4 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
+              <h4 className="text-lg font-semibold text-gray-900">
                 Dependency Preservation
               </h4>
               <p className="text-sm text-gray-600">Functional dependencies maintained in decomposition</p>
@@ -121,25 +121,25 @@ export function QualityAssuranceSection({ losslessCheck, dependencyPreservation 
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                <div className="text-2xl font-bold text-green-600 flex items-center justify-center gap-2" style={{ fontFamily: "'Inter', sans-serif" }}>
+                <div className="text-2xl font-bold text-green-600 flex items-center justify-center gap-2">
                   <CheckCircle className="w-6 h-6" />
                   {dependencyPreservation.preserved?.length || 0}
                 </div>
-                <div className="text-sm text-green-700" style={{ fontFamily: "'Inter', sans-serif" }}>Preserved Dependencies</div>
+                <div className="text-sm text-green-700">Preserved Dependencies</div>
               </div>
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
-                <div className="text-2xl font-bold text-red-600 flex items-center justify-center gap-2" style={{ fontFamily: "'Inter', sans-serif" }}>
+                <div className="text-2xl font-bold text-red-600 flex items-center justify-center gap-2">
                   <AlertCircle className="w-6 h-6" />
                   {dependencyPreservation.lost?.length || 0}
                 </div>
-                <div className="text-sm text-red-700" style={{ fontFamily: "'Inter', sans-serif" }}>Lost Dependencies</div>
+                <div className="text-sm text-red-700">Lost Dependencies</div>
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                <div className="text-2xl font-bold text-blue-600 flex items-center justify-center gap-2" style={{ fontFamily: "'Inter', sans-serif" }}>
+                <div className="text-2xl font-bold text-blue-600 flex items-center justify-center gap-2">
                   <BarChart3 className="w-6 h-6" />
                   {calculatePreservationRate(dependencyPreservation)}%
                 </div>
-                <div className="text-sm text-blue-700" style={{ fontFamily: "'Inter', sans-serif" }}>Preservation Rate</div>
+                <div className="text-sm text-blue-700">Preservation Rate</div>
               </div>
             </div>
 

@@ -38,6 +38,7 @@ interface ReportResults {
   selectedOperations?: string[];
   losslessCheck?: { isLossless?: boolean };
   dependencyPreservation?: { isPreserved?: boolean };
+  tables?: Array<{ losslessCheck?: { isLossless?: boolean }; dependencyPreservation?: { isPreserved?: boolean } }>;
   qualityAssessment?: { score: number; issues?: string[]; recommendations?: string[] };
 }
 
@@ -83,8 +84,14 @@ export function ReportView({ results, markdown, fdData, levels, filename = 'norm
     perf.memorySource === 'estimate'
       ? 'estimated size of the loaded data (this runtime does not report heap usage)'
       : 'JavaScript heap in use';
-  const lossless = results?.losslessCheck?.isLossless;
-  const preserved = results?.dependencyPreservation?.isPreserved;
+  // Multi-table runs verify each table; a single table has one verdict.
+  const tableChecks = results?.tables ?? [];
+  const withLossless = tableChecks.filter(t => t.losslessCheck);
+  const withPreserved = tableChecks.filter(t => t.dependencyPreservation);
+  const lossless = tableChecks.length ? (withLossless.length ? withLossless.every(t => t.losslessCheck?.isLossless) : undefined) : results?.losslessCheck?.isLossless;
+  const preserved = tableChecks.length ? (withPreserved.length ? withPreserved.every(t => t.dependencyPreservation?.isPreserved) : undefined) : results?.dependencyPreservation?.isPreserved;
+  const losslessNote = withLossless.length ? ` (${withLossless.filter(t => t.losslessCheck?.isLossless).length}/${withLossless.length} tables)` : '';
+  const preservedNote = withPreserved.length ? ` (${withPreserved.filter(t => t.dependencyPreservation?.isPreserved).length}/${withPreserved.length} tables)` : '';
   const quality = results?.qualityAssessment;
   const ops = results?.selectedOperations ?? [];
   const topFDs = [...fdData].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)).slice(0, 8);
@@ -133,9 +140,9 @@ export function ReportView({ results, markdown, fdData, levels, filename = 'norm
 
         <Card title="Quality checks">
           <div className="flex flex-wrap gap-2">
-            <Badge ok={lossless}>{lossless === undefined ? 'Lossless join: not run' : lossless ? 'Lossless join' : 'Lossy decomposition'}</Badge>
+            <Badge ok={lossless}>{lossless === undefined ? 'Lossless join: not run' : `${lossless ? 'Lossless join' : 'Lossy decomposition'}${losslessNote}`}</Badge>
             <Badge ok={preserved}>
-              {preserved === undefined ? 'Dependency preservation: not run' : preserved ? 'Dependencies preserved' : 'Dependencies lost'}
+              {preserved === undefined ? 'Dependency preservation: not run' : `${preserved ? 'Dependencies preserved' : 'Dependencies lost'}${preservedNote}`}
             </Badge>
           </div>
           {quality && (

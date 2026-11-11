@@ -28,7 +28,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
     return (
       <div className="text-center py-12 text-gray-500">
         <Table className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-        <p style={{ fontFamily: "'Inter', sans-serif" }}>No normalized relations generated</p>
+        <p>No normalized relations generated</p>
         <p className="text-sm text-gray-400 mt-2">Relations are created during normalization process</p>
       </div>
     );
@@ -50,83 +50,35 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
     <div className="space-y-6">
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
-            <button
-              onClick={() => setActiveNF('1nf')}
-              disabled={!has1NF}
-              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                activeNF === '1nf'
-                  ? 'border-teal-500 text-teal-600'
-                  : has1NF
-                  ? 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  : 'border-transparent text-gray-300 cursor-not-allowed'
-              }`}
-            >
-              <Hash className="w-4 h-4" />
-              First Normal Form (1NF)
-              {has1NF && (
-                <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
-                  {relations1NF?.length || 0}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveNF('2nf')}
-              disabled={!has2NF}
-              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                activeNF === '2nf'
-                  ? 'border-teal-500 text-teal-600'
-                  : has2NF
-                  ? 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  : 'border-transparent text-gray-300 cursor-not-allowed'
-              }`}
-            >
-              <Layers className="w-4 h-4" />
-              Second Normal Form (2NF)
-              {has2NF && (
-                <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
-                  {relations2NF?.length || 0}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveNF('3nf')}
-              disabled={!has3NF}
-              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                activeNF === '3nf'
-                  ? 'border-teal-500 text-teal-600'
-                  : has3NF
-                  ? 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  : 'border-transparent text-gray-300 cursor-not-allowed'
-              }`}
-            >
-              <Database className="w-4 h-4" />
-              Third Normal Form (3NF)
-              {has3NF && (
-                <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
-                  {relations3NF?.length || 0}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveNF('bcnf')}
-              disabled={!hasBCNF}
-              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                activeNF === 'bcnf'
-                  ? 'border-teal-500 text-teal-600'
-                  : hasBCNF
-                  ? 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  : 'border-transparent text-gray-300 cursor-not-allowed'
-              }`}
-            >
-              <GitBranch className="w-4 h-4" />
-              Boyce-Codd Normal Form (BCNF)
-              {hasBCNF && (
-                <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
-                  {relationsBCNF?.length || 0}
-                </span>
-              )}
-            </button>
+          <nav className="flex gap-1 overflow-x-auto px-3" aria-label="Normal forms" role="tablist">
+            {([
+              { id: '1nf', short: '1NF', full: 'First normal form', has: has1NF, n: relations1NF?.length ?? 0, Icon: Hash },
+              { id: '2nf', short: '2NF', full: 'Second normal form', has: has2NF, n: relations2NF?.length ?? 0, Icon: Layers },
+              { id: '3nf', short: '3NF', full: 'Third normal form', has: has3NF, n: relations3NF?.length ?? 0, Icon: Database },
+              { id: 'bcnf', short: 'BCNF', full: 'Boyce-Codd normal form', has: hasBCNF, n: relationsBCNF?.length ?? 0, Icon: GitBranch },
+            ] as const).map(({ id, short, full, has, n, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={activeNF === id}
+                title={full}
+                onClick={() => setActiveNF(id)}
+                disabled={!has}
+                className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+                  activeNF === id
+                    ? 'border-teal-600 text-teal-700'
+                    : has
+                    ? 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-800'
+                    : 'cursor-not-allowed border-transparent text-gray-300'
+                }`}
+              >
+                <Icon className="size-4" aria-hidden />
+                {short}
+                <span className="hidden text-xs font-normal text-gray-400 md:inline">{full.replace(' normal form', '')}</span>
+                {has && <span className={`rounded-full px-2 py-0.5 text-xs ${activeNF === id ? 'bg-teal-50 text-teal-700' : 'bg-gray-100 text-gray-600'}`}>{n}</span>}
+              </button>
+            ))}
           </nav>
         </div>
 
@@ -134,9 +86,9 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
           {activeRelations && activeRelations.length > 0 ? (
             <div className="space-y-4">
               {activeRelations.map((relation, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                <div key={index} className="rounded-lg border border-gray-200 p-4 transition-shadow hover:shadow-sm">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2" style={{ fontFamily: "'Inter', sans-serif" }}>
+                    <h4 className="flex items-center gap-2 text-base font-semibold text-gray-900">
                       <Table className="w-5 h-5 text-gray-500" />
                       {relation.name}
                     </h4>
@@ -153,7 +105,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
                   </div>
 
                   <div className="mb-3">
-                    <h5 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <h5 className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-gray-500 [&_svg]:size-3.5">
                       <GitBranch className="w-4 h-4" />
                       Attributes
                     </h5>
@@ -184,7 +136,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
 
                   {relation.primaryKey && relation.primaryKey.length > 0 && (
                     <div className="mb-3">
-                      <h5 className="font-medium text-gray-700 mb-1 flex items-center gap-2">
+                      <h5 className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-gray-500 [&_svg]:size-3.5">
                         <Key className="w-4 h-4" />
                         Primary Key
                       </h5>
@@ -196,7 +148,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
 
                   {relation.foreignKeys && relation.foreignKeys.length > 0 && (
                     <div className="mb-3">
-                      <h5 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <h5 className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-gray-500 [&_svg]:size-3.5">
                         <ExternalLink className="w-4 h-4" />
                         Foreign Keys
                       </h5>
@@ -215,7 +167,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
 
                   {relation.originalFD && (
                     <div className="bg-green-50 border border-green-200 rounded p-3">
-                      <h5 className="font-medium text-green-800 mb-1 flex items-center gap-2">
+                      <h5 className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-green-800 [&_svg]:size-3.5">
                         <GitBranch className="w-4 h-4" />
                         Source Functional Dependency
                       </h5>

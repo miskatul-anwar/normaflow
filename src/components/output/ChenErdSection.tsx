@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, Download, AlertCircle } from 'lucide-react';
+import { Copy, Download, AlertCircle, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { buildChenDot, attributeCount, type ChenRelation } from '../../services/erd/chenErd';
 import { renderDot } from '../../services/erd/renderDot';
@@ -26,6 +26,8 @@ export function ChenErdSection({ relations, erdContent }: Props) {
   const [svg, setSvg] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [zoom, setZoom] = useState(1);
+  const clampZoom = (z: number) => Math.min(6, Math.max(0.5, Math.round(z * 100) / 100));
 
   const dot = useMemo(() => buildChenDot(relations, { attributes: showAttributes }), [relations, showAttributes]);
 
@@ -64,6 +66,12 @@ export function ChenErdSection({ relations, erdContent }: Props) {
         </div>
         {notation === 'chen' && (
           <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center rounded-lg border border-gray-200 bg-white" role="group" aria-label="Zoom">
+              <Button size="sm" variant="ghost" onClick={() => setZoom(z => clampZoom(z / 1.25))} aria-label="Zoom out" title="Zoom out"><ZoomOut /></Button>
+              <button type="button" onClick={() => setZoom(1)} title="Fit to width" className="w-12 text-center text-xs tabular-nums text-gray-600 hover:text-gray-900">{Math.round(zoom * 100)}%</button>
+              <Button size="sm" variant="ghost" onClick={() => setZoom(z => clampZoom(z * 1.25))} aria-label="Zoom in" title="Zoom in"><ZoomIn /></Button>
+              <Button size="sm" variant="ghost" onClick={() => setZoom(1)} aria-label="Fit to width" title="Fit to width"><Maximize2 /></Button>
+            </div>
             <label className="mr-2 flex items-center gap-2 text-sm text-gray-700">
               <input type="checkbox" checked={showAttributes} onChange={e => setShowAttributes(e.target.checked)} />
               Show attributes
@@ -93,13 +101,20 @@ export function ChenErdSection({ relations, erdContent }: Props) {
             <div className="p-10 text-center text-sm text-gray-500">Drawing the diagram…</div>
           ) : (
             // Graphviz escapes all text; the labels are built from escaped CSV headers.
-            <div className="max-h-[640px] min-h-[360px] overflow-auto p-4 [&>svg]:mx-auto [&>svg]:h-auto [&>svg]:max-w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+            <div
+              className="nf-fade-in max-h-[640px] min-h-[360px] overflow-auto p-4"
+              onWheel={e => {
+                if (e.ctrlKey || e.metaKey) setZoom(z => clampZoom(e.deltaY < 0 ? z * 1.1 : z / 1.1));
+              }}
+            >
+              <div style={{ width: `${zoom * 100}%` }} className="mx-auto transition-[width] duration-150 [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+            </div>
           )}
           <div className="flex flex-wrap gap-x-5 gap-y-1 border-t border-gray-100 bg-gray-50 px-4 py-2 text-xs text-gray-600">
             <span>▭ entity (double border: weak)</span>
             <span>◇ relationship, 1 / N cardinality</span>
             <span>◯ attribute (underlined: key)</span>
-            <span>Foreign-key columns appear as relationships; junction tables as N:M relationships</span>
+            <span>Ctrl + scroll to zoom</span>
           </div>
         </div>
       )}
