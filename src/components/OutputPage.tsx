@@ -179,7 +179,8 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
       description: "1NF to BCNF relations",
       label: "Normal Forms",
       icon: <Layers className="w-4 h-4" />,
-      count: (relations1NF.length || 0) + (relations2NF.length || 0) + (relationData.length || 0) + (relationsBCNF.length || 0),
+      // Relations in the final schema (the deepest normal form reached), not a sum over all levels.
+      count: relationsBCNF.length || relationData.length || relations2NF.length || relations1NF.length || 0,
       hasData: relations1NF.length > 0 || relations2NF.length > 0 || relationData.length > 0 || relationsBCNF.length > 0
     },
     {

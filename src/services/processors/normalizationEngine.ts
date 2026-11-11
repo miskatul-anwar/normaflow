@@ -1714,14 +1714,34 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
         if (!isSubset) return false;
         // Strictly smaller relation is eliminated
         if (r2.attributes.length > r1.attributes.length) return true;
-        // Equal length: tie-break by index to drop duplicates
-        if (r2.attributes.length === r1.attributes.length && j < i) return true;
+        // Same attributes: keep the relation keyed by the preferred candidate key (the table's own
+        // identifier ranks first), then the earlier one. Otherwise `Title -> AlbumId` could win over
+        // `AlbumId -> Title` and the chosen primary key would be an arbitrary equivalent key.
+        if (r2.attributes.length === r1.attributes.length) {
+          const rank = (r: RelationSchema) => {
+            const k = keys.findIndex(key => key.length === r.primaryKey.length && key.every(a => r.primaryKey.includes(a)));
+            return k === -1 ? Number.MAX_SAFE_INTEGER : k;
+          };
+          const [a, b] = [rank(r2), rank(r1)];
+          if (a !== b) return a < b;
+          return j < i;
+        }
         return false;
       });
 
       if (!isRedundant) {
         nonRedundant.push(r1);
       }
+    }
+
+    // Equivalent candidate keys are interchangeable in a synthesized relation; use the preferred
+    // (first-ranked) one that fits inside it, so a table keeps its own identifier as primary key.
+    const keyIndex = (cols: string[]) => keys.findIndex(k => k.length === cols.length && k.every(a => cols.includes(a)));
+    for (const rel of nonRedundant) {
+      const current = keyIndex(rel.primaryKey);
+      if (current <= 0) continue; // not a candidate key (or already the preferred one)
+      const better = keys.findIndex(k => k.every(a => rel.attributes.includes(a)));
+      if (better !== -1 && better < current) rel.primaryKey = [...keys[better]].sort();
     }
 
     // Step 5: Ensure Lossless Join (Candidate Key Preservation)
@@ -3705,23 +3725,20 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     let sql = '';
     
     sql += '-- ================================================================\n';
-    sql += '-- MATHEMATICALLY VALIDATED DATABASE SCHEMA DDL (ALL FDs PRESERVED)\n';
+    sql += '-- NormaFlow schema DDL\n';
     sql += `-- Generated: ${new Date().toISOString()}\n`;
-    sql += `-- Author: miskatul-anwar\n`;
-    sql += `-- Validation Confidence: ${validation.confidence.toFixed(1)}%\n`;
-    sql += `-- Schema Complexity: ${this.calculateDiagramComplexity(relations)}\n`;
-    sql += '-- GUARANTEES: Lossless Join + Dependency Preservation\n';
+    sql += `-- Relations: ${relations.length} (${this.calculateDiagramComplexity(relations)} schema)\n`;
+    sql += '-- Lossless join and dependency preservation are reported per run in the analysis, not guaranteed here.\n';
     sql += '-- ================================================================\n\n';
     
     // Add FD statistics
     const fdStats = this.calculateFDStatistics(relations);
-    sql += '-- Functional Dependency Preservation Summary:\n';
+    sql += '-- Functional dependencies behind this schema:\n';
     sql += `--   Total Relations: ${relations.length}\n`;
     sql += `--   HIGH confidence FDs (≥95%): ${fdStats.highConfidence}\n`;
     sql += `--   MEDIUM confidence FDs (80-94%): ${fdStats.mediumConfidence}\n`;
     sql += `--   LOW confidence FDs (<80%): ${fdStats.lowConfidence}\n`;
-    sql += `--   Total FDs preserved: ${fdStats.total}\n`;
-    sql += `--   Validation Confidence: ${validation.confidence.toFixed(1)}%\n`;
+    sql += `--   Total FDs used: ${fdStats.total}\n`;
     sql += `--   Validation Errors: ${validation.errors.length}\n`;
     sql += `--   Validation Warnings: ${validation.warnings.length}\n`;
     

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (Output page, part 4)
+- **Normal Forms** in the sidebar counted relations across all four levels (145 for 11 tables); it now shows the relations in the final schema.
+- **Report:** the quality chips for a multi-table run read "Dependencies lost (9/11 tables)" when 9 of 11 were preserved; they now say "Dependencies preserved (9/11 tables)" and turn amber unless all pass. "Data retained" is no longer blank for multi-table runs.
+- **Primary key choice:** when two candidate keys identify each other (an id and a unique name), 3NF synthesis now keeps the preferred one (the id) instead of whichever came first in the minimal cover. Album is keyed on `AlbumId`, not `Title`.
+- **SQL header:** the generated DDL no longer claims "MATHEMATICALLY VALIDATED … GUARANTEES: lossless join + dependency preservation" or carries an author line; it states what it is and points to the per-run analysis for the checks.
+
 ### Changed (Output page polish, part 3)
 - **Crow's foot** now has the same toolbar as the other notations: zoom, fit, Copy Mermaid, download `.mmd` and SVG. All four notations render through one viewer.
 - **Chen** diagrams of large schemas (more than 10 relations) use a left-to-right tree layout instead of a force layout, so labels stay readable at 100%.

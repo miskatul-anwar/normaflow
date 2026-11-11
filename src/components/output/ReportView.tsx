@@ -64,7 +64,7 @@ export const Card = ({ title, children, right }: { title: string; children: Reac
 export const Badge = ({ ok, children }: { ok: boolean | undefined; children: React.ReactNode }) => (
   <span
     className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${
-      ok === undefined ? 'bg-gray-100 text-gray-700' : ok ? 'bg-teal-50 text-teal-800' : 'bg-red-50 text-red-800'
+      ok === undefined ? 'bg-gray-100 text-gray-700' : ok ? 'bg-teal-50 text-teal-800' : 'bg-amber-50 text-amber-800'
     }`}
   >
     {ok === undefined ? null : ok ? <CheckCircle className="size-3.5" aria-hidden /> : <AlertCircle className="size-3.5" aria-hidden />}
@@ -130,7 +130,7 @@ export function ReportView({ results, markdown, fdData, levels, filename = 'norm
 
   const rows: Array<[string, string]> = [
     ['Rows (original → cleaned)', stats.originalRows != null ? `${stats.originalRows} → ${stats.cleanedRows ?? stats.originalRows}` : '—'],
-    ['Data retained', stats.dataRetention ?? '—'],
+    ['Data retained', stats.dataRetention ?? (stats.originalRows ? `${(((stats.cleanedRows ?? stats.originalRows) / stats.originalRows) * 100).toFixed(1)}%` : '—')],
     ['Attributes', String(stats.attributes ?? '—')],
     ['Functional dependencies', String(stats.functionalDependencies ?? fdData.length)],
     ['Candidate keys', String(stats.candidateKeys ?? '—')],
@@ -172,9 +172,9 @@ export function ReportView({ results, markdown, fdData, levels, filename = 'norm
 
         <Card title="Quality checks">
           <div className="flex flex-wrap gap-2">
-            <Badge ok={lossless}>{lossless === undefined ? 'Lossless join: not run' : `${lossless ? 'Lossless join' : 'Lossy decomposition'}${losslessNote}`}</Badge>
+            <Badge ok={lossless}>{lossless === undefined ? 'Lossless join: not run' : `${lossless === false && !losslessNote ? 'Lossy decomposition' : 'Lossless join'}${losslessNote}`}</Badge>
             <Badge ok={preserved}>
-              {preserved === undefined ? 'Dependency preservation: not run' : `${preserved ? 'Dependencies preserved' : 'Dependencies lost'}${preservedNote}`}
+              {preserved === undefined ? 'Dependency preservation: not run' : `${preserved === false && !preservedNote ? 'Dependencies lost' : 'Dependencies preserved'}${preservedNote}`}
             </Badge>
           </div>
           {quality && (

@@ -91,20 +91,17 @@ exports[`golden output > single-file ER diagram and DDL 1`] = `
 
 exports[`golden output > single-file ER diagram and DDL 2`] = `
 "-- ================================================================
--- MATHEMATICALLY VALIDATED DATABASE SCHEMA DDL (ALL FDs PRESERVED)
--- Author: miskatul-anwar
--- Validation Confidence: 100.0%
--- Schema Complexity: Simple
--- GUARANTEES: Lossless Join + Dependency Preservation
+-- NormaFlow schema DDL
+-- Relations: 1 (Simple schema)
+-- Lossless join and dependency preservation are reported per run in the analysis, not guaranteed here.
 -- ================================================================
 
--- Functional Dependency Preservation Summary:
+-- Functional dependencies behind this schema:
 --   Total Relations: 1
 --   HIGH confidence FDs (≥95%): 1
 --   MEDIUM confidence FDs (80-94%): 0
 --   LOW confidence FDs (<80%): 0
---   Total FDs preserved: 1
---   Validation Confidence: 100.0%
+--   Total FDs used: 1
 --   Validation Errors: 0
 --   Validation Warnings: 0
 
