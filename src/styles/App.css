@@ -804,3 +804,10 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 .nf-tab-picker-none:hover {
   background: var(--nf-hover-solid);
 }
+
+/* The minimap would cover the pipeline in a narrow window, and the whole pipeline is already framed there. */
+@media (max-width: 1100px) {
+  .react-flow__minimap {
+    display: none;
+  }
+}
