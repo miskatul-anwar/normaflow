@@ -97,3 +97,16 @@ describe('fdMiner - Milestone 2 Composite Key & Edge Case Test Suite', () => {
     expect(approx!.violations).toBeGreaterThan(0);
   });
 });
+
+describe('small-sample guard (minRowsForNonKeyDeterminants)', () => {
+  const rows = Array.from({ length: 8 }, (_, i) => ({ id: i + 1, a: i % 4, b: (i % 4) * 2, c: i % 3 }));
+  it('keeps only key determinants below the threshold, and everything above it', () => {
+    const guarded = mineFunctionalDependencies(rows, { minRowsForNonKeyDeterminants: 10 }).fds;
+    expect(guarded.length).toBeGreaterThan(0);
+    // Non-key determinants (a, b) are gone; only key-like determinants remain.
+    expect(guarded.some(f => f.lhs.join() === 'a' || f.lhs.join() === 'b')).toBe(false);
+    expect(guarded.some(f => f.lhs.join() === 'id')).toBe(true);
+    const open = mineFunctionalDependencies(rows, { minRowsForNonKeyDeterminants: 5 }).fds;
+    expect(open.some(f => f.lhs[0] === 'a' && f.rhs === 'b')).toBe(true);
+  });
+});

@@ -203,6 +203,12 @@ export interface MineOptions {
   completeDeterminantsOnly?: boolean;
   /** Tables smaller than this are never pruned (too few rows for the ratio to mean anything). Default 200. */
   nearKeyMinRows?: number;
+  /**
+   * Small-sample guard: below this many rows, only superkey determinants are used. With a handful of
+   * rows almost any pair of columns is "functionally dependent" by chance, so non-key dependencies
+   * would split the table into spurious relations. 0 (default) disables the guard.
+   */
+  minRowsForNonKeyDeterminants?: number;
   /** Abort the search early; the result is flagged `truncated`. */
   signal?: AbortSignal;
   /** Wall-clock budget in ms; the result is flagged `truncated` when exceeded. */
@@ -350,6 +356,7 @@ export function mineFunctionalDependencies(
         if (options.onProgress) options.onProgress(level, results.length);
         continue;
       }
+      if (!isSuperkey && rowCount < (options.minRowsForNonKeyDeterminants ?? 0)) continue;
       const comboNames = combo.map(i => attributes[i]);
 
       for (let rhs = 0; rhs < attributes.length; rhs++) {
