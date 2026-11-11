@@ -811,3 +811,14 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
     display: none;
   }
 }
+
+/* Hover and focus changes ease on the tab strip and the canvas controls, like every other button
+   (reduced-motion switches this off globally). */
+.nf-tab-title,
+.nf-tab-color,
+.nf-tab-rename,
+.nf-tab-close,
+.nf-tab-add,
+.react-flow__controls-button {
+  transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
