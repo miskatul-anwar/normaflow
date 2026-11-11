@@ -7,7 +7,7 @@ const Empty = ({ icon, title, hint }: { icon: React.ReactNode; title: string; hi
   <div className="py-16 text-center text-gray-500">
     <div className="mx-auto mb-3 flex justify-center text-gray-300">{icon}</div>
     <p className="font-medium text-gray-700">{title}</p>
-    <p className="mt-1 text-sm text-gray-400">{hint}</p>
+    <p className="mt-1 text-sm text-gray-500">{hint}</p>
   </div>
 );
 
@@ -56,7 +56,7 @@ export function RelationshipsSection({ relationships }: { relationships: CrossTa
                     {r.optional && <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 font-sans text-[10px] text-gray-500">optional</span>}
                   </td>
                   <td className="px-2 py-2.5 font-mono text-gray-900 [overflow-wrap:anywhere] lg:px-4">
-                    <ArrowRight className="mr-2 hidden size-3.5 text-gray-400 lg:inline" aria-hidden />
+                    <ArrowRight className="mr-2 hidden size-3.5 text-gray-500 lg:inline" aria-hidden />
                     {r.targetTable}.<span className="text-teal-700">{to}</span>
                   </td>
                   <td className="px-2 py-2.5 lg:px-4">
@@ -159,7 +159,7 @@ export function QualityByTable({ tables }: { tables: TableLike[] }) {
                 onClick={() => setOpen(isOpen ? null : t.tableName)}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50"
               >
-                {isOpen ? <ChevronDown className="size-4 text-gray-400" aria-hidden /> : <ChevronRight className="size-4 text-gray-400" aria-hidden />}
+                {isOpen ? <ChevronDown className="size-4 text-gray-500" aria-hidden /> : <ChevronRight className="size-4 text-gray-500" aria-hidden />}
                 <span className="flex-1 font-mono text-sm text-gray-900">{t.tableName}</span>
                 <Badge ok={t.losslessCheck?.isLossless} yes="Lossless" no="Lossy" />
                 <Badge ok={t.dependencyPreservation?.isPreserved} yes="Preserved" no="Not preserved" />

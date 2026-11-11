@@ -20,7 +20,7 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
       <div className="text-center py-12 text-gray-500">
         <Files className="w-12 h-12 mx-auto mb-4 text-gray-300" />
         <p>No output files generated</p>
-        <p className="text-sm text-gray-400 mt-2">Files are created during the normalization process</p>
+        <p className="text-sm text-gray-500 mt-2">Files are created during the normalization process</p>
       </div>
     );
   }
@@ -120,7 +120,7 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
               onClick={() => setSelectedCategory(category)}
             >
               {category === 'all' ? 'All files' : category}
-              <span className="text-xs opacity-80">
+              <span className="text-xs">
                 {category === 'all' ? outputFiles.length : outputFiles.filter(f => f.category === category).length}
               </span>
             </Button>

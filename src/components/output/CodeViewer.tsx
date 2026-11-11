@@ -41,7 +41,7 @@ interface Token {
 }
 
 const COLORS: Record<TokenKind, string | undefined> = {
-  comment: '#7f848e',
+  comment: '#9aa3b2',
   string: '#98c379',
   ident: '#e5c07b',
   number: '#d19a66',
@@ -224,7 +224,7 @@ export function CodeViewer({ code, language = 'sql', height = 'calc(100vh - 17re
         <span
           aria-hidden
           className="sticky left-0 select-none text-right pr-4 pl-3 shrink-0"
-          style={{ minWidth: `${gutter + 3}ch`, color: '#636d83', background: '#282c34' }}
+          style={{ minWidth: `${gutter + 3}ch`, color: '#8b95a8', background: '#282c34' }}
         >
           {i + 1}
         </span>

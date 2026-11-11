@@ -23,13 +23,13 @@ describe('one tab bar for the pipeline and the output page', () => {
     saveCachedResult(sqlResult('SELECT 1;'), 't1');
     window.history.pushState({}, '', '/');
     const { unmount } = render(<App />);
-    expect(screen.getByRole('tablist', { name: 'Workspaces' })).toBeTruthy();
+    expect(screen.getByRole('navigation', { name: 'Workspaces' })).toBeTruthy();
     unmount();
 
     window.history.pushState({}, '', '/output');
     render(<App />);
-    expect(screen.getByRole('tablist', { name: 'Workspaces' })).toBeTruthy();
-    expect(screen.getAllByRole('tab').length).toBe(1);
+    expect(screen.getByRole('navigation', { name: 'Workspaces' })).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: /^Workspace \d+$/ }).length).toBe(1);
   });
 
   it('switching tabs on the output page shows that tab\'s own results and keeps you on the output page', () => {
@@ -39,10 +39,10 @@ describe('one tab bar for the pipeline and the output page', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'New workspace' })); // adds t2 and selects it
     expect(window.location.pathname).toBe('/output');
-    expect(screen.getByRole('tab', { selected: true }).textContent).toContain('Workspace 2');
+    expect(document.querySelector('[aria-current="true"].nf-tab-title')!.textContent).toContain('Workspace 2');
 
-    fireEvent.click(screen.getAllByRole('tab')[0]); // back to Workspace 1
+    fireEvent.click(screen.getAllByRole('button', { name: /^Workspace \d+$/ })[0]); // back to Workspace 1
     expect(window.location.pathname).toBe('/output');
-    expect(screen.getByRole('tab', { selected: true }).textContent).toContain('Workspace 1');
+    expect(document.querySelector('[aria-current="true"].nf-tab-title')!.textContent).toContain('Workspace 1');
   });
 });

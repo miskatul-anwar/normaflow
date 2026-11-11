@@ -111,7 +111,7 @@ export default function Heading({
           <Upload />
           {label("Upload")}
           {activeFiles > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-white bg-teal-600 px-1 text-[10px] font-semibold leading-none text-white">
+            <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-white bg-teal-700 px-1 text-[10px] font-semibold leading-none text-white">
               {activeFiles}
             </span>
           )}

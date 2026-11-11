@@ -15,6 +15,7 @@ import { RelationshipsSection, KeysByTable, QualityByTable } from './output/Mult
 import { GeneratedFilesSection } from './output/GeneratedFilesSection';
 import { ReportView, NormalizationJourney } from './output/ReportView';
 import { ErdSection } from './output/ErdSection';
+import { StatCard } from './output/StatCard';
 import { CodeViewer } from './output/CodeViewer';
 import { Button } from '@/components/ui/button';
 import type { WorkspaceTab } from '../hooks/useWorkspaceTabs';
@@ -303,7 +304,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
       </aside>
 
       <main className="nf-canvas-panel">
-        <div key={activeTab} className="nf-fade-in min-h-0 flex-1 overflow-y-auto p-6">
+        <div key={activeTab} className="nf-fade-in min-h-0 flex-1 overflow-y-auto p-6" role="region" aria-label="Result details" tabIndex={0}>
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
@@ -320,12 +321,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
                       { label: 'Functional dependencies', value: String(safeResults.stats?.functionalDependencies || fdData.length) },
                       { label: 'Pipeline duration', value: safeResults.duration || '—' },
                     ]
-                ).map(card => (
-                  <div key={card.label} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow">
-                    <div className="text-xs font-medium text-gray-500">{card.label}</div>
-                    <div className="mt-1 text-2xl font-semibold text-teal-700">{card.value}</div>
-                  </div>
-                ))}
+                ).map(card => <StatCard key={card.label} label={card.label} value={card.value} />)}
               </div>
 
               {!isMultiTable && (
@@ -351,7 +347,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
                     {multiTables.map((t: any) => (
                       <div key={t.tableName} className="rounded-lg border border-gray-200 p-3 transition-shadow hover:shadow-sm">
                         <div className="mb-2 flex items-center justify-between">
-                          <span className="font-mono text-sm font-semibold text-teal-800">{t.tableName} <span className="font-normal text-gray-400">({t.fileName})</span></span>
+                          <span className="font-mono text-sm font-semibold text-teal-800">{t.tableName} <span className="font-normal text-gray-500">({t.fileName})</span></span>
                           <span className="text-xs text-gray-500">{t.rowCount} rows • {t.headers.length} columns</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -361,13 +357,11 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
                               className={`rounded-md border px-2 py-0.5 font-mono text-xs font-medium ${
                                 tag.entityType === 'PRIMARY_KEY_ID' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
                                 tag.entityType === 'FOREIGN_KEY_REF' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                                tag.entityType === 'EMAIL' ? 'bg-purple-100 text-purple-800 border-purple-300' :
-                                tag.entityType === 'CURRENCY_PRICE' ? 'bg-teal-100 text-teal-800 border-teal-300' :
-                                'bg-gray-100 text-gray-700 border-gray-300'
+                                'bg-gray-50 text-gray-700 border-gray-200'
                               }`}
                               title={tag.description}
                             >
-                              {tag.columnName} : <span className="font-bold">{tag.entityType}</span>
+                              {tag.columnName} <span className="text-gray-500">·</span> <span className="font-semibold">{tag.entityType.replace(/_/g, ' ').toLowerCase()}</span>
                             </span>
                           ))}
                         </div>

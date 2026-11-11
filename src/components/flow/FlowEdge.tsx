@@ -1,58 +1,13 @@
-import { getBezierPath, BaseEdge, type EdgeProps } from '@xyflow/react';
+import { getBezierPath, getSmoothStepPath, BaseEdge, type EdgeProps } from '@xyflow/react';
 
 /**
- * Flowing pipeline edge.
- *
- * Layers (bottom → top):
- *  1. soft glow underlay,
- *  2. solid base path,
- *  3. gradient dashes marching toward the target (CSS animation),
- *  4. a pulse travelling along the path (`<animateMotion />`, per the
- *     official React Flow "Animating Edges" example).
+ * Pipeline edge: a single calm line. Within a row it is a gentle curve; where the pipeline wraps to the
+ * next row (the target is to the left of the source) it routes as right-angle steps, like a carriage return.
  */
-export function FlowEdge({
-  id,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  sourcePosition,
-  targetPosition,
-  style = {},
-  markerEnd,
-}: EdgeProps) {
-  const [edgePath] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
-
-  return (
-    <>
-      <path
-        className="nf-edge-glow"
-        d={edgePath}
-        fill="none"
-        strokeLinecap="round"
-      />
-      <BaseEdge
-        id={id}
-        path={edgePath}
-        markerEnd={markerEnd}
-        style={{
-          stroke: 'var(--nf-edge-gradient)',
-          strokeWidth: 2.5,
-          strokeLinecap: 'round',
-          ...style,
-        }}
-      />
-      <path className="nf-edge-dashes" d={edgePath} fill="none" strokeLinecap="round" />
-      <circle className="nf-edge-pulse" r="3.4" fill="#0d9488">
-        <animateMotion dur="2.6s" repeatCount="indefinite" path={edgePath} />
-      </circle>
-    </>
-  );
+export function FlowEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd }: EdgeProps) {
+  const wraps = targetX < sourceX;
+  const [path] = wraps
+    ? getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 14, offset: 24 })
+    : getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
+  return <BaseEdge id={id} path={path} markerEnd={markerEnd} style={style} />;
 }

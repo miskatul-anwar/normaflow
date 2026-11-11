@@ -90,8 +90,8 @@ describe('WorkspaceTabBar', () => {
 
   it('selects, adds, closes and marks the active tab', () => {
     const h = setup();
-    expect(screen.getByRole('tab', { name: /Alpha/ }).getAttribute('aria-selected')).toBe('true');
-    fireEvent.click(screen.getByRole('tab', { name: /Beta/ }));
+    expect(screen.getByRole('button', { name: /^Alpha$/ }).getAttribute('aria-current')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: /^Beta$/ }));
     expect(h.onSelect).toHaveBeenCalledWith('b');
     fireEvent.click(screen.getByRole('button', { name: 'New workspace' }));
     expect(h.onAdd).toHaveBeenCalled();
@@ -102,12 +102,12 @@ describe('WorkspaceTabBar', () => {
 
   it('renames on double-click + Enter, cancels on Escape', () => {
     const h = setup();
-    fireEvent.doubleClick(screen.getByRole('tab', { name: /Alpha/ }));
+    fireEvent.doubleClick(screen.getByRole('button', { name: /^Alpha$/ }));
     const input = screen.getByLabelText('Workspace name');
     fireEvent.change(input, { target: { value: 'Sales' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(h.onRename).toHaveBeenCalledWith('a', 'Sales');
-    fireEvent.doubleClick(screen.getByRole('tab', { name: /Alpha/ }));
+    fireEvent.doubleClick(screen.getByRole('button', { name: /^Alpha$/ }));
     fireEvent.keyDown(screen.getByLabelText('Workspace name'), { key: 'Escape' });
     expect(screen.queryByLabelText('Workspace name')).toBeNull();
   });
@@ -123,17 +123,17 @@ describe('WorkspaceTabBar', () => {
 
   it('renames and closes from the right-click menu, which dismisses on Escape', () => {
     const h = setup();
-    fireEvent.contextMenu(screen.getByRole('tab', { name: /Beta/ }));
+    fireEvent.contextMenu(screen.getByRole('button', { name: /^Beta$/ }));
     expect(h.onSelect).toHaveBeenCalledWith('b');
     fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
     expect(screen.getByLabelText('Workspace name')).toBeTruthy();
     fireEvent.keyDown(screen.getByLabelText('Workspace name'), { key: 'Escape' });
 
-    fireEvent.contextMenu(screen.getByRole('tab', { name: /Alpha/ }));
+    fireEvent.contextMenu(screen.getByRole('button', { name: /^Alpha$/ }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Close' }));
     expect(h.onClose).toHaveBeenCalledWith('a');
 
-    fireEvent.contextMenu(screen.getByRole('tab', { name: /Alpha/ }));
+    fireEvent.contextMenu(screen.getByRole('button', { name: /^Alpha$/ }));
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('menu')).toBeNull();
   });
@@ -163,7 +163,7 @@ describe('WorkspaceTabBar', () => {
 
   it('opens the picker from the right-click menu', () => {
     setup();
-    fireEvent.contextMenu(screen.getByRole('tab', { name: /Alpha/ }));
+    fireEvent.contextMenu(screen.getByRole('button', { name: /^Alpha$/ }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Color…' }));
     expect(screen.getByRole('dialog', { name: 'Tab color' })).toBeTruthy();
     expect(screen.queryByRole('menu')).toBeNull();

@@ -1,0 +1,129 @@
+/*
+ * Dark theme for Tailwind's utility palette.
+ *
+ * Tailwind v4 exposes every colour as a CSS variable, so remapping the variables themes every
+ * `bg-gray-50`, `text-teal-800`, `border-red-200` ... in one place, with no per-component `dark:` classes.
+ *  - neutrals are inverted (50 is the darkest surface, 950 the lightest text);
+ *  - tinted fills (50-300) become dark tints of the hue, mixed from its 500 into the surface;
+ *  - tinted text (600-900) becomes a light tint of the hue's 400.
+ * Only the never-remapped 400/500 steps are referenced, so no remapped step depends on another.
+ * `white` is deliberately not remapped (it stays white for text on solid buttons); `.bg-white` is.
+ */
+:root[data-theme='dark'] {
+  --nf-base: #12161c;
+  --color-gray-50: #171c23;
+  --color-gray-100: #1d232b;
+  --color-gray-200: #262d37;
+  --color-gray-300: #343d49;
+  --color-gray-400: #6b7685;
+  --color-gray-500: #8a95a3;
+  --color-gray-600: #aab3bf;
+  --color-gray-700: #c5ccd6;
+  --color-gray-800: #dde2e9;
+  --color-gray-900: #eef1f5;
+  --color-gray-950: #f8fafc;
+  --color-slate-50: #171c23;
+  --color-slate-100: #1d232b;
+  --color-slate-200: #262d37;
+  --color-slate-300: #343d49;
+  --color-slate-400: #6b7685;
+  --color-slate-500: #8a95a3;
+  --color-slate-600: #aab3bf;
+  --color-slate-700: #c5ccd6;
+  --color-slate-800: #dde2e9;
+  --color-slate-900: #eef1f5;
+  --color-teal-50: color-mix(in oklab, var(--color-teal-500) 12%, var(--nf-base));
+  --color-teal-100: color-mix(in oklab, var(--color-teal-500) 20%, var(--nf-base));
+  --color-teal-200: color-mix(in oklab, var(--color-teal-500) 32%, var(--nf-base));
+  --color-teal-300: color-mix(in oklab, var(--color-teal-500) 48%, var(--nf-base));
+  --color-teal-700: color-mix(in oklab, var(--color-teal-400) 78%, white);
+  --color-teal-800: color-mix(in oklab, var(--color-teal-400) 58%, white);
+  --color-teal-900: color-mix(in oklab, var(--color-teal-400) 40%, white);
+  --color-green-50: color-mix(in oklab, var(--color-green-500) 12%, var(--nf-base));
+  --color-green-100: color-mix(in oklab, var(--color-green-500) 20%, var(--nf-base));
+  --color-green-200: color-mix(in oklab, var(--color-green-500) 32%, var(--nf-base));
+  --color-green-300: color-mix(in oklab, var(--color-green-500) 48%, var(--nf-base));
+  --color-green-700: color-mix(in oklab, var(--color-green-400) 78%, white);
+  --color-green-800: color-mix(in oklab, var(--color-green-400) 58%, white);
+  --color-red-50: color-mix(in oklab, var(--color-red-500) 12%, var(--nf-base));
+  --color-red-100: color-mix(in oklab, var(--color-red-500) 20%, var(--nf-base));
+  --color-red-200: color-mix(in oklab, var(--color-red-500) 32%, var(--nf-base));
+  --color-red-300: color-mix(in oklab, var(--color-red-500) 48%, var(--nf-base));
+  --color-red-700: color-mix(in oklab, var(--color-red-400) 78%, white);
+  --color-red-800: color-mix(in oklab, var(--color-red-400) 58%, white);
+  --color-amber-50: color-mix(in oklab, var(--color-amber-500) 12%, var(--nf-base));
+  --color-amber-100: color-mix(in oklab, var(--color-amber-500) 20%, var(--nf-base));
+  --color-amber-200: color-mix(in oklab, var(--color-amber-500) 32%, var(--nf-base));
+  --color-amber-300: color-mix(in oklab, var(--color-amber-500) 48%, var(--nf-base));
+  --color-amber-700: color-mix(in oklab, var(--color-amber-400) 78%, white);
+  --color-amber-800: color-mix(in oklab, var(--color-amber-400) 58%, white);
+  --color-amber-900: color-mix(in oklab, var(--color-amber-400) 40%, white);
+  --color-yellow-50: color-mix(in oklab, var(--color-yellow-500) 12%, var(--nf-base));
+  --color-yellow-100: color-mix(in oklab, var(--color-yellow-500) 20%, var(--nf-base));
+  --color-yellow-200: color-mix(in oklab, var(--color-yellow-500) 32%, var(--nf-base));
+  --color-yellow-300: color-mix(in oklab, var(--color-yellow-500) 48%, var(--nf-base));
+  --color-yellow-700: color-mix(in oklab, var(--color-yellow-400) 78%, white);
+  --color-yellow-800: color-mix(in oklab, var(--color-yellow-400) 58%, white);
+  --color-blue-50: color-mix(in oklab, var(--color-blue-500) 12%, var(--nf-base));
+  --color-blue-100: color-mix(in oklab, var(--color-blue-500) 20%, var(--nf-base));
+  --color-blue-200: color-mix(in oklab, var(--color-blue-500) 32%, var(--nf-base));
+  --color-blue-300: color-mix(in oklab, var(--color-blue-500) 48%, var(--nf-base));
+  --color-blue-700: color-mix(in oklab, var(--color-blue-400) 78%, white);
+  --color-blue-800: color-mix(in oklab, var(--color-blue-400) 58%, white);
+  --color-purple-50: color-mix(in oklab, var(--color-purple-500) 12%, var(--nf-base));
+  --color-purple-100: color-mix(in oklab, var(--color-purple-500) 20%, var(--nf-base));
+  --color-purple-200: color-mix(in oklab, var(--color-purple-500) 32%, var(--nf-base));
+  --color-purple-300: color-mix(in oklab, var(--color-purple-500) 48%, var(--nf-base));
+  --color-purple-700: color-mix(in oklab, var(--color-purple-400) 78%, white);
+  --color-purple-800: color-mix(in oklab, var(--color-purple-400) 58%, white);
+  --color-violet-50: color-mix(in oklab, var(--color-violet-500) 12%, var(--nf-base));
+  --color-violet-100: color-mix(in oklab, var(--color-violet-500) 20%, var(--nf-base));
+  --color-violet-200: color-mix(in oklab, var(--color-violet-500) 32%, var(--nf-base));
+  --color-violet-300: color-mix(in oklab, var(--color-violet-500) 48%, var(--nf-base));
+  --color-violet-700: color-mix(in oklab, var(--color-violet-400) 78%, white);
+  --color-violet-800: color-mix(in oklab, var(--color-violet-400) 58%, white);
+  --color-emerald-50: color-mix(in oklab, var(--color-emerald-500) 12%, var(--nf-base));
+  --color-emerald-100: color-mix(in oklab, var(--color-emerald-500) 20%, var(--nf-base));
+  --color-emerald-200: color-mix(in oklab, var(--color-emerald-500) 32%, var(--nf-base));
+  --color-emerald-300: color-mix(in oklab, var(--color-emerald-500) 48%, var(--nf-base));
+  --color-emerald-700: color-mix(in oklab, var(--color-emerald-400) 78%, white);
+  --color-emerald-800: color-mix(in oklab, var(--color-emerald-400) 58%, white);
+  --color-orange-50: color-mix(in oklab, var(--color-orange-500) 12%, var(--nf-base));
+  --color-orange-100: color-mix(in oklab, var(--color-orange-500) 20%, var(--nf-base));
+  --color-orange-200: color-mix(in oklab, var(--color-orange-500) 32%, var(--nf-base));
+  --color-orange-300: color-mix(in oklab, var(--color-orange-500) 48%, var(--nf-base));
+  --color-orange-700: color-mix(in oklab, var(--color-orange-400) 78%, white);
+  --color-orange-800: color-mix(in oklab, var(--color-orange-400) 58%, white);
+  --color-cyan-50: color-mix(in oklab, var(--color-cyan-500) 12%, var(--nf-base));
+  --color-cyan-100: color-mix(in oklab, var(--color-cyan-500) 20%, var(--nf-base));
+  --color-cyan-200: color-mix(in oklab, var(--color-cyan-500) 32%, var(--nf-base));
+  --color-cyan-300: color-mix(in oklab, var(--color-cyan-500) 48%, var(--nf-base));
+  --color-cyan-700: color-mix(in oklab, var(--color-cyan-400) 78%, white);
+  --color-cyan-800: color-mix(in oklab, var(--color-cyan-400) 58%, white);
+}
+
+/* Utilities that name white, and shadows. */
+:root[data-theme='dark'] .bg-white {
+  background-color: var(--nf-surface);
+}
+:root[data-theme='dark'] .bg-white\/95,
+:root[data-theme='dark'] .bg-white\/90,
+:root[data-theme='dark'] .bg-white\/80 {
+  background-color: color-mix(in srgb, var(--nf-surface) 90%, transparent);
+}
+:root[data-theme='dark'] .border-white {
+  border-color: var(--nf-surface);
+}
+/* Diagrams are drawn for a light page; keep them on one. */
+:root[data-theme='dark'] .nf-diagram {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+/* Solid teal fills carry white text in both themes, so they must not take the light dark-mode tint. */
+:root[data-theme='dark'] .bg-teal-700 {
+  background-color: #0f766e;
+}
+:root[data-theme='dark'] .hover\:bg-teal-800:hover {
+  background-color: #115e59;
+}

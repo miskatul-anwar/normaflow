@@ -157,7 +157,7 @@ export function OperationPalette({
         <div className="shrink-0 border-b border-gray-200 p-2">
           <label className="relative block">
             <span className="sr-only">Filter operations</span>
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-gray-400" aria-hidden />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-gray-500" aria-hidden />
             <input
               type="search"
               value={query}
@@ -170,7 +170,7 @@ export function OperationPalette({
                 }
               }}
               placeholder="Filter operations"
-              className="h-8 w-full rounded-lg border border-gray-200 bg-white pl-8 pr-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/30"
+              className="h-8 w-full rounded-lg border border-gray-200 bg-white pl-8 pr-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/30"
             />
           </label>
         </div>
@@ -190,7 +190,7 @@ export function OperationPalette({
                 <h3 className="sticky top-0 z-10 flex items-center gap-2 bg-slate-50 px-1 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                   <span className="size-2 rounded-full" style={{ backgroundColor: meta.accent }} aria-hidden />
                   {meta.label}
-                  <span className="ml-auto font-normal normal-case tabular-nums text-gray-400">
+                  <span className="ml-auto font-normal normal-case tabular-nums text-gray-500">
                     {t.done}/{t.total}
                   </span>
                 </h3>
@@ -204,7 +204,7 @@ export function OperationPalette({
                   const tile = (
                     <span
                       className="relative flex size-8 shrink-0 items-center justify-center rounded-md"
-                      style={{ backgroundColor: meta.soft, color: meta.accent }}
+                      style={{ backgroundColor: meta.soft, color: meta.ink }}
                     >
                       {Icon ? <Icon className="size-4" strokeWidth={1.9} aria-hidden /> : <span className="text-[10px] font-bold leading-none">{visual.glyph ?? '•'}</span>}
                     </span>
@@ -229,7 +229,7 @@ export function OperationPalette({
                           list ? 'w-full gap-2.5 px-1.5 py-1.5' : 'size-10 justify-center border border-gray-200 bg-white shadow-xs',
                           state === 'added' ? 'cursor-not-allowed bg-teal-50/70' : 'hover:bg-gray-100',
                           !list && state !== 'added' ? 'hover:border-gray-300' : '',
-                          state === 'locked' ? 'opacity-70 hover:opacity-100' : '',
+                          '',
                         ].join(' ')}
                       >
                         {tile}
@@ -241,7 +241,7 @@ export function OperationPalette({
                         )}
                         {state === 'added' && (
                           <span
-                            className={list ? 'flex size-5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white' : 'absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-teal-600 text-white'}
+                            className={list ? 'flex size-5 shrink-0 items-center justify-center rounded-full bg-teal-700 text-white' : 'absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-teal-700 text-white'}
                             aria-hidden
                           >
                             <Check className={list ? 'size-3' : 'size-2.5'} strokeWidth={3.2} />
@@ -249,7 +249,7 @@ export function OperationPalette({
                         )}
                         {state === 'locked' && (
                           <Lock
-                            className={list ? 'size-3.5 shrink-0 text-gray-400' : 'absolute -right-1 -top-1 size-4 rounded-full bg-white p-0.5 text-gray-500 shadow-xs'}
+                            className={list ? 'size-3.5 shrink-0 text-gray-500' : 'absolute -right-1 -top-1 size-4 rounded-full bg-white p-0.5 text-gray-500 shadow-xs'}
                             aria-hidden
                           />
                         )}

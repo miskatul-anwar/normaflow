@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Shield, Lock, Unlock, Zap, CheckCircle, AlertCircle, BarChart3, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
+import { Shield, Lock, Unlock, Zap, CheckCircle, AlertCircle, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { StatCard } from './StatCard';
 
 interface QualityAssuranceSectionProps {
   losslessCheck?: any;
@@ -43,7 +44,7 @@ export function QualityAssuranceSection({ losslessCheck, dependencyPreservation 
       <div className="text-center py-12 text-gray-500">
         <Shield className="w-12 h-12 mx-auto mb-4 text-gray-300" />
         <p>No quality assurance data available</p>
-        <p className="text-sm text-gray-400 mt-2">Quality checks require Lossless Check and Dependency Preservation operations</p>
+        <p className="text-sm text-gray-500 mt-2">Quality checks require Lossless Check and Dependency Preservation operations</p>
       </div>
     );
   }
@@ -120,32 +121,9 @@ export function QualityAssuranceSection({ losslessCheck, dependencyPreservation 
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                <div className="text-2xl font-bold text-green-600 flex items-center justify-center gap-2">
-                  <CheckCircle className="w-6 h-6" />
-                  {dependencyPreservation.preserved?.length || 0}
-                </div>
-                <div className="text-sm text-green-700">Preserved Dependencies</div>
-              </div>
-              {(() => {
-                const none = !(dependencyPreservation.lost?.length > 0);
-                return (
-                  <div className={`rounded-lg border p-3 text-center ${none ? 'border-gray-200 bg-gray-50' : 'border-red-200 bg-red-50'}`}>
-                    <div className={`flex items-center justify-center gap-2 text-2xl font-bold ${none ? 'text-gray-500' : 'text-red-600'}`}>
-                      <AlertCircle className="w-6 h-6" />
-                      {dependencyPreservation.lost?.length || 0}
-                    </div>
-                    <div className={`text-sm ${none ? 'text-gray-500' : 'text-red-700'}`}>Lost Dependencies</div>
-                  </div>
-                );
-              })()}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                <div className="text-2xl font-bold text-blue-600 flex items-center justify-center gap-2">
-                  <BarChart3 className="w-6 h-6" />
-                  {calculatePreservationRate(dependencyPreservation)}%
-                </div>
-                <div className="text-sm text-blue-700">Preservation Rate</div>
-              </div>
+              <StatCard label="Preserved dependencies" value={dependencyPreservation.preserved?.length || 0} tone="good" />
+              <StatCard label="Lost dependencies" value={dependencyPreservation.lost?.length || 0} tone={dependencyPreservation.lost?.length > 0 ? 'bad' : 'neutral'} />
+              <StatCard label="Preservation rate" value={`${calculatePreservationRate(dependencyPreservation)}%`} tone="info" />
             </div>
 
             <div className="space-y-6">

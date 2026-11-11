@@ -32,11 +32,16 @@ export interface OperationVisual {
   glyph?: string;
 }
 
-export const PHASE_ACCENTS: Record<PhaseType, { accent: string; soft: string; label: string; description: string }> = {
-  PREP: { accent: '#0d9488', soft: '#ccfbf1', label: 'Prepare', description: 'Load & clean data' },
-  ANALYZE: { accent: '#0891b2', soft: '#cffafe', label: 'Analyze', description: 'FDs, keys & relations' },
-  NORMAL: { accent: '#7c3aed', soft: '#ede9fe', label: 'Normalize', description: 'Normal forms' },
-  OUTPUT: { accent: '#d97706', soft: '#fef3c7', label: 'Generate', description: 'ERD, SQL & reports' },
+/** A quiet tint of the accent over the current surface, so tiles read correctly in light and dark. */
+/** The accent as text/icon ink: darker in light mode, lighter in dark, so it stays readable on its own tint. */
+const ink = (accent: string) => `color-mix(in srgb, ${accent} 70%, var(--nf-ink-mix))`;
+const soft = (accent: string) => `color-mix(in srgb, ${accent} 15%, var(--nf-surface))`;
+
+export const PHASE_ACCENTS: Record<PhaseType, { accent: string; soft: string; ink: string; label: string; description: string }> = {
+  PREP: { accent: '#0d9488', soft: soft('#0d9488'), ink: ink('#0d9488'), label: 'Prepare', description: 'Load & clean data' },
+  ANALYZE: { accent: '#0891b2', soft: soft('#0891b2'), ink: ink('#0891b2'), label: 'Analyze', description: 'FDs, keys & relations' },
+  NORMAL: { accent: '#7c3aed', soft: soft('#7c3aed'), ink: ink('#7c3aed'), label: 'Normalize', description: 'Normal forms' },
+  OUTPUT: { accent: '#d97706', soft: soft('#d97706'), ink: ink('#d97706'), label: 'Generate', description: 'ERD, SQL & reports' },
 };
 
 export const OPERATION_VISUALS: Record<string, OperationVisual> = {

@@ -1,6 +1,6 @@
 {
   "name": "normaflow",
-  "description": "Turn raw CSV files into normalized database schemas — ERDs, SQL DDL and normalization reports. Local-first desktop app built with Tauri + React.",
+  "description": "Turn raw CSV files into normalized database schemas \u2014 ERDs, SQL DDL and normalization reports. Local-first desktop app built with Tauri + React.",
   "keywords": [
     "erd",
     "entity-relationship-diagram",
@@ -43,7 +43,9 @@
     "lint": "eslint . --max-warnings 383",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "fmt:rust": "cargo fmt --all --manifest-path src-tauri/Cargo.toml"
+    "fmt:rust": "cargo fmt --all --manifest-path src-tauri/Cargo.toml",
+    "audit:a11y": "node scripts/a11y-audit.cjs",
+    "quality": "npm run typecheck && npm run lint && vitest run && npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.6",
@@ -80,7 +82,8 @@
     "@types/react-dom": "^18.3.1",
     "@types/react-router-dom": "^5.3.3",
     "@vitejs/plugin-react": "^4.3.4",
-    "@vitest/ui": "^3.2.4",
+    "@vitest/ui": "^5.1.0",
+    "axe-core": "^4.14.0",
     "eslint": "^10.14.0",
     "fast-check": "^4.10.2",
     "jsdom": "^31.0.0",
@@ -89,6 +92,6 @@
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.72.2",
     "vite": "^6.0.3",
-    "vitest": "^3.2.4"
+    "vitest": "^5.1.0"
   }
 }

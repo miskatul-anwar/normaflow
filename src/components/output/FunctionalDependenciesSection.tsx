@@ -1,16 +1,17 @@
 import { Fragment, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitBranch, TrendingUp, TrendingDown, BarChart3, ArrowRight, ChevronRight, ChevronDown, Info, Search, X } from 'lucide-react';
+import { GitBranch, ArrowRight, ChevronRight, ChevronDown, Info, Search, X } from 'lucide-react';
 import { FunctionalDependency } from '../../types';
 import { Button } from '@/components/ui/button';
+import { StatCard } from './StatCard';
 
 /** The analysis for one dependency; rendered directly under the row it belongs to. */
 function DependencyAnalysis({ fd }: { fd: FunctionalDependency }) {
   return (
       <div className="p-6">
-        <h6 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+        <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
           <Info className="w-4 h-4" /> Dependency Analysis
-        </h6>
+        </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -95,7 +96,7 @@ export function FunctionalDependenciesSection({
       <div className="text-center py-12 text-gray-500">
         <GitBranch className="w-12 h-12 mx-auto mb-4 text-gray-300" />
         <p>No functional dependencies discovered</p>
-        <p className="text-sm text-gray-400 mt-2">This could indicate data is already normalized or lacks patterns</p>
+        <p className="text-sm text-gray-500 mt-2">This could indicate data is already normalized or lacks patterns</p>
       </div>
     );
   }
@@ -106,40 +107,10 @@ export function FunctionalDependenciesSection({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <TrendingUp className="w-5 h-5 text-green-600" />
-            <div className="text-2xl font-bold text-green-600">
-              {highConfFDs.length}
-            </div>
-          </div>
-          <div className="text-sm text-green-700">
-            High Confidence ({'>'}98%)
-          </div>
-        </div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <BarChart3 className="w-5 h-5 text-yellow-600" />
-            <div className="text-2xl font-bold text-yellow-600">
-              {mediumConfFDs.length}
-            </div>
-          </div>
-          <div className="text-sm text-yellow-700">
-            Medium Confidence (90-98%)
-          </div>
-        </div>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <TrendingDown className="w-5 h-5 text-red-600" />
-            <div className="text-2xl font-bold text-red-600">
-              {lowConfFDs.length}
-            </div>
-          </div>
-          <div className="text-sm text-red-700">
-            Low Confidence ({'<'}90%)
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <StatCard label="High confidence (>98%)" value={highConfFDs.length} tone="good" />
+        <StatCard label="Medium confidence (90-98%)" value={mediumConfFDs.length} tone="watch" />
+        <StatCard label="Low confidence (<90%)" value={lowConfFDs.length} tone="bad" />
       </div>
 
       {smallTables.length > 0 && (
@@ -154,12 +125,12 @@ export function FunctionalDependenciesSection({
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-5 py-3">
-          <h5 className="text-sm font-semibold text-gray-900">
+          <h3 className="text-sm font-semibold text-gray-900">
             Discovered dependencies{' '}
             <span className="font-normal text-gray-500">
               {filtered.length === fdData.length ? fdData.length : `${filtered.length} of ${fdData.length}`}
             </span>
-          </h5>
+          </h3>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex rounded-lg border border-gray-200 bg-white p-0.5" role="group" aria-label="Filter by confidence">
               {(['all', 'high', 'medium', 'low'] as const).map(q => (
@@ -172,7 +143,7 @@ export function FunctionalDependenciesSection({
                     setShown(PAGE);
                   }}
                   className={`rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
-                    quality === q ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                    quality === q ? 'bg-teal-700 text-white' : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
                   {q}
@@ -181,7 +152,7 @@ export function FunctionalDependenciesSection({
             </div>
             <label className="relative">
               <span className="sr-only">Search dependencies</span>
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" aria-hidden />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-gray-500" aria-hidden />
               <input
                 type="search"
                 value={query}
@@ -190,10 +161,10 @@ export function FunctionalDependenciesSection({
                   setShown(PAGE);
                 }}
                 placeholder="Search columns…"
-                className="h-8 w-56 rounded-lg border border-gray-200 bg-white pl-8 pr-7 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/30"
+                className="h-8 w-56 rounded-lg border border-gray-200 bg-white pl-8 pr-7 text-sm text-gray-900 placeholder:text-gray-500 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/30"
               />
               {query && (
-                <button type="button" aria-label="Clear search" onClick={() => setQuery('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:text-gray-700">
+                <button type="button" aria-label="Clear search" onClick={() => setQuery('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-500 hover:text-gray-700">
                   <X className="size-3.5" />
                 </button>
               )}
@@ -219,7 +190,7 @@ export function FunctionalDependenciesSection({
                 const confidence = ((fd.confidence || 0) * 100).toFixed(2);
                 const coverage = ((fd.coverage || 0) * 100).toFixed(2);
                 const qualityLevel = (fd.confidence || 0) > 0.98 ? 'High' : (fd.confidence || 0) > 0.90 ? 'Medium' : 'Low';
-                const qualityColor = (fd.confidence || 0) > 0.98 ? 'text-green-600 bg-green-100' : (fd.confidence || 0) > 0.90 ? 'text-yellow-600 bg-yellow-100' : 'text-red-600 bg-red-100';
+                const qualityColor = (fd.confidence || 0) > 0.98 ? 'text-green-800 bg-green-100' : (fd.confidence || 0) > 0.90 ? 'text-yellow-800 bg-yellow-100' : 'text-red-800 bg-red-100';
 
                 return (
                   <Fragment key={index}>

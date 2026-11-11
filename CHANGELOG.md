@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Light and dark mode.** A switch at the end of the workspace strip (so it is on both the pipeline and the Output page) toggles the theme. With no choice made, the app follows the operating system; the choice is remembered. Diagrams stay on a light page in dark mode so their colours stay true.
+- `docs/QUALITY.md`: the app assessed against the ISO/IEC 25010 characteristics and ISO/IEC 25012 data quality, with the evidence for each and what is not covered. `npm run quality` runs the automated gates; `npm run audit:a11y` runs an axe-core audit of the pipeline page and every Output tab in both themes (currently 0 violations).
+
+### Changed (pipeline and Output page, a calmer look)
+- **Pipeline canvas:** steps now wrap into rows of five (they used to run in one line, so a full pipeline fitted at an unreadable zoom), the view re-frames when steps are added, and wrapped links route as right-angle steps. Nodes are flat cards with a small accent chip; the glowing emerald Start node, pulsing halo, travelling pulses, marching dashes and teal-to-violet gradient edges are gone.
+- **Output page:** every summary strip uses one neutral `StatCard` (the number in ink, a small dot for good / watch / problem) instead of green / yellow / red / blue tinted boxes; the column-classification pills are neutral except primary and foreign keys; section headings are in order.
+- Removed about 800 lines of unused legacy CSS.
+
+### Fixed (accessibility, WCAG 2.1 AA)
+- The workspace strip is a labelled navigation of real buttons (it nested buttons inside tabs, which screen readers cannot operate).
+- Contrast: the main action (teal 700, 5.5:1), small grey text, locked operations (no longer faded), status badges, code comments and line numbers.
+- Result panels and diagrams are focusable regions, so scrolled content works from the keyboard; the pipeline page has a heading and landmarks.
+- `prefers-reduced-motion` now disables every animation and transition.
+- Dev dependencies: vitest 3 to 5 clears the two critical advisories (tinypool); shipped dependencies have no high or critical advisories.
+
 ### Fixed (engine: fewer coincidental dependencies)
 - **Over-decomposition on real data:** 11 Chinook tables came out as 48 BCNF relations, many of them built from coincidental dependencies. Dependency mining now (a) skips near-unique determinants (their dependencies hold by accident, which also makes mining about 3.7x faster on large tables) and (b) only uses determinants with no missing values. Chinook now yields 409 dependencies instead of 779 and 30 relations instead of 48, and the generated SQL loads into SQLite with foreign keys enforced and no violations (it did not load before).
 - **Foreign keys:** a link is no longer drawn in both directions between a key and its child table (it produced a bogus 1:1 `invoice.InvoiceId -> invoiceline.InvoiceLineId`), and links where not every value matches are listed as unplaced instead of becoming a constraint that fails on load.

@@ -1,4 +1,5 @@
-import { BarChart3, Hash, GitBranch, TrendingUp, TrendingDown, Target, Key } from 'lucide-react';
+import { StatCard } from './StatCard';
+import { BarChart3, Hash, GitBranch, Target, Key } from 'lucide-react';
 
 interface CardinalitySectionProps {
   cardinalityAnalysis?: Record<string, any>;
@@ -10,7 +11,7 @@ export function CardinalitySection({ cardinalityAnalysis }: CardinalitySectionPr
       <div className="text-center py-12 text-gray-500">
         <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-300" />
         <p>No cardinality analysis available</p>
-        <p className="text-sm text-gray-400 mt-2">Cardinality analysis requires the Cardinality Analyzer operation</p>
+        <p className="text-sm text-gray-500 mt-2">Cardinality analysis requires the Cardinality Analyzer operation</p>
       </div>
     );
   }
@@ -88,7 +89,7 @@ export function CardinalitySection({ cardinalityAnalysis }: CardinalitySectionPr
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                     <div className="flex items-center gap-2">
-                      <Hash className="w-4 h-4 text-gray-400" />
+                      <Hash className="w-4 h-4 text-gray-500" />
                       {attribute}
                     </div>
                   </td>
@@ -127,50 +128,38 @@ export function CardinalitySection({ cardinalityAnalysis }: CardinalitySectionPr
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <TrendingUp className="w-5 h-5 text-green-600" />
-            <div className="text-2xl font-bold text-green-600">
-              {cardinalityEntries.filter(([, analysis]: [string, any]) => getUniquenessRatio(analysis) > 0.9).length}
-            </div>
-          </div>
-          <div className="text-sm text-green-700">High Uniqueness ({'>'}90%)</div>
-          <div className="text-xs text-green-600 mt-1">One-to-One relationships</div>
-        </div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <BarChart3 className="w-5 h-5 text-yellow-600" />
-            <div className="text-2xl font-bold text-yellow-600">
-              {cardinalityEntries.filter(([, analysis]: [string, any]) => {
-                const ratio = getUniquenessRatio(analysis);
-                return ratio > 0.3 && ratio <= 0.9;
-              }).length}
-            </div>
-          </div>
-          <div className="text-sm text-yellow-700">Medium Uniqueness (30-90%)</div>
-          <div className="text-xs text-yellow-600 mt-1">One-to-Many relationships</div>
-        </div>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <TrendingDown className="w-5 h-5 text-red-600" />
-            <div className="text-2xl font-bold text-red-600">
-              {cardinalityEntries.filter(([, analysis]: [string, any]) => getUniquenessRatio(analysis) <= 0.3).length}
-            </div>
-          </div>
-          <div className="text-sm text-red-700">Low Uniqueness (≤30%)</div>
-          <div className="text-xs text-red-600 mt-1">Many-to-Many relationships</div>
-        </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <StatCard
+          label="High uniqueness (>90%)"
+          value={cardinalityEntries.filter(([, analysis]: [string, any]) => getUniquenessRatio(analysis) > 0.9).length}
+          note="One-to-one relationships"
+          tone="good"
+        />
+        <StatCard
+          label="Medium uniqueness (30-90%)"
+          value={cardinalityEntries.filter(([, analysis]: [string, any]) => {
+            const ratio = getUniquenessRatio(analysis);
+            return ratio > 0.3 && ratio <= 0.9;
+          }).length}
+          note="One-to-many relationships"
+          tone="watch"
+        />
+        <StatCard
+          label="Low uniqueness (≤30%)"
+          value={cardinalityEntries.filter(([, analysis]: [string, any]) => getUniquenessRatio(analysis) <= 0.3).length}
+          note="Many-to-many relationships"
+          tone="neutral"
+        />
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h5 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Target className="w-5 h-5" />
           Relationship Insights
-        </h5>
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
-            <h6 className="font-medium text-gray-700 mb-2">High Confidence Attributes:</h6>
+            <h4 className="font-medium text-gray-700 mb-2">High Confidence Attributes:</h4>
             <div className="space-y-1">
               {(() => {
                 const highConfidenceAttrs = cardinalityEntries
@@ -185,16 +174,16 @@ export function CardinalitySection({ cardinalityAnalysis }: CardinalitySectionPr
                   <div key={attr} className="bg-green-50 px-2 py-1 rounded text-green-700 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{attr}</span>
-                      <span className="text-green-600">{getConfidence(analysis)}</span>
+                      <span className="text-green-700">{getConfidence(analysis)}</span>
                     </div>
-                    <div className="text-green-600 text-xs">{analysis.uniqueValues || 'N/A'} unique of {analysis.totalValues || 'N/A'} total</div>
+                    <div className="text-green-700 text-xs">{analysis.uniqueValues || 'N/A'} unique of {analysis.totalValues || 'N/A'} total</div>
                   </div>
                 ));
               })()}
             </div>
           </div>
           <div>
-            <h6 className="font-medium text-gray-700 mb-2">Potential Key Candidates:</h6>
+            <h4 className="font-medium text-gray-700 mb-2">Potential Key Candidates:</h4>
             <div className="space-y-1">
               {(() => {
                 const keyCandidates = cardinalityEntries
@@ -210,9 +199,9 @@ export function CardinalitySection({ cardinalityAnalysis }: CardinalitySectionPr
                     <div className="flex items-center gap-1">
                       <Key className="w-3 h-3" />
                       <span className="font-medium">{attr}</span>
-                      <span className="text-yellow-600">({(getUniquenessRatio(analysis) * 100).toFixed(1)}% unique)</span>
+                      <span className="text-yellow-800">({(getUniquenessRatio(analysis) * 100).toFixed(1)}% unique)</span>
                     </div>
-                    <div className="text-yellow-600 text-xs">{getRelationshipType(analysis)}</div>
+                    <div className="text-yellow-800 text-xs">{getRelationshipType(analysis)}</div>
                   </div>
                 ));
               })()}

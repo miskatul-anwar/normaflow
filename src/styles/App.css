@@ -6,6 +6,47 @@
   --default-font-family: var(--font-sans);
 }
 
+
+/* ========== DESIGN TOKENS ==========
+   Light is the default; [data-theme="dark"] swaps the same names. Components use the
+   tokens (or Tailwind's gray/teal scale, which theme.css remaps), never raw hex. */
+:root {
+  color-scheme: light;
+  --nf-bg: #e5e7eb;
+  --nf-surface: #ffffff;
+  --nf-surface-2: #f8fafc;
+  --nf-hover: rgba(15, 23, 42, 0.08);
+  --nf-hover-solid: #f1f5f9;
+  --nf-border: #e2e8f0;
+  --nf-border-strong: #cbd5e1;
+  --nf-text: #0f172a;
+  --nf-text-2: #475569;
+  --nf-text-3: #64748b;
+  --nf-accent: #0d9488;
+  --nf-accent-soft: #f0fdfa;
+  --nf-chrome-base: #f8fafc;
+  --nf-shadow: 15, 23, 42;
+  --nf-ink-mix: #000000;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --nf-bg: #0b0e12;
+  --nf-surface: #12161c;
+  --nf-surface-2: #171c23;
+  --nf-hover: rgba(255, 255, 255, 0.08);
+  --nf-hover-solid: #1d232b;
+  --nf-border: #262d37;
+  --nf-border-strong: #343d49;
+  --nf-text: #e6eaf0;
+  --nf-text-2: #aab3bf;
+  --nf-text-3: #8a95a3;
+  --nf-accent: #2dd4bf;
+  --nf-accent-soft: #10302f;
+  --nf-chrome-base: #171c23;
+  --nf-shadow: 0, 0, 0;
+  --nf-ink-mix: #ffffff;
+}
+
 /* Global Styles - App-wide Inter Typography */
 :root {
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -13,8 +54,8 @@
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;
-  color: #0f0f0f;
-  background-color: #ffffff;
+  color: var(--nf-text);
+  background-color: var(--nf-surface);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -60,113 +101,70 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   --xy-edge-stroke-selected-default: #0d9488;
   --xy-connectionline-stroke-default: #0d9488;
   --xy-connectionline-stroke-width-default: 2.5;
-  --xy-minimap-background-color-default: #ffffff;
-  --xy-background-pattern-dots-color-default: #cbd5e1;
-  --xy-node-background-color-default: #ffffff;
-  --xy-node-border-default: 1px solid #e2e8f0;
+  --xy-minimap-background-color-default: var(--nf-surface);
+  --xy-background-pattern-dots-color-default: var(--nf-border-strong);
+  --xy-node-background-color-default: var(--nf-surface);
+  --xy-node-border-default: 1px solid var(--nf-border);
   --xy-node-boxshadow-hover-default: 0 10px 24px -6px rgba(13, 148, 136, 0.25);
   --xy-node-boxshadow-selected-default: 0 0 0 2px rgba(13, 148, 136, 0.55);
   --xy-handle-background-color-default: #0d9488;
-  --xy-handle-border-color-default: #ffffff;
-  --xy-controls-button-background-color-default: #ffffff;
-  --xy-controls-button-background-color-hover-default: #f0fdfa;
-  --xy-controls-button-color-default: #334155;
-  --xy-controls-button-color-hover-default: #0d9488;
-  --xy-controls-button-border-color-default: #e2e8f0;
-  --xy-controls-box-shadow-default: 0 6px 18px -4px rgba(15, 23, 42, 0.14);
+  --xy-handle-border-color-default: var(--nf-surface);
+  --xy-controls-button-background-color-default: var(--nf-surface);
+  --xy-controls-button-background-color-hover-default: var(--nf-accent-soft);
+  --xy-controls-button-color-default: var(--nf-text-2);
+  --xy-controls-button-color-hover-default: var(--nf-accent);
+  --xy-controls-button-border-color-default: var(--nf-border);
+  --xy-controls-box-shadow-default: 0 6px 18px -4px rgba(var(--nf-shadow), 0.14);
 }
 
-/* Base pipeline edge look; livelier layers come from the FlowEdge component. */
+/* Pipeline edges: one calm line with an arrowhead. */
 .react-flow__edge .react-flow__edge-path {
-  transition: stroke 0.2s ease, stroke-width 0.2s ease;
+  stroke: var(--nf-text-3);
+  stroke-width: 1.75;
+  transition: stroke 0.15s ease, stroke-width 0.15s ease;
 }
 
-.react-flow__edge:hover .react-flow__edge-path {
-  stroke-width: 3.5;
-}
-
+.react-flow__edge:hover .react-flow__edge-path,
 .react-flow__edge.selected .react-flow__edge-path {
-  filter: drop-shadow(0 0 4px rgba(20, 184, 166, 0.65));
+  stroke: var(--nf-accent);
+  stroke-width: 2.25;
 }
 
 /* Connection line drawn while wiring nodes by hand. */
 .react-flow__connection-path {
-  stroke: var(--nf-edge-gradient);
-  stroke-width: 2.5;
-  stroke-dasharray: 6 6;
-  animation: nf-edge-march 0.7s linear infinite;
+  stroke: var(--nf-accent);
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
 }
 
 .react-flow__connection-path.invalid {
   stroke: #ef4444 !important;
-  stroke-dasharray: 4 4 !important;
-  animation: none !important;
 }
 
 .react-flow__connection-path.valid {
   stroke: #10b981 !important;
 }
 
-/* Handles — small glossy dots that invite connecting. */
+/* Handles: small solid dots. */
 .react-flow__handle.nf-handle {
-  width: 13px;
-  height: 13px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #5eead4 0%, #0d9488 60%);
-  border: 2.5px solid #ffffff;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  background: var(--nf-accent);
+  border: 2px solid var(--nf-surface);
+  transition: transform 0.15s ease;
 }
 
 .react-flow__handle.nf-handle:hover {
-  transform: scale(1.35);
-  box-shadow: 0 0 0 5px rgba(20, 184, 166, 0.22), 0 1px 4px rgba(15, 23, 42, 0.35);
+  transform: scale(1.3);
 }
 
 .react-flow__handle.invalid {
-  background: radial-gradient(circle at 30% 30%, #fca5a5 0%, #ef4444 60%) !important;
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.35), 0 1px 4px rgba(15, 23, 42, 0.35) !important;
+  background: #ef4444 !important;
 }
 
 .react-flow__handle.valid {
-  background: radial-gradient(circle at 30% 30%, #86efac 0%, #10b981 60%) !important;
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.35), 0 1px 4px rgba(15, 23, 42, 0.35) !important;
-}
-
-/* ---- Edge life: marching gradient dashes + travelling pulse ------------- */
-
-@keyframes nf-edge-march {
-  to {
-    stroke-dashoffset: -24;
-  }
-}
-
-.nf-edge-glow {
-  stroke: rgba(20, 184, 166, 0.16);
-  stroke-width: 9;
-}
-
-.nf-edge-dashes {
-  stroke: var(--nf-edge-gradient);
-  stroke-width: 2.5;
-  stroke-dasharray: 5 19;
-  opacity: 0.85;
-  animation: nf-edge-march 0.9s linear infinite;
-}
-
-.nf-edge-pulse {
-  filter: drop-shadow(0 0 4px rgba(13, 148, 136, 0.85));
-}
-
-.react-flow__edge:hover .nf-edge-pulse circle,
-.react-flow__edge.selected .nf-edge-pulse {
-  r: 4.5;
-}
-
-.nf-edge-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
+  background: #10b981 !important;
 }
 
 /* Scrollbar Styling */
@@ -176,431 +174,17 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--nf-surface-2);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--nf-border-strong);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
-}
-
-/* ========== OUTPUT PAGE GRID SYSTEM ========== */
-.normaflow-output-grid {
-  display: grid;
-  grid-template-areas:
-    "header header"
-    "sidebar main";
-  grid-template-columns: 280px 1fr;
-  grid-template-rows: auto 1fr;
-  gap: 0;
-  height: 100vh;
-  width: 100vw;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-}
-
-.normaflow-output-header {
-  grid-area: header;
-  border-bottom: 2px solid #e2e8f0;
-  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 100%);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.normaflow-output-sidebar {
-  grid-area: sidebar;
-  background: white;
-  border-right: 2px solid #e2e8f0;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.normaflow-output-sidebar::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
-.normaflow-output-main {
-  grid-area: main;
-  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* ========== REACTFLOW INTEGRATION STYLES ========== */
-.normaflow-output-main .react-flow__renderer {
-  background: transparent;
-}
-
-.normaflow-output-main .react-flow__controls {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.normaflow-output-main .react-flow__controls-button {
-  background: white;
-  border: none;
-  border-bottom: 1px solid #e5e7eb;
-  padding: 8px;
-  color: #374151;
-  transition: all 0.2s ease;
-}
-
-.normaflow-output-main .react-flow__controls-button:hover {
-  background: #f3f4f6;
-  color: #14b8a6;
-}
-
-.normaflow-output-main .react-flow__controls-button:last-child {
-  border-bottom: none;
-}
-
-.normaflow-output-main .react-flow__minimap {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.normaflow-output-main .react-flow__panel {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  color: #374151;
-  font-family: 'Inter', sans-serif;
-}
-
-.normaflow-output-main .react-flow__node {
-  font-family: 'Inter', sans-serif;
-}
-
-.normaflow-output-main .react-flow__edge-textbg {
-  fill: white;
-}
-
-.normaflow-output-main .react-flow__edge-text {
-  font-family: 'Inter', sans-serif;
-  font-size: 10px;
-  fill: #374151;
-}
-
-/* ========== ENHANCED MARKDOWN TABLE STYLES ========== */
-.normaflow-output-main .markdown-body {
-  box-sizing: border-box;
-  min-width: 200px;
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 45px;
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  line-height: 1.6;
-  color: #1f2937;
-}
-
-.normaflow-output-main .markdown-body table {
-  border-collapse: collapse;
-  margin: 1.5em 0;
-  width: 100%;
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  font-family: 'Inter', sans-serif;
-}
-
-.normaflow-output-main .markdown-body th {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  padding: 16px 12px;
-  text-align: left;
-  border-bottom: 2px solid #cbd5e1;
-  color: #1e293b;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.normaflow-output-main .markdown-body td {
-  padding: 12px;
-  border-bottom: 1px solid #e2e8f0;
-  color: #334155;
-  font-size: 14px;
-  line-height: 1.6;
-  vertical-align: top;
-}
-
-.normaflow-output-main .markdown-body tr:hover {
-  background: #f8fafc;
-}
-
-.normaflow-output-main .markdown-body tr:last-child td {
-  border-bottom: none;
-}
-
-.normaflow-output-main .markdown-body tbody tr:nth-child(even) {
-  background: #fafbfc;
-}
-
-.normaflow-output-main .markdown-body tbody tr:nth-child(even):hover {
-  background: #f1f5f9;
-}
-
-/* Handle pipe characters in tables properly */
-.normaflow-output-main .markdown-body table td code,
-.normaflow-output-main .markdown-body table th code {
-  background: #f1f5f9;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 12px;
-  color: #475569;
-}
-
-/* Ensure proper table responsiveness */
-.normaflow-output-main .markdown-body table {
-  display: table;
-  width: 100%;
-  max-width: 100%;
-  overflow-x: auto;
-  white-space: nowrap;
-}
-
-.normaflow-output-main .markdown-body h1,
-.normaflow-output-main .markdown-body h2,
-.normaflow-output-main .markdown-body h3,
-.normaflow-output-main .markdown-body h4,
-.normaflow-output-main .markdown-body h5,
-.normaflow-output-main .markdown-body h6 {
-  font-family: 'Inter', sans-serif;
-  color: #111827;
-  margin-top: 24px;
-  margin-bottom: 16px;
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-.normaflow-output-main .markdown-body h1 {
-  font-size: 2em;
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 0.3em;
-}
-
-.normaflow-output-main .markdown-body h2 {
-  font-size: 1.5em;
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 0.3em;
-}
-
-.normaflow-output-main .markdown-body code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  background: #f3f4f6;
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-size: 0.9em;
-}
-
-.normaflow-output-main .markdown-body pre {
-  background: #1f2937;
-  color: #f9fafb;
-  padding: 16px;
-  border-radius: 8px;
-  overflow-x: auto;
-  margin: 1em 0;
-}
-
-.normaflow-output-main .markdown-body pre code {
-  background: transparent;
-  color: inherit;
-  padding: 0;
-}
-
-.normaflow-output-main .markdown-body blockquote {
-  border-left: 4px solid #14b8a6;
-  background: #f0fdfa;
-  padding: 16px 24px;
-  margin: 16px 0;
-  border-radius: 0 8px 8px 0;
-  color: #065f46;
-}
-
-.normaflow-output-main .markdown-body ul,
-.normaflow-output-main .markdown-body ol {
-  padding-left: 2em;
-  margin: 16px 0;
-}
-
-.normaflow-output-main .markdown-body li {
-  margin: 8px 0;
-  line-height: 1.6;
-}
-
-.normaflow-output-main .markdown-body p {
-  margin: 16px 0;
-  line-height: 1.6;
-}
-
-.normaflow-output-main .markdown-body strong {
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-}
-
-.normaflow-output-main .markdown-body em {
-  font-style: italic;
-}
-
-/* ========== OUTPUT PAGE SVG PAN ZOOM STYLING ========== */
-.normaflow-output-main .react-svg-pan-zoom-border {
-  border: 1px solid #e5e7eb !important;
-  border-radius: 8px !important;
-}
-
-.normaflow-output-main .react-svg-pan-zoom-miniature {
-  border: 1px solid #d1d5db !important;
-  border-radius: 4px !important;
-  background: white !important;
-}
-
-/* ========== OUTPUT PAGE ANIMATIONS ========== */
-.normaflow-output-main section {
-  animation: fadeInUp 0.5s ease-out;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ========== OUTPUT PAGE CUSTOM SCROLLBARS ========== */
-.normaflow-output-main::-webkit-scrollbar {
-  width: 8px;
-}
-
-.normaflow-output-main::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-.normaflow-output-main::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-.normaflow-output-main::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* ========== RESPONSIVE DESIGN ========== */
-@media (max-width: 1199px) and (min-width: 768px) {
-  .normaflow-output-grid {
-    grid-template-columns: 250px 1fr;
-    grid-template-rows: auto 1fr;
-  }
-}
-
-@media (max-width: 1024px) {
-  .normaflow-output-grid {
-    grid-template-areas:
-      "header"
-      "main";
-    grid-template-columns: 1fr;
-  }
-
-  .normaflow-output-sidebar {
-    display: none;
-  }
-
-  .normaflow-output-main {
-    padding: 0;
-  }
-}
-
-@media (max-width: 768px) {
-  .normaflow-output-main .markdown-body table {
-    font-size: 12px;
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .normaflow-output-main .markdown-body th,
-  .normaflow-output-main .markdown-body td {
-    padding: 8px;
-  }
-}
-
-@media (max-width: 767px) and (min-width: 481px) {
-  .normaflow-output-grid {
-    grid-template-areas:
-      "header"
-      "main"
-      "sidebar";
-    grid-template-columns: 1fr;
-    grid-template-rows: 70px 1fr 200px;
-  }
-
-  .normaflow-output-sidebar {
-    border-right: none;
-    border-top: 1px solid #d1d5db;
-    display: block;
-  }
-
-  .normaflow-output-main section {
-    padding: 1rem !important;
-  }
-
-  .normaflow-output-main .markdown-body {
-    font-size: 14px;
-    padding: 20px;
-  }
-}
-
-@media (max-width: 480px) {
-  .normaflow-output-grid {
-    grid-template-areas:
-      "header"
-      "main"
-      "sidebar";
-    grid-template-columns: 1fr;
-    grid-template-rows: 60px 1fr 150px;
-  }
-
-  .normaflow-output-sidebar {
-    border-right: none;
-    border-top: 1px solid #d1d5db;
-    display: block;
-  }
-
-  .normaflow-output-main {
-    padding: 0;
-  }
-
-  .normaflow-output-main section {
-    padding: 1rem !important;
-  }
-
-  .normaflow-output-main .markdown-body {
-    font-size: 14px;
-    padding: 15px;
-  }
+  background: var(--nf-text-3);
 }
 
 /* ========== OUTPUT PAGE TRANSITIONS ========== */
@@ -622,381 +206,16 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 
 /* ========== ACCESSIBILITY ========== */
 @media (prefers-reduced-motion: reduce) {
-  .nf-fade-in {
-    animation: none;
-  }
-
-  .normaflow-output-main section {
-    animation: none !important;
-  }
-}
-
-@media (prefers-contrast: high) {
-
-  .normaflow-output-main .markdown-body {
-    color: #000000;
-  }
-
-  .normaflow-output-main .markdown-body h1,
-  .normaflow-output-main .markdown-body h2,
-  .normaflow-output-main .markdown-body h3,
-  .normaflow-output-main .markdown-body h4,
-  .normaflow-output-main .markdown-body h5,
-  .normaflow-output-main .markdown-body h6 {
-    color: #000000;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
-/* ========== PRINT STYLES ========== */
-@media print {
-
-  .nf-palette,
-  .nf-header,
-  .normaflow-output-header,
-  .normaflow-output-sidebar {
-    display: none;
-  }
-
-  .normaflow-output-grid {
-    grid-template-areas: "main";
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr;
-  }
-
-  .normaflow-output-main {
-    background: white;
-  }
-
-  .normaflow-output-main .markdown-body {
-    color: #000000;
-  }
-
-  .normaflow-output-main .markdown-body h1,
-  .normaflow-output-main .markdown-body h2,
-  .normaflow-output-main .markdown-body h3,
-  .normaflow-output-main .markdown-body h4,
-  .normaflow-output-main .markdown-body h5,
-  .normaflow-output-main .markdown-body h6 {
-    color: #000000;
-  }
-
-  .normaflow-output-main .markdown-body pre {
-    background: #f5f5f5;
-    color: #000000;
-    border: 1px solid #cccccc;
-  }
-
-  .normaflow-output-main .markdown-body code {
-    background: #f5f5f5;
-    color: #000000;
-  }
-}
-
-/* ========== OUTPUT PAGE SPECIFIC COMPONENT STYLES ========== */
-.normaflow-output-main .mermaid-container {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.normaflow-output-main .functional-dependencies-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.normaflow-output-main .keys-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.normaflow-output-main .relations-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.normaflow-output-main .sql-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.normaflow-output-main .report-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-/* ========== OUTPUT PAGE LOADING STATES ========== */
-.normaflow-output-main .loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 2px solid #e5e7eb;
-  border-top: 2px solid #14b8a6;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* ========== OUTPUT PAGE ERROR STATES ========== */
-.normaflow-output-main .error-message {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
-  padding: 16px;
-  color: #dc2626;
-  font-family: 'Inter', sans-serif;
-}
-
-.normaflow-output-main .warning-message {
-  background: #fffbeb;
-  border: 1px solid #fed7aa;
-  border-radius: 8px;
-  padding: 16px;
-  color: #d97706;
-  font-family: 'Inter', sans-serif;
-}
-
-.normaflow-output-main .success-message {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 8px;
-  padding: 16px;
-  color: #16a34a;
-  font-family: 'Inter', sans-serif;
-}
-
-/* ========== OUTPUT PAGE BUTTON STYLES ========== */
-.normaflow-output-main .primary-button {
-  background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 12px 24px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.normaflow-output-main .primary-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  background: linear-gradient(135deg, #0f766e 0%, #0369a1 100%);
-}
-
-.normaflow-output-main .secondary-button {
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 12px 24px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.normaflow-output-main .secondary-button:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* ========== OUTPUT PAGE TABLE STYLES ========== */
-.normaflow-output-main .data-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin: 16px 0;
-}
-
-.normaflow-output-main .data-table th {
-  background: #f8fafc;
-  color: #374151;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  padding: 12px 16px;
-  text-align: left;
-  border-bottom: 1px solid #e5e7eb;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.normaflow-output-main .data-table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid #f3f4f6;
-  color: #374151;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.normaflow-output-main .data-table tr:hover {
-  background: #f8fafc;
-}
-
-.normaflow-output-main .data-table tr:last-child td {
-  border-bottom: none;
-}
-
-/* ========== OUTPUT PAGE CARD STYLES ========== */
-.normaflow-output-main .info-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  margin: 16px 0;
-  transition: all 0.2s ease;
-}
-
-.normaflow-output-main .info-card:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
-}
-
-.normaflow-output-main .info-card h3 {
-  color: #1f2937;
-  font-family: 'Inter', sans-serif;
-  font-size: 18px;
-  margin-bottom: 12px;
-  line-height: 1.4;
-}
-
-.normaflow-output-main .info-card p {
-  color: #6b7280;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  line-height: 1.6;
-  margin-bottom: 0;
-}
-
-/* ========== OUTPUT PAGE BADGE STYLES ========== */
-.normaflow-output-main .badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.normaflow-output-main .badge-success {
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #bbf7d0;
-}
-
-.normaflow-output-main .badge-warning {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fcd34d;
-}
-
-.normaflow-output-main .badge-error {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fca5a5;
-}
-
-.normaflow-output-main .badge-info {
-  background: #dbeafe;
-  color: #1e40af;
-  border: 1px solid #93c5fd;
-}
-
-/* ========== OUTPUT PAGE PROGRESS BARS ========== */
-.normaflow-output-main .progress-bar {
-  width: 100%;
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 4px;
-  overflow: hidden;
-  margin: 8px 0;
-}
-
-.normaflow-output-main .progress-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #14b8a6 0%, #0891b2 100%);
-  border-radius: 4px;
-  transition: width 0.3s ease;
-}
-
-/* ========== OUTPUT PAGE TOOLTIP STYLES ========== */
-.normaflow-output-main .tooltip {
-  position: relative;
-  display: inline-block;
-}
-
-.normaflow-output-main .tooltip .tooltip-text {
-  visibility: hidden;
-  width: 200px;
-  background: #1f2937;
-  color: #f9fafb;
-  text-align: center;
-  border-radius: 6px;
-  padding: 8px 12px;
-  position: absolute;
-  z-index: 1000;
-  bottom: 125%;
-  left: 50%;
-  margin-left: -100px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  line-height: 1.4;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.normaflow-output-main .tooltip .tooltip-text::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  margin-left: -5px;
-  border-width: 5px;
-  border-style: solid;
-  border-color: #1f2937 transparent transparent transparent;
-}
-
-.normaflow-output-main .tooltip:hover .tooltip-text {
-  visibility: visible;
-  opacity: 1;
-}
 /* ============================================================
    NORMAFLOW SHELL LAYOUT (Responsive Workspace Grid)
    Full-screen, distraction-free canvas with left palette
@@ -1012,7 +231,7 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   gap: 0.75rem;
   height: 100vh;
   padding: 0.75rem;
-  background-color: #e5e7eb;
+  background-color: var(--nf-bg);
   overflow: hidden;
   position: relative;
   transition: grid-template-columns 0.16s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1031,9 +250,9 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   grid-area: header;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid #d1d5db;
+  border-bottom: 1px solid var(--nf-border-strong);
   border-radius: 0.85rem;
-  background: rgba(255, 255, 255, 0.94);
+  background: color-mix(in srgb, var(--nf-surface) 94%, transparent);
   backdrop-filter: blur(12px);
   padding: 0.35rem 0.6rem;
   min-width: 0;
@@ -1043,8 +262,8 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 .nf-palette {
   grid-area: palette;
   border-radius: 0.85rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--nf-surface-2);
+  border: 1px solid var(--nf-border);
   overflow: visible;
   display: flex;
   flex-direction: column;
@@ -1108,10 +327,10 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   gap: 0.45rem;
   padding: 0.4rem 0.75rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.95);
+  background: color-mix(in srgb, var(--nf-surface) 95%, transparent);
   backdrop-filter: blur(8px);
-  border: 1px solid #cbd5e1;
-  color: #0f172a;
+  border: 1px solid var(--nf-border-strong);
+  color: var(--nf-text);
   font-size: 12px;
   font-weight: 600;
   box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.12), 0 2px 4px -1px rgba(15, 23, 42, 0.06);
@@ -1121,7 +340,7 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 }
 
 .nf-palette-expand-tab:hover {
-  background: #ffffff;
+  background: var(--nf-surface);
   border-color: #0d9488;
   color: #0d9488;
   transform: translateY(-1px);
@@ -1132,7 +351,9 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   transform: translateY(0);
 }
 
-/* ---- Canvas nodes -------------------------------------------------------- */
+/* ---- Canvas nodes --------------------------------------------------------
+   Flat cards: a surface, a hairline border, a small accent chip. No glow, halo or gradient;
+   the only motion is a 1px lift on hover. */
 
 .nf-node {
   position: relative;
@@ -1141,65 +362,45 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   gap: 0.6rem;
   min-width: 172px;
   max-width: 230px;
-  padding: 0.55rem 0.9rem 0.55rem 0.65rem;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdfe 100%);
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.06),
-    0 6px 16px -8px rgba(15, 23, 42, 0.18);
-  font-family: 'Inter', sans-serif;
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease,
-    border-color 0.22s ease;
-}
-
-.nf-node::before {
-  content: '';
-  position: absolute;
-  left: -1px;
-  top: 14%;
-  bottom: 14%;
-  width: 5px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--nf-accent, #0d9488), color-mix(in srgb, var(--nf-accent, #0d9488) 55%, #ffffff));
+  padding: 0.5rem 0.85rem 0.5rem 0.55rem;
+  background: var(--nf-surface);
+  border: 1px solid var(--nf-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(var(--nf-shadow), 0.06);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .nf-node:hover {
-  transform: translateY(-3px) scale(1.02);
-  border-color: color-mix(in srgb, var(--nf-accent, #0d9488) 45%, #e2e8f0);
-  box-shadow:
-    0 2px 4px rgba(15, 23, 42, 0.06),
-    0 16px 30px -10px color-mix(in srgb, var(--nf-accent, #0d9488) 38%, transparent);
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--nf-accent, #0d9488) 50%, var(--nf-border));
+  box-shadow: 0 4px 10px -4px rgba(var(--nf-shadow), 0.18);
 }
 
 .react-flow__node.selected .nf-node {
   border-color: var(--nf-accent, #0d9488);
-  box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--nf-accent, #0d9488) 35%, transparent),
-    0 18px 32px -12px color-mix(in srgb, var(--nf-accent, #0d9488) 45%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--nf-accent, #0d9488) 30%, transparent);
 }
 
 .nf-node__chip {
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  background: linear-gradient(135deg, var(--nf-accent, #0d9488) 0%, color-mix(in srgb, var(--nf-accent, #0d9488) 70%, #0f172a) 100%);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 3px 8px -2px color-mix(in srgb, var(--nf-accent, #0d9488) 60%, transparent);
+  color: color-mix(in srgb, var(--nf-accent, #0d9488) 70%, var(--nf-ink-mix));
+  background: color-mix(in srgb, var(--nf-accent, #0d9488) 14%, var(--nf-surface));
 }
 
 .nf-node__chip svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
 }
 
 .nf-node__glyph {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: 11.5px;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
@@ -1211,84 +412,40 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 }
 
 .nf-node__label {
-  font-family: 'Inter', sans-serif;
-  font-size: 13.5px;
+  font-size: 13px;
+  font-weight: 500;
   line-height: 1.2;
-  color: #0f172a;
+  color: var(--nf-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .nf-node__desc {
-  font-size: 10px;
+  font-size: 10.5px;
   line-height: 1.3;
-  color: #94a3b8;
+  color: var(--nf-text-3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: color 0.2s ease;
 }
 
-.nf-node:hover .nf-node__desc {
-  color: var(--nf-accent, #0d9488);
-}
-
-/* Start node — emerald gradient with a breathing halo */
+/* Start: the same card, with a solid accent chip, so it reads as the first step and nothing louder. */
 .nf-node--start {
-  background: linear-gradient(135deg, #10b981 0%, #0d9488 100%);
-  border-color: rgba(255, 255, 255, 0.55);
-  box-shadow: 0 10px 26px -8px rgba(13, 148, 136, 0.55);
+  --nf-accent: #0d9488;
 }
-
-.nf-node--start::before {
-  display: none;
-}
-
-.nf-node--start:hover {
-  border-color: rgba(255, 255, 255, 0.75);
-  box-shadow: 0 16px 34px -10px rgba(13, 148, 136, 0.65);
-}
-
-.nf-node--start .nf-node__chip--start {
-  background: rgba(255, 255, 255, 0.22);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.45);
-}
-
-.nf-node--start .nf-node__label {
+.nf-node--start .nf-node__chip {
   color: #ffffff;
-}
-
-.nf-node--start .nf-node__desc {
-  color: rgba(236, 254, 255, 0.85);
-}
-
-.nf-node--start:hover .nf-node__desc {
-  color: #ffffff;
-}
-
-@keyframes nf-halo-breathe {
-  0% { opacity: 0.55; transform: scale(1); }
-  70% { opacity: 0; transform: scale(1.35); }
-  100% { opacity: 0; transform: scale(1.35); }
-}
-
-.nf-node__halo {
-  position: absolute;
-  inset: -6px;
-  border-radius: inherit;
-  border: 2px solid rgba(52, 211, 153, 0.7);
-  pointer-events: none;
-  animation: nf-halo-breathe 2.4s ease-out infinite;
+  background: var(--nf-accent);
 }
 
 .nf-canvas-panel {
   grid-area: canvas;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--nf-surface);
   border-radius: 0.85rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--nf-border);
   min-width: 0;
   height: 100%;
   overflow: hidden;
@@ -1305,16 +462,6 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 }
 
 
-@keyframes fadeInToast {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 8px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-}
 
 /* ---- Breakpoints ---------------------------------------------------- */
 
@@ -1347,7 +494,7 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: #e5e7eb;
+  background-color: var(--nf-bg);
 }
 .nf-app .nf-shell {
   height: auto;
@@ -1371,6 +518,12 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   overflow-x: auto;
   flex: none;
 }
+.nf-tabbar-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding: 0 0 4px 8px;
+}
 .nf-tab {
   display: flex;
   align-items: center;
@@ -1380,9 +533,9 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   padding: 6px 8px 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  color: #475569;
-  background: var(--tab-bg, rgba(255, 255, 255, 0.55));
-  border: 1px solid #d1d5db;
+  color: var(--nf-text-2);
+  background: var(--tab-bg, color-mix(in srgb, var(--nf-surface) 55%, transparent));
+  border: 1px solid var(--nf-border-strong);
   border-top: 3px solid var(--tab-accent, transparent);
   border-bottom: none;
   border-radius: 10px 10px 0 0;
@@ -1390,11 +543,11 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   user-select: none;
 }
 .nf-tab:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: color-mix(in srgb, var(--nf-surface) 85%, transparent);
 }
 .nf-tab.is-active {
-  color: #0f172a;
-  background: var(--tab-bg, #f8fafc);
+  color: var(--nf-text);
+  background: var(--tab-bg, var(--nf-surface-2));
   border-left-color: transparent;
   border-right-color: transparent;
   /* Overlap the header by 1px so the two surfaces join without a seam. */
@@ -1411,6 +564,13 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 .nf-tab-title {
   flex: 1;
   min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1422,7 +582,7 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   border: 1px solid #0d9488;
   border-radius: 4px;
   padding: 0 4px;
-  background: #fff;
+  background: var(--nf-surface);
 }
 .nf-tab-close,
 .nf-tab-add {
@@ -1431,7 +591,7 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   justify-content: center;
   border: none;
   background: transparent;
-  color: #64748b;
+  color: var(--nf-text-2);
   border-radius: 6px;
   cursor: pointer;
 }
@@ -1446,8 +606,8 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 }
 .nf-tab-close:hover,
 .nf-tab-add:hover:not(:disabled) {
-  background: rgba(15, 23, 42, 0.08);
-  color: #0f172a;
+  background: var(--nf-hover);
+  color: var(--nf-text);
 }
 .nf-tab-add:disabled {
   opacity: 0.4;
@@ -1487,7 +647,7 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   height: 18px;
   border: none;
   background: transparent;
-  color: #64748b;
+  color: var(--nf-text-2);
   border-radius: 6px;
   cursor: pointer;
 }
@@ -1497,16 +657,16 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   display: inline-flex;
 }
 .nf-tab-rename:hover {
-  background: rgba(15, 23, 42, 0.08);
-  color: #0f172a;
+  background: var(--nf-hover);
+  color: var(--nf-text);
 }
 .nf-tab-menu {
   position: fixed;
   z-index: 50;
   min-width: 140px;
   padding: 4px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--nf-surface);
+  border: 1px solid var(--nf-border);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
   display: flex;
@@ -1520,17 +680,17 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   background: transparent;
   border-radius: 6px;
   cursor: pointer;
-  color: #0f172a;
+  color: var(--nf-text);
 }
 .nf-tab-menu button:hover,
 .nf-tab-menu button:focus-visible {
-  background: #f0fdfa;
+  background: var(--nf-accent-soft);
   outline: none;
 }
 
 /* Seamless tab → header: the header takes the active tab's surface and sits directly under the strip. */
 .nf-app {
-  --nf-chrome-bg: #f8fafc;
+  --nf-chrome-bg: var(--nf-chrome-base);
 }
 .nf-app .nf-shell {
   padding-top: 0;
@@ -1567,7 +727,7 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   display: inline-flex;
 }
 .nf-tab-color:hover {
-  background: rgba(15, 23, 42, 0.08);
+  background: var(--nf-hover);
 }
 .nf-tab-dot {
   width: 10px;
@@ -1581,8 +741,8 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   z-index: 60;
   width: 188px;
   padding: 10px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--nf-surface);
+  border: 1px solid var(--nf-border);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
 }
@@ -1595,7 +755,7 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   width: 26px;
   height: 26px;
   border-radius: 9999px;
-  border: 2px solid #fff;
+  border: 2px solid var(--nf-surface);
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
   cursor: pointer;
 }
@@ -1615,9 +775,9 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   justify-content: space-between;
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--nf-border);
   font-size: 12px;
-  color: #475569;
+  color: var(--nf-text-2);
 }
 .nf-tab-picker-row label {
   display: inline-flex;
@@ -1628,19 +788,19 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   width: 28px;
   height: 22px;
   padding: 0;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--nf-border-strong);
   border-radius: 4px;
   background: none;
   cursor: pointer;
 }
 .nf-tab-picker-none {
-  border: 1px solid #cbd5e1;
-  background: #fff;
+  border: 1px solid var(--nf-border-strong);
+  background: var(--nf-surface);
   border-radius: 6px;
   padding: 2px 10px;
   font-size: 12px;
   cursor: pointer;
 }
 .nf-tab-picker-none:hover {
-  background: #f1f5f9;
+  background: var(--nf-hover-solid);
 }

@@ -29,8 +29,11 @@ export function tint(hex: string, amount: number): string {
 }
 
 /** Neutral surface used by the header and uncoloured tabs. */
-export const NEUTRAL_SURFACE = '#f8fafc';
+export const NEUTRAL_SURFACE = 'var(--nf-chrome-base)';
 
 /** Background shared by the active tab and the header, so the two read as one piece. */
-export const activeSurface = (color: string | null): string => (color ? tint(color, 0.16) : NEUTRAL_SURFACE);
-export const inactiveSurface = (color: string | null): string => (color ? tint(color, 0.09) : 'rgba(255,255,255,0.55)');
+/** A tab colour mixed into the theme's chrome surface, so it reads correctly in light and dark. */
+const mixed = (color: string, pct: number) => `color-mix(in srgb, ${color} ${pct}%, var(--nf-chrome-base))`;
+export const activeSurface = (color: string | null): string => (color ? mixed(color, 16) : NEUTRAL_SURFACE);
+export const inactiveSurface = (color: string | null): string =>
+  color ? mixed(color, 9) : 'color-mix(in srgb, var(--nf-surface) 55%, transparent)';

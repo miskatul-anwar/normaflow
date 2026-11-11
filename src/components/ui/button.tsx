@@ -28,7 +28,8 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-teal-600 text-white shadow-xs hover:bg-teal-700',
+        // 5.5:1 against white text, so the main action meets WCAG AA; the same colour is used in both themes.
+        primary: 'bg-[#0f766e] text-white shadow-xs hover:bg-[#115e59]',
         secondary: 'border border-gray-200 bg-white text-gray-800 shadow-xs hover:border-gray-300 hover:bg-gray-50',
         ghost: 'text-gray-700 hover:bg-gray-100 hover:text-gray-900',
       },

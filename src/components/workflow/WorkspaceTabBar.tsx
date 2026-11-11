@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, Pencil, Plus, X } from 'lucide-react';
 import { MAX_TABS, type TabStatus, type WorkspaceTab } from '../../hooks/useWorkspaceTabs';
+import { ThemeToggle } from '../../theme/ThemeToggle';
 import { activeSurface, inactiveSurface, isHexColor, TAB_COLOR_PRESETS } from '../../utils/tabColors';
 
 interface Props {
@@ -74,7 +75,7 @@ export function WorkspaceTabBar({ tabs, activeId, status, onSelect, onAdd, onClo
   };
 
   return (
-    <div className="nf-tabbar" role="tablist" aria-label="Workspaces">
+    <nav className="nf-tabbar" aria-label="Workspaces">
       {tabs.map(tab => {
         const active = tab.id === activeId;
         const running = status[tab.id]?.running;
@@ -88,10 +89,6 @@ export function WorkspaceTabBar({ tabs, activeId, status, onSelect, onAdd, onClo
                 '--tab-bg': active ? activeSurface(tab.color) : inactiveSurface(tab.color),
               } as React.CSSProperties
             }
-            role="tab"
-            aria-selected={active}
-            tabIndex={active ? 0 : -1}
-            title={`${tab.title} (double-click or F2 to rename, right-click for more)`}
             onClick={() => onSelect(tab.id)}
             onDoubleClick={() => startRename(tab)}
             onContextMenu={e => {
@@ -103,7 +100,6 @@ export function WorkspaceTabBar({ tabs, activeId, status, onSelect, onAdd, onClo
               if (e.button === 1) onClose(tab.id);
             }}
             onKeyDown={e => {
-              if (e.key === 'Enter' || e.key === ' ') onSelect(tab.id);
               if (e.key === 'F2') startRename(tab);
             }}
           >
@@ -125,7 +121,14 @@ export function WorkspaceTabBar({ tabs, activeId, status, onSelect, onAdd, onClo
                 }}
               />
             ) : (
-              <span className="nf-tab-title">{tab.title}</span>
+              <button
+                type="button"
+                className="nf-tab-title"
+                aria-current={active ? 'true' : undefined}
+                title={`${tab.title} (double-click or F2 to rename, right-click for more)`}
+              >
+                {tab.title}
+              </button>
             )}
             {editing !== tab.id && (
               <button
@@ -271,6 +274,10 @@ export function WorkspaceTabBar({ tabs, activeId, status, onSelect, onAdd, onClo
       >
         <Plus size={14} />
       </button>
-    </div>
+      {/* One theme switch for both pages, at the end of the strip. */}
+      <div className="nf-tabbar-end">
+        <ThemeToggle />
+      </div>
+    </nav>
   );
 }

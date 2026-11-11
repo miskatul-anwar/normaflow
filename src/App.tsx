@@ -171,7 +171,7 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
     // replaceGraph derives the sequential chain edges when none are given.
     graph.replaceGraph(builtNodes, buildChainEdges(builtNodes));
     // Frame the freshly built chain once React Flow has laid it out.
-    requestAnimationFrame(() => void fitView({ padding: 0.15, duration: 500 }));
+    requestAnimationFrame(() => void fitView({ padding: 0.08, maxZoom: 1.1, duration: 400 }));
     return executePipeline(files, ALL_OPERATIONS);
   }, [executePipeline, fitView, graph, hasFiles, logMessage, uploadedFiles]);
 
@@ -298,6 +298,7 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
       </aside>
 
       <main className="nf-canvas-panel">
+        <h1 className="sr-only">Pipeline builder</h1>
         {palette.isCollapsed && (
           <button
             type="button"
@@ -398,7 +399,7 @@ function AppShell() {
       {/* Workspaces stay mounted (hidden) while the Output page is open, so graphs, files and running jobs survive. */}
       <div className="nf-workspaces" hidden={onOutput}>
         {tabs.map(tab => (
-          <div key={tab.id} className="nf-tab-pane" role="tabpanel" aria-label={tab.title} hidden={tab.id !== activeId}>
+          <div key={tab.id} className="nf-tab-pane" hidden={tab.id !== activeId}>
             <ErrorBoundary componentName={`Workspace ${tab.title}`}>
               <ReactFlowProvider>
                 <Workspace

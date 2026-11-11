@@ -10,7 +10,7 @@ export function KeysSection({ keyData }: KeysSectionProps) {
       <div className="text-center py-12 text-gray-500">
         <Key className="w-12 h-12 mx-auto mb-4 text-gray-300" />
         <p>No keys discovered</p>
-        <p className="text-sm text-gray-400 mt-2">Key discovery requires functional dependencies</p>
+        <p className="text-sm text-gray-500 mt-2">Key discovery requires functional dependencies</p>
       </div>
     );
   }

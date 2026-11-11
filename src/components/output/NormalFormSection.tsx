@@ -29,7 +29,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
       <div className="text-center py-12 text-gray-500">
         <Table className="w-12 h-12 mx-auto mb-4 text-gray-300" />
         <p>No normalized relations generated</p>
-        <p className="text-sm text-gray-400 mt-2">Relations are created during normalization process</p>
+        <p className="text-sm text-gray-500 mt-2">Relations are created during normalization process</p>
       </div>
     );
   }
@@ -75,7 +75,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
               >
                 <Icon className="size-4" aria-hidden />
                 {short}
-                <span className="hidden text-xs font-normal text-gray-400 xl:inline">{full.replace(' normal form', '')}</span>
+                <span className="hidden text-xs font-normal text-gray-500 xl:inline">{full.replace(' normal form', '')}</span>
                 {has && <span className={`rounded-full px-2 py-0.5 text-xs ${activeNF === id ? 'bg-teal-50 text-teal-700' : 'bg-gray-100 text-gray-600'}`}>{n}</span>}
               </button>
             ))}

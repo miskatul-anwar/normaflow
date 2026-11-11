@@ -20,7 +20,7 @@ describe('Button', () => {
         expect(buttonVariants({ variant, size })).toContain('rounded-lg');
       }
     }
-    expect(buttonVariants({ variant: 'primary' })).toContain('bg-teal-600');
+    expect(buttonVariants({ variant: 'primary' })).toContain('text-white');
     // no gradients or one-off palettes
     for (const variant of ['primary', 'secondary', 'ghost'] as const) {
       expect(buttonVariants({ variant })).not.toMatch(/gradient|emerald|rounded-(xl|full)/);

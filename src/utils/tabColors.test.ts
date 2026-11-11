@@ -17,7 +17,7 @@ describe('tab colours', () => {
 
   it('gives the active tab and the header one shared surface', () => {
     expect(activeSurface(null)).toBe(NEUTRAL_SURFACE);
-    expect(activeSurface('#2563eb')).toBe(tint('#2563eb', 0.16));
+    expect(activeSurface('#2563eb')).toContain('#2563eb 16%');
     expect(inactiveSurface('#2563eb')).not.toBe(activeSurface('#2563eb'));
   });
 });

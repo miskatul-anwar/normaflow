@@ -129,7 +129,7 @@ export function ErdSection({ relations, erdContent }: Props) {
           ) : (
             // Graphviz escapes all text; the labels are built from escaped CSV headers.
             <div
-              className="nf-fade-in max-h-[640px] min-h-[360px] overflow-auto p-4"
+              className="nf-diagram nf-fade-in max-h-[640px] min-h-[360px] overflow-auto p-4" role="region" aria-label="Diagram" tabIndex={0}
               onWheel={e => {
                 if (e.ctrlKey || e.metaKey) setZoom(z => clampZoom(e.deltaY < 0 ? z * 1.1 : z / 1.1));
               }}

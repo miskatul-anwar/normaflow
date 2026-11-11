@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -6,6 +6,7 @@ import {
   MiniMap,
   ReactFlow,
   MarkerType,
+  useReactFlow,
   type Edge,
   type Node,
   type NodeTypes,
@@ -32,12 +33,9 @@ const defaultEdgeOptions = {
   type: 'flow',
   markerEnd: {
     type: MarkerType.ArrowClosed,
-    width: 18,
-    height: 18,
-    color: '#0d9488',
-  },
-  style: {
-    strokeWidth: 2.5,
+    width: 14,
+    height: 14,
+    color: '#64748b',
   },
 };
 
@@ -70,13 +68,20 @@ export function FlowCanvas({
   isValidConnection,
 }: FlowCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const { fitView } = useReactFlow();
+
+  // Re-frame the pipeline when steps are added or removed, so a new row is never off screen.
+  const count = nodes.length;
+  useEffect(() => {
+    const id = requestAnimationFrame(() => void fitView({ padding: 0.08, maxZoom: 1.1, duration: 300 }));
+    return () => cancelAnimationFrame(id);
+  }, [count, fitView]);
 
   return (
     <div
       ref={wrapperRef}
       className="h-full w-full relative"
       data-testid="flow-canvas"
-      style={{ ['--nf-edge-gradient' as string]: `url(#nf-edge-flow-${flowId})` }}
     >
       <ReactFlow
         id={flowId}
@@ -92,43 +97,31 @@ export function FlowCanvas({
         isValidConnection={isValidConnection}
         proOptions={proOptions}
         fitView
+        fitViewOptions={{ padding: 0.08, maxZoom: 1.1 }}
         minZoom={0.2}
         maxZoom={2.5}
         deleteKeyCode={['Backspace', 'Delete']}
         className="h-full w-full"
-        connectionLineContainerStyle={{ stroke: '#0d9488', strokeWidth: 2 }}
-      >
-        {/* Shared defs for the gradient pipeline edges (see FlowEdge). */}
-        <svg aria-hidden focusable={false} className="nf-edge-defs">
-          <defs>
-            <linearGradient id={`nf-edge-flow-${flowId}`} x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#14b8a6" />
-              <stop offset="55%" stopColor="#0891b2" />
-              <stop offset="100%" stopColor="#7c3aed" />
-            </linearGradient>
-          </defs>
-        </svg>
-
+              >
         <Controls
           position="bottom-right"
           showInteractive={true}
-          className="!bg-white/95 !backdrop-blur-md !border !border-gray-200/90 !shadow-sm !rounded-lg !overflow-hidden"
+          className="!rounded-lg !overflow-hidden !border !border-gray-200 !shadow-sm"
         />
         <MiniMap
           position="bottom-left"
           nodeColor={getNodeColor}
           nodeStrokeWidth={3}
-          maskColor="rgba(241, 245, 249, 0.82)"
+          maskColor="color-mix(in srgb, var(--nf-surface-2) 82%, transparent)"
           pannable
           zoomable
           style={{
-            backgroundColor: '#ffffff',
-            border: '1px solid #e2e8f0',
+            backgroundColor: 'var(--nf-surface)',
+            border: '1px solid var(--nf-border)',
             borderRadius: '12px',
-            boxShadow: '0 4px 16px rgba(15, 23, 42, 0.08)',
           }}
         />
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1.6} color="#cbd5e1" />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1.6} color="var(--nf-border-strong)" />
       </ReactFlow>
     </div>
   );

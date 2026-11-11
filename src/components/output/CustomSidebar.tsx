@@ -73,7 +73,7 @@ export function CustomSidebar({ items, activeTab, onTabChange }: CustomSidebarPr
                       >
                         <span
                           className="flex size-8 shrink-0 items-center justify-center rounded-md [&_svg]:size-4"
-                          style={{ backgroundColor: meta.soft, color: meta.accent }}
+                          style={{ backgroundColor: meta.soft, color: meta.ink }}
                           aria-hidden
                         >
                           {item.icon}

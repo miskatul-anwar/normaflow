@@ -63,7 +63,7 @@ export function NLCommandBar({ nl, active = true }: { nl: NLWorkflow; active?: b
           aria-label="Describe the pipeline you want (Ctrl+K)"
           autoComplete="off"
           spellCheck={false}
-          className="h-9 min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+          className="h-9 min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
         />
         <Button type="submit" variant="primary" disabled={nl.busy || !draft.trim()} title="Build the pipeline (Enter)">
           <Send />

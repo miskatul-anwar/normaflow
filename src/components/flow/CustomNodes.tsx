@@ -17,7 +17,7 @@ export function StartNode({ data, isConnectable }: NodeProps) {
   const label = String(data?.label || 'Start');
   return (
     <div className="nf-node nf-node--start">
-      <span className="nf-node__halo" aria-hidden />
+      
       <span className="nf-node__chip nf-node__chip--start" aria-hidden>
         <Play strokeWidth={2.6} fill="currentColor" />
       </span>

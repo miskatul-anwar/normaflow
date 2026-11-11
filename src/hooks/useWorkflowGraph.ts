@@ -30,9 +30,16 @@ import { validateEdgeConnection } from '../utils/edgeRules';
 import { ValidationResult } from '../types';
 
 export const START_NODE_ID = '0';
-const NODE_SPACING = 300;
+const NODE_SPACING = 270;
+const ROW_SPACING = 130;
+const COLUMNS = 5;
 const INITIAL_X = 100;
-const INITIAL_Y = 400;
+const INITIAL_Y = 120;
+
+/** Position of the n-th node (0 is Start): rows of COLUMNS, left to right, like lines of text. */
+export function nodePosition(n: number): { x: number; y: number } {
+  return { x: INITIAL_X + (n % COLUMNS) * NODE_SPACING, y: INITIAL_Y + Math.floor(n / COLUMNS) * ROW_SPACING };
+}
 
 export const SNAPSHOT_FORMAT = 'normaflow-workflow';
 export const SNAPSHOT_VERSION = 2;
@@ -50,7 +57,7 @@ export interface WorkflowSnapshot {
 function createStartNode(): Node {
   return {
     id: START_NODE_ID,
-    position: { x: INITIAL_X, y: INITIAL_Y },
+    position: nodePosition(0),
     data: { label: 'Start' },
     type: 'startNode',
     draggable: false,
@@ -62,7 +69,7 @@ function createOperationNode(id: string, label: string, index: number): Node {
   const operation = OPERATIONS[label];
   return {
     id,
-    position: { x: INITIAL_X + (index + 1) * NODE_SPACING, y: INITIAL_Y },
+    position: nodePosition(index + 1),
     data: {
       label,
       phase: operation?.phase ?? 'PREP',
@@ -80,8 +87,7 @@ function buildEdge(source: Node, target: Node): Edge {
     target: target.id,
     sourceHandle: 'b',
     targetHandle: 't',
-    markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: '#0d9488' },
-    style: { strokeWidth: 2.5 },
+    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: '#64748b' },
     type: 'flow',
   };
 }
@@ -321,7 +327,7 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
     const current = nodesRef.current;
     const reattached: Node = {
       ...node,
-      position: { x: INITIAL_X + current.length * NODE_SPACING, y: INITIAL_Y },
+      position: nodePosition(current.length),
     };
     commitNodes(currentNodes => [...currentNodes, reattached]);
     const last = nodesRef.current[nodesRef.current.length - 2];
