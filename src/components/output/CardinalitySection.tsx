@@ -75,25 +75,25 @@ export function CardinalitySection({ cardinalityAnalysis }: CardinalitySectionPr
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attribute</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Values</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unique Values</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Relationship Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data Type</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attribute</th>
+                <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider lg:table-cell">Total Values</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unique Values</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Relationship Type</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
+                <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider xl:table-cell">Data Type</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {cardinalityEntries.map(([attribute, analysis]: [string, any], index) => (
                 <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                     <div className="flex items-center gap-2">
                       <Hash className="w-4 h-4 text-gray-400" />
                       {attribute}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{analysis.totalValues || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-gray-900 lg:table-cell">{analysis.totalValues || 'N/A'}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                     <div className="flex items-center gap-2">
                       <span>{analysis.uniqueValues || 'N/A'}</span>
                       {analysis.cardinality && (
@@ -103,19 +103,20 @@ export function CardinalitySection({ cardinalityAnalysis }: CardinalitySectionPr
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 w-fit">
                       <GitBranch className="w-3 h-3" />
-                      {getRelationshipType(analysis)}
+                      <span className="lg:hidden">{(/\(([^)]+)\)/.exec(getRelationshipType(analysis)) ?? [])[1] ?? getRelationshipType(analysis)}</span>
+                      <span className="hidden lg:inline">{getRelationshipType(analysis)}</span>
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-md text-xs font-medium">
                       {getConfidence(analysis)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
+                  <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-gray-900 xl:table-cell">
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-md text-xs font-medium">
                       {analysis.dataType || 'string'}
                     </span>
                   </td>

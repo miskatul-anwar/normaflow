@@ -142,7 +142,7 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="text-right text-sm text-gray-500">
+                    <div className="shrink-0 whitespace-nowrap text-right text-sm text-gray-500">
                       <div>{file.type.toUpperCase()}</div>
                       <div>{formatFileSize(typeof file.content === 'string' ? file.content.length : 100)}</div>
                     </div>
