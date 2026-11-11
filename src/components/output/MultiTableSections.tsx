@@ -96,7 +96,7 @@ export function KeysByTable({ tables }: { tables: TableLike[] }) {
         return (
           <section key={t.tableName} className="rounded-lg border border-gray-200 bg-white p-4">
             <div className="flex items-center gap-2">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700"><Key className="size-4" aria-hidden /></span>
+              <span className="flex size-7 items-center justify-center rounded-lg bg-gray-100 text-gray-700"><Key className="size-4" aria-hidden /></span>
               <h4 className="font-mono text-sm font-semibold text-gray-900">{t.tableName}</h4>
             </div>
             <div className="mt-3 text-xs font-medium uppercase tracking-wider text-gray-500">Primary key</div>
