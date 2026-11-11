@@ -21,6 +21,7 @@ export interface PreparedInput {
 
 /** Zero-width and bidi format characters are dropped; other control characters separate words. */
 const ZERO_WIDTH = /[\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/g;
+// eslint-disable-next-line no-control-regex -- stripping control characters is the point
 const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u2028\u2029]/g;
 
 /** Words whose misspellings are worth repairing: the ones the aliases and the dialect/run options key on. */

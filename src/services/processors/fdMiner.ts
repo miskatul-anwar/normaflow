@@ -206,6 +206,11 @@ export interface MineResult {
   truncated?: boolean;
   /** Highest LHS size fully explored. */
   levelReached?: number;
+  /**
+   * Partition requests while mining: `hits` were served from the cache (level-1 partitions and the parent
+   * partition each larger candidate is refined from), `misses` had to be computed by refinement.
+   */
+  partitionCache?: { hits: number; misses: number };
 }
 
 /**
@@ -254,6 +259,8 @@ export function mineFunctionalDependencies(
 
   // Partition cache keyed by sorted attribute index tuple ("i,j,k").
   const partitionCache = new Map<string, Partition>();
+  let cacheHits = 0;
+  let cacheMisses = 0;
   const keyOf = (idxs: number[]) => idxs.join(',');
 
   // Seed level-1 partitions.
@@ -289,9 +296,15 @@ export function mineFunctionalDependencies(
 
       // Build this node's partition from its parent (combo without last attr).
       let partition: Partition | undefined = partitionCache.get(cacheKey);
-      if (!partition) {
+      if (partition) {
+        cacheHits++;
+      } else {
+        cacheMisses++;
         const parentKey = keyOf(combo.slice(0, -1));
-        const parent = partitionCache.get(parentKey) ?? EMPTY_PARTITION;
+        const cachedParent = partitionCache.get(parentKey);
+        if (cachedParent) cacheHits++;
+        else cacheMisses++;
+        const parent = cachedParent ?? EMPTY_PARTITION;
         partition = refinePartition(parent, encoded[combo[combo.length - 1]], rowCount).refined;
         partitionCache.set(cacheKey, partition);
       }
@@ -405,6 +418,7 @@ export function mineFunctionalDependencies(
     exactCount,
     truncated,
     levelReached,
+    partitionCache: { hits: cacheHits, misses: cacheMisses },
   };
 }
 
@@ -563,6 +577,7 @@ export function mineFunctionalDependenciesSampled(
   let refuted = 0;
   let rounds = 0;
   let result: MineResult = { fds: [], durationMs: 0, combinationsEvaluated: 0, exactCount: 0 };
+  const cacheTotals = { hits: 0, misses: 0 };
   let validated: FDValidation[] = [];
 
   for (; rounds < maxRounds; ) {
@@ -571,6 +586,8 @@ export function mineFunctionalDependenciesSampled(
       .sort((a, b) => a - b)
       .map(i => data[i]);
     result = mineFunctionalDependencies(rows, options);
+    cacheTotals.hits += result.partitionCache?.hits ?? 0;
+    cacheTotals.misses += result.partitionCache?.misses ?? 0;
     validated = validateFunctionalDependencies(data, result.fds, options.nullSemantics ?? 'equal');
     const failedExact: FDValidation[] = [];
     result.fds.forEach((fd, i) => {
@@ -607,6 +624,7 @@ export function mineFunctionalDependenciesSampled(
     fds: finalFds,
     exactCount: finalFds.filter(f => f.confidence === 1).length,
     durationMs: Date.now() - started,
+    partitionCache: cacheTotals,
     sampling: { sampled: true, totalRows: data.length, sampleSize: chosen.size, rounds, rowsAdded, refuted },
   };
 }

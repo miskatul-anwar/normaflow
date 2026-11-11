@@ -304,7 +304,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     data: any[],
     maxLhsSize: number = 4,
     mineOptions: { nullSemantics?: 'equal' | 'distinct'; signal?: AbortSignal; timeBudgetMs?: number; sampleSize?: number } = {},
-  ): Promise<{ fds: FunctionalDependency[]; truncated: boolean; levelReached: number; maxLhsSize: number; sampling?: SamplingInfo }> {
+  ): Promise<{ fds: FunctionalDependency[]; truncated: boolean; levelReached: number; maxLhsSize: number; sampling?: SamplingInfo; partitionCache?: { hits: number; misses: number } }> {
     if (!data || data.length === 0) {
       this.logger.warn('No data provided for FD mining');
       return { fds: [], truncated: false, levelReached: 0, maxLhsSize };
@@ -321,7 +321,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     // Yield to keep the UI responsive before the (synchronous) compute burst.
     await this.yieldControl();
 
-    const { fds, durationMs, combinationsEvaluated, exactCount, truncated, levelReached, sampling } = mineFunctionalDependenciesSampled(data, {
+    const { fds, durationMs, combinationsEvaluated, exactCount, truncated, levelReached, sampling, partitionCache } = mineFunctionalDependenciesSampled(data, {
       maxLhsSize,
       minConfidence: 0.85,
       ...mineOptions,
@@ -345,7 +345,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
       );
     }
 
-    return { fds: mapped, truncated: Boolean(truncated), levelReached: levelReached ?? 0, maxLhsSize, sampling };
+    return { fds: mapped, truncated: Boolean(truncated), levelReached: levelReached ?? 0, maxLhsSize, sampling, partitionCache };
   }
 
   /** Dependencies that hold on every row (no violations). */
