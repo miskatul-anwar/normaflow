@@ -5,7 +5,7 @@ produces against **ISO/IEC 25012**. This page says, for each characteristic, wha
 is checked, and what is **not** covered. It is a self-assessment, not a certification.
 
 `npm run quality` runs the automated gates (typecheck, lint, tests, production-dependency audit).
-`npm run audit:a11y` runs the accessibility audit and `npm run audit:ui` the full layout and accessibility pass over 144 views (both need `npm run build` and `vite preview`).
+`npm run audit:a11y` runs the accessibility audit and `npm run audit:ui` the full layout and accessibility pass over 144 views, and `npm run audit:design` the design-consistency check (type, buttons, cards, radii) (both need `npm run build` and `vite preview`).
 
 | ISO/IEC 25010 characteristic | Requirement | Evidence | Not covered |
 |---|---|---|---|

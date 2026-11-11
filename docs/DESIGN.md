@@ -25,3 +25,20 @@ Do not write one-off `<button className="…">` styles.
 
 Status chips and tags (for example the pipeline step chips) are small rounded rectangles and are not clickable. Underlined tabs
 (Normal Forms) and the Output page navigation are navigation, not actions.
+
+## Consistency rules (checked by `npm run audit:design`)
+
+"Seamless, connected, well crafted" is judged by people, but its parts are measurable, so they are measured:
+
+| Rule | Value |
+|---|---|
+| Typefaces | Inter, plus one monospace face for identifiers and code |
+| Text sizes | 10, 11, 12, 13, 14, 16, 24 px (seven steps, none smaller than 10) |
+| Buttons | 32 px (36 px in the header) with an 8 px radius; compact filter chips 24 to 26 px with 6 px; full-width list rows are square |
+| Cards and panels | 8 px, 4 px for code blocks, 13.6 px for the page panels |
+| Colour | Neutral surfaces; teal for the main action and for keys; green, amber and red only for status dots and verdicts; no gradients |
+| Motion | One 150 ms ease for hover and focus on every button; section content fades in over 180 ms; everything stops under `prefers-reduced-motion` |
+| Themes | Every colour comes from a token, so light and dark are the same layout |
+
+`npm run audit:design` reads computed styles on the pipeline page and every Output tab in both themes and fails when a
+view drifts outside these values. `npm run audit:ui` checks layout, errors and accessibility on 144 views.

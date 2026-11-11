@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cardinality and Keys lose their leftover blue / green / purple / yellow pills and tiles: neutral chips, teal accents only where something is a key.
 - Removed about 800 lines of unused legacy CSS.
 
+### Changed (design consistency)
+- Text sizes are down from nine to seven steps (the 10.5 and 11.5 px sizes folded into 11 px) and the pipeline step chips use the same 8 px radius as buttons. `npm run audit:design` measures typefaces, text sizes, button heights and radii, and card radii on every view in both themes, and the rules are written down in `docs/DESIGN.md`.
+
 ### Fixed (accessibility, WCAG 2.1 AA)
 - Workspace tab buttons and the canvas zoom controls now ease on hover and focus like every other button (they snapped).
 - The "added because a later step needs it" chips in the plan preview failed contrast in light mode; fixed.
