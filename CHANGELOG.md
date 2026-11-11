@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- The **Full Report** tab shows real components (summary, quality checks, normalization journey, strongest dependencies, performance, operations) instead of a Markdown preview. **Download PDF** builds a PDF from the generated Markdown, offline.
+- Natural-language input is more robust: Unicode and zero-width cleanup, a 400-character cap, conservative typo repair, "don't run it" and "SQL is not needed" understood, embedding timeouts and vector validation, and no unhandled errors in the command bar.
+
+### Fixed
+- Performance report: **Memory (MB)** is no longer `N/A` in webviews without a heap counter (it shows an estimate of the loaded data, labelled), and **Cache Hit Rate** is measured (partition-cache hits during FD mining) instead of a constant 0.0%.
+
 ### Changed (header layout)
 - Undo, redo and Reset now sit beside the logo on the left; Open, Save and Upload are centred in the header; Run and Output stay on the right. The three zones are a grid with equal side columns, so the middle group stays exactly centred.
 

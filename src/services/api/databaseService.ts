@@ -423,6 +423,7 @@ export class DatabaseService {
     const startTime = Date.now();
     this.performanceMonitor.startTime = startTime;
     this.performanceMonitor.checkpoints = [];
+    this.cacheStats = { hits: 0, misses: 0 };
     this.abortController = new AbortController();
     
     // Enhanced options with adaptive defaults
@@ -548,8 +549,11 @@ export class DatabaseService {
         totalDuration: duration,
         checkpoints: this.performanceMonitor.checkpoints,
         peakMemoryUsage: this.getPeakMemoryUsage(),
+        memorySource: this.memorySource,
         optimizationsApplied: this.getOptimizationsApplied(enhancedOptions),
-        cacheHitRate: this.getCacheHitRate()
+        cacheHitRate: this.getCacheHitRate(),
+        cacheHits: this.cacheStats.hits,
+        cacheMisses: this.cacheStats.misses
       };
 
       // Compile comprehensive results with enhanced metrics
@@ -850,6 +854,8 @@ export class DatabaseService {
         sampleSize: options.fdSampleSize ?? 10_000,
       });
       functionalDependencies = mined.fds;
+      this.cacheStats.hits += mined.partitionCache?.hits ?? 0;
+      this.cacheStats.misses += mined.partitionCache?.misses ?? 0;
       if (mined.sampling) {
         notes.push(
           `${tableName}: dependencies were mined on a ${mined.sampling.sampleSize.toLocaleString()}-row sample and then ` +
@@ -1267,10 +1273,15 @@ export class DatabaseService {
     return optimizations;
   }
 
-  private getCacheHitRate(): number {
-    // Simplified cache hit rate calculation
-    return this.processingCache.size > 0 ? 0.85 : 0;
+  /** Partition-cache counters for the current run (FD mining), reset at the start of each run. */
+  private cacheStats = { hits: 0, misses: 0 };
+
+  /** Share of partition requests served from the cache, or null when nothing was mined. */
+  private getCacheHitRate(): number | null {
+    const total = this.cacheStats.hits + this.cacheStats.misses;
+    return total > 0 ? this.cacheStats.hits / total : null;
   }
+
 
   /**
    * Optimized data quality assessment
@@ -2507,7 +2518,10 @@ export class DatabaseService {
     });
     
     content += `\n## Cache Performance\n\n`;
-    content += `- **Cache Hit Rate:** ${(performanceMetrics.cacheHitRate * 100).toFixed(1)}%\n\n`;
+    content += typeof performanceMetrics.cacheHitRate === 'number'
+      ? `- **Partition Cache Hit Rate:** ${(performanceMetrics.cacheHitRate * 100).toFixed(1)}% ` +
+        `(${performanceMetrics.cacheHits} of ${performanceMetrics.cacheHits + performanceMetrics.cacheMisses} partition requests served from cache during FD mining)\n\n`
+      : '- **Partition Cache Hit Rate:** not applicable (FD Miner did not run)\n\n';
     
     content += '## Performance Insights\n\n';
     const totalTime = performanceMetrics.checkpoints[performanceMetrics.checkpoints.length - 1]?.time || 0;
@@ -3304,6 +3318,7 @@ export class DatabaseService {
       this.abortController = new AbortController();
       this.performanceMonitor.startTime = startTime;
       this.performanceMonitor.checkpoints = [];
+      this.cacheStats = { hits: 0, misses: 0 };
       this.logger.info(`Starting Multi-CSV Pipeline for ${files.length} files...`, { files: files.map(f => f.name) });
 
       const has = (name: string) => selectedOperations.includes(name);

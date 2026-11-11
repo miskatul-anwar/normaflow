@@ -4,7 +4,6 @@ import {
   ArrowLeft, Copy, Download, Layers, GitBranch,
   Code, Activity, Database, FileText, BarChart3, Shield, Key, Cpu
 } from 'lucide-react';
-import 'github-markdown-css/github-markdown-light.css';
 
 import { CustomSidebar, SidebarItem } from './output/CustomSidebar';
 import { FunctionalDependenciesSection } from './output/FunctionalDependenciesSection';
@@ -13,7 +12,7 @@ import { CardinalitySection } from './output/CardinalitySection';
 import { QualityAssuranceSection } from './output/QualityAssuranceSection';
 import { KeysSection } from './output/KeysSection';
 import { GeneratedFilesSection } from './output/GeneratedFilesSection';
-import { MarkdownRenderer } from './output/MarkdownRenderer';
+import { ReportView } from './output/ReportView';
 import { SVGPreviewSection } from './output/SVGPreviewSection';
 import { CodeViewer } from './output/CodeViewer';
 import { Button } from '@/components/ui/button';
@@ -356,9 +355,6 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
                 </div>
               )}
 
-              {reportFile?.content && (
-                <MarkdownRenderer content={reportFile.content} filename="Executive_Summary.md" />
-              )}
             </div>
           )}
 
@@ -425,7 +421,17 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
           )}
 
           {activeTab === 'report' && reportFile?.content && (
-            <MarkdownRenderer content={reportFile.content} filename="normalization_report.md" />
+            <ReportView
+              results={safeResults}
+              markdown={reportFile.content}
+              fdData={fdData}
+              levels={[
+                { id: '1NF', relations: relations1NF },
+                { id: '2NF', relations: relations2NF },
+                { id: '3NF', relations: relationData },
+                { id: 'BCNF', relations: relationsBCNF },
+              ].filter(l => l.relations.length > 0)}
+            />
           )}
 
           {activeTab === 'files' && safeResults?.outputFiles && (
