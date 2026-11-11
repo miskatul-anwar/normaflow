@@ -62,8 +62,8 @@ export function CardinalitySection({ cardinalityAnalysis }: CardinalitySectionPr
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <BarChart3 className="w-5 h-5" />
           Attribute Cardinality Analysis
         </h4>
@@ -162,7 +162,7 @@ export function CardinalitySection({ cardinalityAnalysis }: CardinalitySectionPr
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h5 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Target className="w-5 h-5" />
           Relationship Insights

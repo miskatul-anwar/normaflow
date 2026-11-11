@@ -48,7 +48,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="border-b border-gray-200">
           <nav className="flex gap-1 overflow-x-auto px-3" aria-label="Normal forms" role="tablist">
             {([

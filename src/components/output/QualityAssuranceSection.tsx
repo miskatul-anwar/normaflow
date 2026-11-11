@@ -57,13 +57,13 @@ export function QualityAssuranceSection({ losslessCheck, dependencyPreservation 
   return (
     <div className="space-y-6">
       {losslessCheck && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className={`p-2 rounded-lg ${losslessCheck.isLossless ? 'bg-green-100' : 'bg-red-100'}`}>
               {losslessCheck.isLossless ? <Unlock className="w-5 h-5 text-green-600" /> : <Lock className="w-5 h-5 text-red-600" />}
             </div>
             <div>
-              <h4 className="text-lg font-semibold text-gray-900">
+              <h4 className="text-base font-semibold text-gray-900">
                 Lossless Join Property
               </h4>
               <p className="text-sm text-gray-600">Decomposition preserves all original information</p>
@@ -96,13 +96,13 @@ export function QualityAssuranceSection({ losslessCheck, dependencyPreservation 
       )}
 
       {dependencyPreservation && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className={`p-2 rounded-lg ${dependencyPreservation.isPreserved ? 'bg-green-100' : 'bg-red-100'}`}>
               <Zap className={`w-5 h-5 ${dependencyPreservation.isPreserved ? 'text-green-600' : 'text-red-600'}`} />
             </div>
             <div>
-              <h4 className="text-lg font-semibold text-gray-900">
+              <h4 className="text-base font-semibold text-gray-900">
                 Dependency Preservation
               </h4>
               <p className="text-sm text-gray-600">Functional dependencies maintained in decomposition</p>

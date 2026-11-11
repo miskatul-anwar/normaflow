@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Multi-table runs now fill every tab.** Cardinality & Relations lists the foreign keys found between your tables (cardinality, share of values matched, confidence); Keys shows primary and candidate keys per table; Quality Assurance shows lossless-join and dependency-preservation per table with a summary and expandable detail. The report's quality chips use the same per-table verdicts. Before, these tabs said "No data" even though the checks had run.
 - **Normal forms:** compact 1NF / 2NF / 3NF / BCNF tabs with counts, smaller card headings and section labels.
 - **ERD:** zoom buttons (and Ctrl + scroll) plus fit-to-width, so large diagrams are readable.
+- **Overview** for a single table now shows rows, columns, dependencies and duration plus the normalization journey (it was just four cards, two of them meaningless for one table); the multi-table column classification uses the same card style.
+- **ERD:** small diagrams keep their natural size instead of stretching to the panel; large ones are packed so separate groups of tables sit side by side. Crow's-foot view uses the same compact header. Generated Files category chips scroll in one row instead of wrapping into four.
 - **Transitions:** switching sections now eases in (the `nf-fade-in` animation was referenced but never defined, so nothing animated); hover and focus states are consistent, reduced-motion is respected, and leftover gradient headers and inline font styles are gone.
 
 ### Fixed

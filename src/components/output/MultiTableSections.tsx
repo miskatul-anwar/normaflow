@@ -34,7 +34,7 @@ export function RelationshipsSection({ relationships }: { relationships: CrossTa
           </span>
         ))}
       </div>
-      <div className="overflow-x-auto rounded-xl border border-gray-200">
+      <div className="overflow-x-auto rounded-lg border border-gray-200">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-500">
             <tr>
@@ -94,7 +94,7 @@ export function KeysByTable({ tables }: { tables: TableLike[] }) {
         const pk = (t.primaryKey ?? []).join(', ');
         const others = (t.candidateKeys ?? []).map(keyCols).filter(k => k.join(',') !== (t.primaryKey ?? []).join(','));
         return (
-          <section key={t.tableName} className="rounded-xl border border-gray-200 bg-white p-4">
+          <section key={t.tableName} className="rounded-lg border border-gray-200 bg-white p-4">
             <div className="flex items-center gap-2">
               <span className="flex size-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700"><Key className="size-4" aria-hidden /></span>
               <h4 className="font-mono text-sm font-semibold text-gray-900">{t.tableName}</h4>
@@ -148,7 +148,7 @@ export function QualityByTable({ tables }: { tables: TableLike[] }) {
           <div className="mt-1 text-2xl font-semibold text-gray-900">{preserved}<span className="text-sm font-normal text-gray-500"> / {checked.length} tables</span></div>
         </div>
       </div>
-      <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
         {checked.map(t => {
           const isOpen = open === t.tableName;
           return (

@@ -47,7 +47,7 @@ export function buildChenDot(relations: ChenRelation[], { attributes = true }: C
   const next = (p: string) => `${p}${counter++}`;
   const lines: string[] = [
     'graph ERD {',
-    '  graph [overlap=false, splines=true, sep="+8", outputorder=edgesfirst, pad=0.3, bgcolor="white"];',
+    '  graph [overlap=false, splines=true, sep="+8", outputorder=edgesfirst, pad=0.3, bgcolor="white", pack=true, packmode="node"];',
     '  node [fontname="Helvetica", fontsize=11, color="#374151", fontcolor="#111827"];',
     '  edge [color="#6b7280", fontname="Helvetica", fontsize=10, fontcolor="#0f766e"];',
   ];

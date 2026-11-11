@@ -13,7 +13,7 @@ import { QualityAssuranceSection } from './output/QualityAssuranceSection';
 import { KeysSection } from './output/KeysSection';
 import { RelationshipsSection, KeysByTable, QualityByTable } from './output/MultiTableSections';
 import { GeneratedFilesSection } from './output/GeneratedFilesSection';
-import { ReportView } from './output/ReportView';
+import { ReportView, NormalizationJourney } from './output/ReportView';
 import { ChenErdSection } from './output/ChenErdSection';
 import { CodeViewer } from './output/CodeViewer';
 import { Button } from '@/components/ui/button';
@@ -300,55 +300,66 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
       </aside>
 
       <main className="nf-canvas-panel">
-        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        <div key={activeTab} className="nf-fade-in min-h-0 flex-1 overflow-y-auto p-6">
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                  <div className="text-sm text-gray-500">Dataset Tables</div>
-                  <div className="text-2xl font-bold text-teal-600 mt-1">{isMultiTable ? multiTables.length : 1}</div>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                  <div className="text-sm text-gray-500">Cross-Table FKs</div>
-                  <div className="text-2xl font-bold text-teal-600 mt-1">{crossTableRelationships.length}</div>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                  <div className="text-sm text-gray-500">Total FDs Discovered</div>
-                  <div className="text-2xl font-bold text-teal-600 mt-1">{safeResults.stats?.functionalDependencies || fdData.length}</div>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                  <div className="text-sm text-gray-500">Pipeline Duration</div>
-                  <div className="text-2xl font-bold text-green-600 mt-1">
-                    {safeResults.duration || '0.5s'}
+              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                {(isMultiTable
+                  ? [
+                      { label: 'Dataset tables', value: String(multiTables.length) },
+                      { label: 'Cross-table foreign keys', value: String(crossTableRelationships.length) },
+                      { label: 'Functional dependencies', value: String(safeResults.stats?.functionalDependencies || fdData.length) },
+                      { label: 'Pipeline duration', value: safeResults.duration || '—' },
+                    ]
+                  : [
+                      { label: 'Rows', value: String(safeResults.stats?.cleanedRows ?? safeResults.stats?.originalRows ?? '—') },
+                      { label: 'Columns', value: String(safeResults.stats?.attributes ?? '—') },
+                      { label: 'Functional dependencies', value: String(safeResults.stats?.functionalDependencies || fdData.length) },
+                      { label: 'Pipeline duration', value: safeResults.duration || '—' },
+                    ]
+                ).map(card => (
+                  <div key={card.label} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow">
+                    <div className="text-xs font-medium text-gray-500">{card.label}</div>
+                    <div className="mt-1 text-2xl font-semibold text-teal-700">{card.value}</div>
                   </div>
-                </div>
+                ))}
               </div>
+
+              {!isMultiTable && (
+                <NormalizationJourney
+                  levels={[
+                    { id: '1NF', relations: relations1NF },
+                    { id: '2NF', relations: relations2NF },
+                    { id: '3NF', relations: relationData },
+                    { id: 'BCNF', relations: relationsBCNF },
+                  ].filter(l => l.relations.length > 0).map(({ id, relations }) => ({ id, relations }))}
+                />
+              )}
 
               {/* Multi-Table NER Tags & Relational Overview */}
               {isMultiTable && multiTables.length > 0 && (
-                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Cpu className="w-5 h-5 text-teal-600" />
-                    <h3 className="text-lg font-bold text-gray-900">
-                      Named Entity Recognition (NER) & Schema Classification
-                    </h3>
+                <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                  <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-5 py-3">
+                    <Cpu className="size-4 text-teal-600" aria-hidden />
+                    <h3 className="text-sm font-semibold text-gray-900">Column classification</h3>
+                    <span className="text-xs text-gray-500">entity type detected for every column</span>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-3 p-4">
                     {multiTables.map((t: any) => (
-                      <div key={t.tableName} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-bold text-teal-800 font-mono text-sm">{t.tableName} ({t.fileName})</span>
+                      <div key={t.tableName} className="rounded-lg border border-gray-200 p-3 transition-shadow hover:shadow-sm">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="font-mono text-sm font-semibold text-teal-800">{t.tableName} <span className="font-normal text-gray-400">({t.fileName})</span></span>
                           <span className="text-xs text-gray-500">{t.rowCount} rows • {t.headers.length} columns</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {t.nerTags?.map((tag: any) => (
                             <span
                               key={tag.columnName}
-                              className={`px-2.5 py-1 rounded-full text-xs font-mono font-medium border ${
+                              className={`rounded-md border px-2 py-0.5 font-mono text-xs font-medium ${
                                 tag.entityType === 'PRIMARY_KEY_ID' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
                                 tag.entityType === 'FOREIGN_KEY_REF' ? 'bg-blue-100 text-blue-800 border-blue-300' :
                                 tag.entityType === 'EMAIL' ? 'bg-purple-100 text-purple-800 border-purple-300' :
-                                tag.entityType === 'CURRENCY_PRICE' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                                tag.entityType === 'CURRENCY_PRICE' ? 'bg-teal-100 text-teal-800 border-teal-300' :
                                 'bg-gray-100 text-gray-700 border-gray-300'
                               }`}
                               title={tag.description}
@@ -360,7 +371,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
                       </div>
                     ))}
                   </div>
-                </div>
+                </section>
               )}
 
             </div>

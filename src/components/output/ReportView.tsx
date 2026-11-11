@@ -51,7 +51,7 @@ interface ReportViewProps {
   filename?: string;
 }
 
-const Card = ({ title, children, right }: { title: string; children: React.ReactNode; right?: React.ReactNode }) => (
+export const Card = ({ title, children, right }: { title: string; children: React.ReactNode; right?: React.ReactNode }) => (
   <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
     <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-5 py-3">
       <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
@@ -61,7 +61,7 @@ const Card = ({ title, children, right }: { title: string; children: React.React
   </section>
 );
 
-const Badge = ({ ok, children }: { ok: boolean | undefined; children: React.ReactNode }) => (
+export const Badge = ({ ok, children }: { ok: boolean | undefined; children: React.ReactNode }) => (
   <span
     className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${
       ok === undefined ? 'bg-gray-100 text-gray-700' : ok ? 'bg-teal-50 text-teal-800' : 'bg-red-50 text-red-800'
@@ -71,6 +71,38 @@ const Badge = ({ ok, children }: { ok: boolean | undefined; children: React.Reac
     {children}
   </span>
 );
+
+/** The normal forms the run reached and the relations at each level. */
+export function NormalizationJourney({ levels }: { levels: Array<{ id: string; relations: Relation[] }> }) {
+  if (levels.length === 0) return null;
+  return (
+    <Card title="Normalization journey">
+      <ol className="space-y-4">
+        {levels.map((lvl, i) => (
+          <li key={lvl.id} className="flex gap-3">
+            <div className="flex flex-col items-center">
+              <span className="flex h-7 min-w-[3.5rem] items-center justify-center rounded-full bg-teal-600 px-2.5 text-xs font-semibold text-white">{lvl.id}</span>
+              {i < levels.length - 1 && <span className="mt-1 w-px flex-1 bg-gray-200" />}
+            </div>
+            <div className="min-w-0 flex-1 pb-1">
+              <div className="text-sm font-medium text-gray-900">{lvl.relations.length} relation{lvl.relations.length === 1 ? '' : 's'}</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {lvl.relations.slice(0, 24).map((r, k) => (
+                  <span key={k} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-800" title={(r.attributes ?? []).join(', ')}>
+                    {r.name ?? `R${k + 1}`}
+                    <span className="text-gray-400"> · {r.attributes?.length ?? 0} cols</span>
+                    {r.primaryKey?.length ? <span className="text-amber-700"> · PK {r.primaryKey.join('+')}</span> : null}
+                  </span>
+                ))}
+                {lvl.relations.length > 24 && <span className="text-xs text-gray-500">+{lvl.relations.length - 24} more</span>}
+              </div>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </Card>
+  );
+}
 
 /** The analysis report as real components. The Markdown is only the source for the PDF download. */
 export function ReportView({ results, markdown, fdData, levels, filename = 'normalization_report' }: ReportViewProps) {
@@ -157,33 +189,7 @@ export function ReportView({ results, markdown, fdData, levels, filename = 'norm
         </Card>
       </div>
 
-      {levels.length > 0 && (
-        <Card title="Normalization journey">
-          <ol className="space-y-4">
-            {levels.map((lvl, i) => (
-              <li key={lvl.id} className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <span className="flex h-7 min-w-[3.5rem] items-center justify-center rounded-full bg-teal-600 px-2.5 text-xs font-semibold text-white">{lvl.id}</span>
-                  {i < levels.length - 1 && <span className="mt-1 w-px flex-1 bg-gray-200" />}
-                </div>
-                <div className="min-w-0 flex-1 pb-1">
-                  <div className="text-sm font-medium text-gray-900">{lvl.relations.length} relation{lvl.relations.length === 1 ? '' : 's'}</div>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {lvl.relations.slice(0, 24).map((r, k) => (
-                      <span key={k} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-800" title={(r.attributes ?? []).join(', ')}>
-                        {r.name ?? `R${k + 1}`}
-                        <span className="text-gray-400"> · {r.attributes?.length ?? 0} cols</span>
-                        {r.primaryKey?.length ? <span className="text-amber-700"> · PK {r.primaryKey.join('+')}</span> : null}
-                      </span>
-                    ))}
-                    {lvl.relations.length > 24 && <span className="text-xs text-gray-500">+{lvl.relations.length - 24} more</span>}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </Card>
-      )}
+      <NormalizationJourney levels={levels} />
 
       {topFDs.length > 0 && (
         <Card title={`Strongest functional dependencies (${topFDs.length} of ${fdData.length})`}>

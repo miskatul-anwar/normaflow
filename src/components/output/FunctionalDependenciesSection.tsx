@@ -131,7 +131,7 @@ export function FunctionalDependenciesSection({ fdData }: { fdData: Array<Functi
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-5 py-3">
           <h5 className="text-sm font-semibold text-gray-900">
             Discovered dependencies{' '}

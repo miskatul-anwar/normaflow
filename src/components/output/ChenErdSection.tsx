@@ -29,6 +29,12 @@ export function ChenErdSection({ relations, erdContent }: Props) {
   const [zoom, setZoom] = useState(1);
   const clampZoom = (z: number) => Math.min(6, Math.max(0.5, Math.round(z * 100) / 100));
 
+  // Graphviz reports the natural size in points; small diagrams should not be stretched to the panel width.
+  const naturalPx = useMemo(() => {
+    const m = /<svg[^>]*\swidth="([\d.]+)pt"/.exec(svg);
+    return m ? Math.round((Number(m[1]) * 4) / 3) : null;
+  }, [svg]);
+
   const dot = useMemo(() => buildChenDot(relations, { attributes: showAttributes }), [relations, showAttributes]);
 
   useEffect(() => {
@@ -107,7 +113,7 @@ export function ChenErdSection({ relations, erdContent }: Props) {
                 if (e.ctrlKey || e.metaKey) setZoom(z => clampZoom(e.deltaY < 0 ? z * 1.1 : z / 1.1));
               }}
             >
-              <div style={{ width: `${zoom * 100}%` }} className="mx-auto transition-[width] duration-150 [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+              <div style={{ width: naturalPx ? `min(${zoom * 100}%, ${Math.round(naturalPx * zoom)}px)` : `${zoom * 100}%` }} className="mx-auto transition-[width] duration-150 [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
             </div>
           )}
           <div className="flex flex-wrap gap-x-5 gap-y-1 border-t border-gray-100 bg-gray-50 px-4 py-2 text-xs text-gray-600">

@@ -100,17 +100,18 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <FolderOpen className="w-5 h-5" />
           Generated Files ({outputFiles.length})
         </h4>
 
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filter by category">
           {categories.map(category => (
             <Button
               key={category}
               size="sm"
+              className="shrink-0"
               variant={selectedCategory === category ? 'primary' : 'secondary'}
               aria-pressed={selectedCategory === category}
               onClick={() => setSelectedCategory(category)}

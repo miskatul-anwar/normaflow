@@ -21,12 +21,12 @@ export function KeysSection({ keyData }: KeysSectionProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-yellow-100 rounded-lg">
               <Key className="w-5 h-5 text-yellow-600" />
             </div>
-            <h4 className="text-lg font-semibold text-gray-900">
+            <h4 className="text-base font-semibold text-gray-900">
               Candidate Keys
             </h4>
           </div>
@@ -64,12 +64,12 @@ export function KeysSection({ keyData }: KeysSectionProps) {
           )}
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-purple-100 rounded-lg">
               <Database className="w-5 h-5 text-purple-600" />
             </div>
-            <h4 className="text-lg font-semibold text-gray-900">
+            <h4 className="text-base font-semibold text-gray-900">
               Super Keys
             </h4>
           </div>
@@ -117,7 +117,7 @@ export function KeysSection({ keyData }: KeysSectionProps) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h5 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Target className="w-5 h-5" />
           Recommendations

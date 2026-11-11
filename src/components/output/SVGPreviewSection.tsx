@@ -64,9 +64,9 @@ export function SVGPreviewSection({ erdContent }: SVGPreviewSectionProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-          <h4 className="text-lg font-semibold text-gray-900">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-gray-50 px-5 py-3 border-b border-gray-200">
+          <h4 className="text-sm font-semibold text-gray-900">
             Entity Relationship Diagram
           </h4>
         </div>
@@ -82,9 +82,9 @@ export function SVGPreviewSection({ erdContent }: SVGPreviewSectionProps) {
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="bg-red-50 px-6 py-4 border-b border-gray-200">
-          <h4 className="text-lg font-semibold text-gray-900">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-red-50 px-5 py-3 border-b border-gray-200">
+          <h4 className="text-sm font-semibold text-gray-900">
             ERD Preview - Error
           </h4>
         </div>
@@ -102,10 +102,10 @@ export function SVGPreviewSection({ erdContent }: SVGPreviewSectionProps) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-gray-50 px-5 py-3 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <h4 className="text-lg font-semibold text-gray-900">
+          <h4 className="text-sm font-semibold text-gray-900">
             Entity Relationship Diagram
           </h4>
           <div className="flex gap-2">
