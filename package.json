@@ -47,6 +47,7 @@
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.6",
+    "@hpcc-js/wasm-graphviz": "^1.30.0",
     "@huggingface/transformers": "^4.3.2",
     "@radix-ui/react-slot": "^1.2.3",
     "@tailwindcss/vite": "^4.1.11",
