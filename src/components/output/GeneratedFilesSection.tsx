@@ -109,7 +109,7 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
           Generated Files ({outputFiles.length})
         </h4>
 
-        <div className="mb-4 flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filter by category">
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-1 pr-8 [mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)] [scrollbar-width:thin]" role="group" aria-label="Filter by category">
           {categories.map(category => (
             <Button
               key={category}
