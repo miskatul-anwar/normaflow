@@ -51,6 +51,7 @@
     "@huggingface/transformers": "^4.3.2",
     "@radix-ui/react-slot": "^1.2.3",
     "@tailwindcss/vite": "^4.1.11",
+    "@tauri-apps/plugin-notification": "^2.8.1",
     "@xyflow/react": "^12.8.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -66,7 +67,6 @@
     "react-markdown": "^9.1.0",
     "react-router-dom": "^7.18.2",
     "remark-gfm": "^4.0.1",
-    "sonner": "^2.0.6",
     "tailwind-merge": "^3.3.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },

@@ -71,6 +71,13 @@ export function NLCommandBar({ nl, active = true }: { nl: NLWorkflow; active?: b
         </Button>
       </form>
       <div aria-live="polite">
+        {nl.canUndoBuild && !res && !nl.busy && (
+          <div className="mt-1.5 flex justify-end">
+            <Button size="sm" onClick={nl.undoBuild} title="Restore the canvas as it was before the last build">
+              Undo last build
+            </Button>
+          </div>
+        )}
         {nl.busy && <p className="mt-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 shadow">Working it out…</p>}
 
         {res && !nl.busy && (

@@ -1,12 +1,12 @@
 /**
  * Glue between the natural-language resolver and the workflow canvas.
  *
- * Side effects (network, toasts, running) live here, outside any state
+ * Side effects (network, notifications, running) live here, outside any state
  * updater. Batch undo restores a snapshot because `graph.undo` removes one
  * node at a time.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { notify } from '../services/notify';
 import { OPERATIONS } from '../config/operations';
 import { resolve, NullProvider, type EmbeddingProvider, type Resolution } from '../services/nlp/workflow';
 import { createAppProvider } from '../services/nlp/workflow/workerExtractor';
@@ -22,6 +22,8 @@ export interface UseNLWorkflowOptions {
   /** Runs the pipeline currently on the canvas. */
   run: () => void;
   hasFiles: boolean;
+  /** The workspace the notifications are about. */
+  workspaceId?: string;
   /** Override for tests. */
   provider?: EmbeddingProvider;
 }
@@ -56,7 +58,7 @@ function getSharedProvider(): EmbeddingProvider {
   return sharedProvider;
 }
 
-export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseNLWorkflowOptions) {
+export function useNLWorkflow({ graph, run, hasFiles, workspaceId, provider: injected }: UseNLWorkflowOptions) {
   const provider = useMemo<EmbeddingProvider>(() => {
     if (injected) return injected;
     try {
@@ -69,6 +71,7 @@ export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseN
   const [resolution, setResolution] = useState<Resolution | null>(null);
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
+  const [undoSnapshot, setUndoSnapshot] = useState<WorkflowSnapshot | null>(null);
   const [embeddings, setEmbeddings] = useState<EmbeddingStatus>('checking');
   const pendingRun = useRef<number | null>(null);
   const requestId = useRef(0);
@@ -129,19 +132,19 @@ export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseN
     setBusy(false);
   }, []);
 
-  const restore = useCallback(
-    (snapshot: WorkflowSnapshot) => {
-      graph.replaceGraph(snapshot.nodes, snapshot.edges, snapshot.nextId);
-    },
-    [graph],
-  );
+  /** Put the canvas back as it was before the last natural-language build, in one step. */
+  const undoBuild = useCallback(() => {
+    if (!undoSnapshot) return;
+    graph.replaceGraph(undoSnapshot.nodes, undoSnapshot.edges, undoSnapshot.nextId);
+    setUndoSnapshot(null);
+  }, [graph, undoSnapshot]);
 
   const apply = useCallback(
     (res: Resolution, { run: runAfter, mode = 'replace' }: { run: boolean; mode?: ApplyMode }) => {
       if (res.plan.length === 0) return;
       const known = res.plan.filter(p => OPERATIONS[p]);
       if (known.length !== res.plan.length || new Set(known).size !== known.length) {
-        toast.error('That request produced an invalid pipeline. Nothing was changed.');
+        notify('error', 'That request produced an invalid pipeline. Nothing was changed.', workspaceId);
         return;
       }
       const before = graph.serializeSnapshot();
@@ -150,7 +153,7 @@ export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseN
       if (mode === 'extend' && placed.length > 0) {
         const ext = extensionFor(placed, res.plan);
         if (ext === null) {
-          toast.error('This request cannot extend the current workflow. Use Replace.');
+          notify('error', 'This request cannot extend the current workflow. Use Replace.', workspaceId);
           return;
         }
         toAdd = ext;
@@ -158,13 +161,13 @@ export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseN
         graph.clearGraph();
       }
       graph.addOperationsBatch(toAdd);
-      toast.success(`Pipeline built: ${res.plan.length} steps`, {
-        action: { label: 'Undo', onClick: () => restore(before) },
-      });
+      // System notifications cannot carry an in-app button, so undo lives in the command bar.
+      setUndoSnapshot(before);
+      notify('success', `Pipeline built: ${res.plan.length} steps`, workspaceId);
       if (runAfter) pendingRun.current = res.plan.length;
       setResolution(null);
     },
-    [graph, restore],
+    [graph, workspaceId],
   );
 
   // Run once React has committed the new nodes (handleRun reads state from its closure).
@@ -173,9 +176,9 @@ export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseN
     if (graph.placedOperationLabels.length >= pendingRun.current) {
       pendingRun.current = null;
       if (hasFiles) run();
-      else toast.error('Upload a data file to run the pipeline.');
+      else notify('error', 'Upload a data file to run the pipeline.', workspaceId);
     }
-  }, [graph.nodes, graph.placedOperationLabels.length, hasFiles, run]);
+  }, [graph.nodes, graph.placedOperationLabels.length, hasFiles, run, workspaceId]);
 
   return {
     query,
@@ -189,6 +192,8 @@ export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseN
     pickCandidate,
     apply,
     dismiss,
+    canUndoBuild: undoSnapshot !== null,
+    undoBuild,
   };
 }
 

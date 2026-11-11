@@ -192,7 +192,7 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
           current,
         ),
       );
-      log?.('success', `Connected: ${sourceLabel} → ${targetLabel}`);
+      log?.('info', `Connected: ${sourceLabel} → ${targetLabel}`);
     },
     [log],
   );
@@ -272,7 +272,7 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
         setEdges(current => [...current.filter(edge => edge.target !== newNode.id), newEdge]);
       }
 
-      log?.('success', `Added: ${label} — ${operation.description}`);
+      log?.('info', `Added: ${label} — ${operation.description}`);
       log?.('info', `Workflow: ${[...currentOperations, label].join(' → ')}`);
       return true;
     },
@@ -330,7 +330,7 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
       setEdges(edgesSoFar => [...edgesSoFar.filter(e => e.target !== reattached.id), edge]);
     }
     commitRedoStack(rest);
-    log?.('success', `Restored operation: ${node.data?.label}`);
+    log?.('info', `Restored operation: ${node.data?.label}`);
   }, [commitNodes, commitRedoStack, log]);
 
   const clearGraph = useCallback(() => {

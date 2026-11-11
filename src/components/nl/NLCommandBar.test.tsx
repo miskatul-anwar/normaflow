@@ -5,9 +5,8 @@ import { useWorkflowGraph } from '../../hooks/useWorkflowGraph';
 import { useNLWorkflow } from '../../hooks/useNLWorkflow';
 import { NLCommandBar } from './NLCommandBar';
 import { FakeEmbeddingProvider } from '../../services/nlp/workflow';
-import { toast } from 'sonner';
 
-vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
+vi.mock('../../services/notify', () => ({ notify: vi.fn() }));
 
 let latest: ReturnType<typeof useWorkflowGraph> | null = null;
 const run = vi.fn();
@@ -50,7 +49,7 @@ describe('NLCommandBar', () => {
     expect(latest!.edges.length).toBe(5);
   });
 
-  it('Undo in the toast restores the whole previous canvas in one step', async () => {
+  it('Undo last build restores the whole previous canvas in one step', async () => {
     render(<Harness />);
     await type('clean the data');
     fireEvent.click(await screen.findByRole('button', { name: 'Apply' }));
@@ -58,9 +57,7 @@ describe('NLCommandBar', () => {
     await type('give me 1NF');
     fireEvent.click(await screen.findByRole('button', { name: 'Replace workflow' }));
     await waitFor(() => expect(latest!.placedOperationLabels.length).toBe(5));
-    const calls = (toast.success as any).mock.calls;
-    const action = calls[calls.length - 1][1].action;
-    act(() => action.onClick());
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo last build' }));
     expect(latest!.placedOperationLabels).toEqual(['CSV Data Loader', 'Data Cleaner']);
     expect(latest!.edges.length).toBe(2);
   });

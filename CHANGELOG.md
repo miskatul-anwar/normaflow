@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (system notifications)
+- Messages no longer pop up inside the app. Pipeline results, errors, warnings, saves and uploads are sent to the operating system's notification centre, titled **NormaFlow · <workspace name>** (a renamed workspace shows its new name) with the app icon and the message as the text. Routine confirmations (adding a step, connecting two steps) are only logged. The in-app toast stack, the bottom status pill and the notification sound are removed, and the `sonner` dependency with them.
+- The desktop app uses the Tauri notification plugin (permission is asked on first use); a plain browser falls back to the Web Notifications API; if neither is allowed nothing is shown.
+- The **Undo** that used to sit on the "Pipeline built" toast is now an **Undo last build** button under the command bar.
+
 ### Added (Chen ER diagrams)
 - The ERD tab now draws **Chen notation** by default: rectangles for entities (double border for weak entities), diamonds for relationships with 1 / M / N cardinality, ellipses for attributes with keys underlined. Foreign-key columns appear as relationships, and junction tables as one many-to-many relationship that carries their own columns. Layout is done by Graphviz compiled to WebAssembly and bundled with the app, so nothing needs installing and it works offline. Switch to **Crow's foot** (Mermaid) with the toggle, hide attributes for a compact overview, and download the diagram as SVG or DOT.
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import type { Node } from '@xyflow/react';
@@ -18,6 +18,7 @@ import { prerequisitesToAdd } from './services/nlp/workflow/planner';
 import { usePaletteResize } from './hooks/usePaletteResize';
 import { useWorkflowGraph, type WorkflowSnapshot, buildChainEdges } from './hooks/useWorkflowGraph';
 import { Logger } from './services/utils/logger';
+import { notify, setWorkspaceNameResolver } from './services/notify';
 import { OPERATIONS } from './config/operations';
 import { validateSequence } from './utils/workflowValidation';
 import { clearCachedResult, loadCachedResult, saveCachedResult } from './utils/resultCache';
@@ -58,7 +59,6 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
   // No dataset is preloaded: results always come from files the user uploaded.
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [processedResults, setProcessedResults] = useState<any>(() => loadCachedResult(tabId));
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const { isProcessing, processFiles } = useNormalization();
 
@@ -69,10 +69,8 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
     else if (level === 'error') logger.error(message, undefined, category);
     else logger.info(level === 'warning' ? `[WARNING] ${message}` : message, undefined, category);
 
-    setStatusMessage(message);
-    const timer = setTimeout(() => setStatusMessage(null), 4000);
-    return () => clearTimeout(timer);
-  }, []);
+    if (level === 'success' || level === 'error' || level === 'warning') notify(level, message, tabId);
+  }, [tabId]);
 
   // ----- workflow graph ------------------------------------------------------
 
@@ -232,7 +230,7 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
     [graph, logMessage],
   );
 
-  const nl = useNLWorkflow({ graph, run: handleRun, hasFiles });
+  const nl = useNLWorkflow({ graph, run: handleRun, hasFiles, workspaceId: tabId });
 
   // Report running state and step count to the tab bar.
   useEffect(() => {
@@ -328,12 +326,6 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
             isValidConnection={graph.isValidConnection}
           />
         </div>
-
-        {statusMessage && (
-          <div className="nf-status-toast">
-            <span>{statusMessage}</span>
-          </div>
-        )}
       </main>
     </div>
   );
@@ -348,6 +340,13 @@ function AppShell() {
   const onOutput = location.pathname === '/output';
   const tabsApi = useWorkspaceTabs();
   const { tabs, activeId, status, addTab, closeTab, cycleTab } = tabsApi;
+
+  // System notifications name the workspace (its current title, so renames are picked up).
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+  useEffect(() => {
+    setWorkspaceNameResolver(id => tabsRef.current.find(t => t.id === id)?.title);
+  }, []);
 
   const requestClose = useCallback(
     (id: string) => {
