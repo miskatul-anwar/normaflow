@@ -35,6 +35,20 @@ export function extensionFor(placed: string[], plan: string[]): string[] | null 
   return missing.every(m => OPERATIONS[m].order > lastOrder) ? missing : null;
 }
 
+function failedResolution(e: unknown): Resolution {
+  return {
+    targets: [],
+    excluded: [],
+    plan: [],
+    addedAsDependencies: [],
+    options: {},
+    confidence: 'none',
+    candidates: [],
+    source: 'lexical',
+    message: `Something went wrong reading that request (${(e as Error)?.message ?? 'unknown error'}). Try rephrasing it.`,
+  };
+}
+
 let sharedProvider: EmbeddingProvider | null = null;
 /** One embedding worker (and one copy of the model in memory) for every workspace tab. */
 function getSharedProvider(): EmbeddingProvider {
@@ -82,6 +96,9 @@ export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseN
         if (id !== requestId.current) return; // a newer request superseded this one
         setResolution(res);
         if (res.source === 'lexical' && res.confidence === 'none') setEmbeddings(e => (e === 'checking' ? 'offline' : e));
+      } catch (e) {
+        // resolve() is meant not to throw; if it does, say so instead of leaving a spinner or an unhandled rejection.
+        if (id === requestId.current) setResolution(failedResolution(e));
       } finally {
         if (id === requestId.current) setBusy(false);
       }
@@ -92,11 +109,15 @@ export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseN
   /** Re-plan for one chosen candidate ("Did you mean…"). */
   const pickCandidate = useCallback(
     async (operation: string) => {
+      const id = ++requestId.current;
       setBusy(true);
       try {
-        setResolution(await resolve(operation, new NullProvider()));
+        const res = await resolve(operation, new NullProvider());
+        if (id === requestId.current) setResolution(res);
+      } catch (e) {
+        if (id === requestId.current) setResolution(failedResolution(e));
       } finally {
-        setBusy(false);
+        if (id === requestId.current) setBusy(false);
       }
     },
     [],
@@ -118,6 +139,11 @@ export function useNLWorkflow({ graph, run, hasFiles, provider: injected }: UseN
   const apply = useCallback(
     (res: Resolution, { run: runAfter, mode = 'replace' }: { run: boolean; mode?: ApplyMode }) => {
       if (res.plan.length === 0) return;
+      const known = res.plan.filter(p => OPERATIONS[p]);
+      if (known.length !== res.plan.length || new Set(known).size !== known.length) {
+        toast.error('That request produced an invalid pipeline. Nothing was changed.');
+        return;
+      }
       const before = graph.serializeSnapshot();
       const placed = graph.placedOperationLabels;
       let toAdd = res.plan;

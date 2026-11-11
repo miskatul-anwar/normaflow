@@ -480,6 +480,7 @@ export class DatabaseService {
         processedData = [...originalData];
         attributes = Object.keys(processedData[0] || {});
         
+        this.trackDataFootprint(originalData);
         this.addPerformanceCheckpoint('CSV Loading Complete');
         this.logger.success(`CSV loaded with streaming: ${processedData.length} rows, ${attributes.length} columns`);
       } catch (error) {
@@ -1208,11 +1209,35 @@ export class DatabaseService {
     });
   }
 
-  private getMemoryUsage(): number {
-    if (typeof (performance as any)?.memory !== 'undefined') {
-      return (performance as any).memory.usedJSHeapSize / 1024 / 1024; // MB
+  /** Rough in-memory size of the loaded rows (MB), used where the runtime does not report heap usage. */
+  private dataFootprintMB = 0;
+  private memorySource: 'heap' | 'node' | 'estimate' = 'estimate';
+
+  private trackDataFootprint(rows: Array<Record<string, unknown>>): void {
+    if (!rows.length) return;
+    const step = Math.max(1, Math.floor(rows.length / 200));
+    let bytes = 0;
+    let n = 0;
+    for (let i = 0; i < rows.length; i += step, n++) {
+      for (const v of Object.values(rows[i])) bytes += 16 + (typeof v === 'string' ? v.length * 2 : 8);
     }
-    return 0;
+    this.dataFootprintMB = (bytes / n) * rows.length / 1024 / 1024;
+  }
+
+  /** Heap in use (Chromium `performance.memory`, or Node), else an estimate from the loaded data. WebKit webviews expose no heap counter. */
+  private getMemoryUsage(): number {
+    const perfMem = (performance as any)?.memory;
+    if (perfMem && typeof perfMem.usedJSHeapSize === 'number') {
+      this.memorySource = 'heap';
+      return perfMem.usedJSHeapSize / 1024 / 1024;
+    }
+    const proc = (globalThis as any).process;
+    if (typeof proc?.memoryUsage === 'function') {
+      this.memorySource = 'node';
+      return proc.memoryUsage().heapUsed / 1024 / 1024;
+    }
+    this.memorySource = 'estimate';
+    return this.dataFootprintMB;
   }
 
   private getPeakMemoryUsage(): number {
@@ -2468,10 +2493,14 @@ export class DatabaseService {
     content += '|------------|-----------|-------------|-------|\n';
     
     performanceMetrics.checkpoints.forEach((checkpoint: any) => {
-      const memory = checkpoint.memory ? checkpoint.memory.toFixed(2) : 'N/A';
+      const memory = typeof checkpoint.memory === 'number' && checkpoint.memory > 0 ? checkpoint.memory.toFixed(2) : '< 0.01';
       content += `| ${checkpoint.name} | ${checkpoint.time} | ${memory} | Processing |\n`;
     });
     
+    content += this.memorySource === 'estimate'
+      ? '\n*Memory is an estimate of the loaded data (this runtime does not report heap usage).*\n'
+      : `\n*Memory is the JavaScript heap in use (${this.memorySource === 'node' ? 'Node.js' : 'browser'}).*\n`;
+
     content += '\n## Optimizations Applied\n\n';
     performanceMetrics.optimizationsApplied?.forEach((opt: string) => {
       content += `- ${opt}\n`;

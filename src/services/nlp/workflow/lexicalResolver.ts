@@ -5,7 +5,7 @@
  * negation marks a hit as excluded. Several hits are all kept as targets; the
  * planner takes the union of their dependency closures.
  */
-import { ANCHORS, NEGATION, RUN_WORDS, WEAK_ALIASES } from './anchors';
+import { ANCHORS, NEGATION, RUN_WORDS, TRAILING_NEGATION, WEAK_ALIASES } from './anchors';
 
 export type Dialect = 'postgresql' | 'mysql' | 'sqlite' | 'ansi';
 
@@ -37,7 +37,9 @@ export function splitClauses(text: string): string[] {
 export function parseOptions(text: string): LexicalResult['options'] {
   const t = normalize(text);
   const options: LexicalResult['options'] = {};
-  if (RUN_WORDS.test(t)) options.run = true;
+  const run = RUN_WORDS.exec(t);
+  // "don't run it" / "no need to run" must not trigger a run.
+  if (run && !/\b(don'?t|do not|dont|never|not|without|no need( to)?|skip)\s+(\w+\s+){0,2}$/.test(t.slice(0, run.index))) options.run = true;
   if (/\bpostgres(ql)?\b/.test(t)) options.dialect = 'postgresql';
   else if (/\bmysql\b|\bmaria ?db\b/.test(t)) options.dialect = 'mysql';
   else if (/\bsqlite\b/.test(t)) options.dialect = 'sqlite';
@@ -99,7 +101,7 @@ export function resolveLexical(text: string): LexicalResult {
     const negation = NEGATION.exec(clause);
     for (const hit of hits.sort((a, b) => a.index - b.index)) {
       anyWeak ||= hit.weak;
-      const negated = negation !== null && negation.index < hit.index;
+      const negated = (negation !== null && negation.index < hit.index) || TRAILING_NEGATION.test(clause.slice(hit.index));
       const list = negated ? excluded : targets;
       if (!list.includes(hit.operation)) list.push(hit.operation);
     }

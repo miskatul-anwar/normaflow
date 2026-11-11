@@ -28,12 +28,21 @@ export function workerExtractor(): Extractor {
     return w;
   };
 
+  /** A stuck worker is killed so the next request starts a fresh one. */
+  const REQUEST_TIMEOUT_MS = 30_000;
+
   return texts =>
     new Promise((resolve, reject) => {
       try {
         worker ??= start();
         const id = nextId++;
-        pending.set(id, { resolve, reject });
+        const timer = setTimeout(() => {
+          if (pending.has(id)) failAll('embedding worker did not respond');
+        }, REQUEST_TIMEOUT_MS);
+        pending.set(id, {
+          resolve: v => (clearTimeout(timer), resolve(v)),
+          reject: e => (clearTimeout(timer), reject(e)),
+        });
         worker.postMessage({ id, texts } satisfies EmbedRequest);
       } catch (e) {
         reject(e as Error);
