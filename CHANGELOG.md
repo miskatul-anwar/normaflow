@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Chen ER diagrams)
+- The ERD tab now draws **Chen notation** by default: rectangles for entities (double border for weak entities), diamonds for relationships with 1 / M / N cardinality, ellipses for attributes with keys underlined. Foreign-key columns appear as relationships, and junction tables as one many-to-many relationship that carries their own columns. Layout is done by Graphviz compiled to WebAssembly and bundled with the app, so nothing needs installing and it works offline. Switch to **Crow's foot** (Mermaid) with the toggle, hide attributes for a compact overview, and download the diagram as SVG or DOT.
+
 ### Added
 - The **Full Report** tab shows real components (summary, quality checks, normalization journey, strongest dependencies, performance, operations) instead of a Markdown preview. **Download PDF** builds a PDF from the generated Markdown, offline.
 - Natural-language input is more robust: Unicode and zero-width cleanup, a 400-character cap, conservative typo repair, "don't run it" and "SQL is not needed" understood, embedding timeouts and vector validation, and no unhandled errors in the command bar.

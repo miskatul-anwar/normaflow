@@ -13,7 +13,7 @@ import { QualityAssuranceSection } from './output/QualityAssuranceSection';
 import { KeysSection } from './output/KeysSection';
 import { GeneratedFilesSection } from './output/GeneratedFilesSection';
 import { ReportView } from './output/ReportView';
-import { SVGPreviewSection } from './output/SVGPreviewSection';
+import { ChenErdSection } from './output/ChenErdSection';
 import { CodeViewer } from './output/CodeViewer';
 import { Button } from '@/components/ui/button';
 import type { WorkspaceTab } from '../hooks/useWorkspaceTabs';
@@ -91,6 +91,13 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
     }
     return [];
   }, [safeResults, multiTables]);
+
+  // The ERD follows the final schema (BCNF if it ran, otherwise 3NF).
+  const erdRelations = useMemo(() => {
+    const final = safeResults?.relations;
+    if (Array.isArray(final) && final.length > 0) return final;
+    return relationsBCNF.length > 0 ? relationsBCNF : relationData;
+  }, [safeResults, relationsBCNF, relationData]);
 
   const erdContent = safeResults?.erdContent || safeResults?.erdDiagram || '';
   const cardinalityAnalysis = safeResults?.cardinalityAnalysis || {};
@@ -384,7 +391,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
           )}
 
           {activeTab === 'erd' && erdContent && (
-            <SVGPreviewSection erdContent={erdContent} />
+            <ChenErdSection relations={erdRelations} erdContent={erdContent} />
           )}
 
           {activeTab === 'sql' && sqlFile?.content && (
