@@ -38,9 +38,9 @@ export function RelationshipsSection({ relationships }: { relationships: CrossTa
         <table className="w-full text-xs lg:text-sm">
           <thead className="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-500">
             <tr>
-              <th className="px-4 py-2.5 font-medium">Foreign key</th>
-              <th className="px-4 py-2.5 font-medium">References</th>
-              <th className="px-4 py-2.5 font-medium">Cardinality</th>
+              <th className="px-2 py-2.5 font-medium lg:px-4">Foreign key</th>
+              <th className="px-2 py-2.5 font-medium lg:px-4">References</th>
+              <th className="px-2 py-2.5 font-medium lg:px-4">Cardinality</th>
               <th className="hidden px-4 py-2.5 text-right font-medium lg:table-cell">Values matched</th>
               <th className="hidden px-4 py-2.5 text-right font-medium xl:table-cell">Confidence</th>
             </tr>
@@ -51,15 +51,15 @@ export function RelationshipsSection({ relationships }: { relationships: CrossTa
               const to = (r.targetColumns ?? [r.targetColumn]).join(', ');
               return (
                 <tr key={i} className="transition-colors hover:bg-gray-50">
-                  <td className="px-3 py-2.5 font-mono text-gray-900 [overflow-wrap:anywhere] lg:px-4">
+                  <td className="px-2 py-2.5 font-mono text-gray-900 [overflow-wrap:anywhere] lg:px-4">
                     {r.sourceTable}.<span className="text-teal-700">{from}</span>
                     {r.optional && <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 font-sans text-[10px] text-gray-500">optional</span>}
                   </td>
-                  <td className="px-3 py-2.5 font-mono text-gray-900 [overflow-wrap:anywhere] lg:px-4">
-                    <ArrowRight className="mr-2 inline size-3.5 text-gray-400" aria-hidden />
+                  <td className="px-2 py-2.5 font-mono text-gray-900 [overflow-wrap:anywhere] lg:px-4">
+                    <ArrowRight className="mr-2 hidden size-3.5 text-gray-400 lg:inline" aria-hidden />
                     {r.targetTable}.<span className="text-teal-700">{to}</span>
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-2 py-2.5 lg:px-4">
                     <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${CARD_STYLE[r.cardinality] ?? 'bg-gray-100 text-gray-700'}`}>{r.cardinality}</span>
                   </td>
                   <td className="hidden px-4 py-2.5 text-right tabular-nums text-gray-700 lg:table-cell">{pct(r.matchRatio)}</td>
