@@ -319,10 +319,13 @@ export class CSVProcessor {
       const char = sampleWindow[i];
       if (char === '"') {
         if (inQuotes && sampleWindow[i + 1] === '"') {
-          i++; // Skip escaped quote
-        } else {
-          inQuotes = !inQuotes;
+          // Escaped quote: keep BOTH characters. Dropping one would flip the quote parity when the
+          // line is re-scanned below, and delimiters inside quoted fields would then count as real ones.
+          currentLine += '""';
+          i++;
+          continue;
         }
+        inQuotes = !inQuotes;
         currentLine += char;
       } else if ((char === '\n' || char === '\r') && !inQuotes) {
         if (char === '\r' && sampleWindow[i + 1] === '\n') {

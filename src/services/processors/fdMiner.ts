@@ -188,6 +188,21 @@ export interface MineOptions {
   minConfidence?: number;
   /** How missing values compare (default `equal`). See {@link NullSemantics}. */
   nullSemantics?: NullSemantics;
+  /**
+   * Near-key pruning: with at least `nearKeyMinRows` rows, a determinant whose distinct-value ratio is above
+   * this (but below 1) is not used. Such a column almost identifies rows, so any dependency it "determines"
+   * holds by coincidence and removes no redundancy when split off. Exact keys are still found. Off by default.
+   */
+  nearKeyRatio?: number;
+  /**
+   * Only use columns without missing values as determinants. A column with blanks cannot be part of a key
+   * (SQL forbids NULL in a primary key), so a dependency on it can never justify a decomposition; and with
+   * "all missing values are equal" semantics such dependencies hold by coincidence. Exact keys and every
+   * dependency whose determinant is complete are unaffected. Off by default; the engine turns it on.
+   */
+  completeDeterminantsOnly?: boolean;
+  /** Tables smaller than this are never pruned (too few rows for the ratio to mean anything). Default 200. */
+  nearKeyMinRows?: number;
   /** Abort the search early; the result is flagged `truncated`. */
   signal?: AbortSignal;
   /** Wall-clock budget in ms; the result is flagged `truncated` when exceeded. */
@@ -245,6 +260,20 @@ export function mineFunctionalDependencies(
     Boolean(options.signal?.aborted) ||
     (options.timeBudgetMs !== undefined && Date.now() - started > options.timeBudgetMs);
   const rowCount = data.length;
+  const nearKeyRatio = options.nearKeyRatio ?? 1;
+  // Columns with at least one missing value (see completeDeterminantsOnly).
+  const nullable = new Set<number>();
+  if (options.completeDeterminantsOnly) {
+    attributes.forEach((attr, i) => {
+      for (let r = 0; r < rowCount; r++) {
+        if (isMissing(data[r][attr])) {
+          nullable.add(i);
+          break;
+        }
+      }
+    });
+  }
+  const pruneNearKeys = nearKeyRatio < 1 && rowCount >= (options.nearKeyMinRows ?? 200);
 
   const basePartitions = encoded.map(codes => partitionOfColumn(codes, rowCount));
   // A constant column never makes a larger determinant minimal (X and X+const determine the same things).
@@ -284,6 +313,7 @@ export function mineFunctionalDependencies(
         break search;
       }
 
+      if (nullable.size > 0 && combo.some(i => nullable.has(i))) continue;
       if (level > 1 && combo.some(i => constant.has(i))) continue;
 
       // Key pruning: if a strict subset of combo is already a known superkey,
@@ -315,6 +345,11 @@ export function mineFunctionalDependencies(
 
       // Identify whether combo uniquely determines all tuples (superkey)
       const isSuperkey = baseCount === rowCount;
+      // Near-keys: nearly unique but not unique. Their dependencies are coincidental (see MineOptions).
+      if (pruneNearKeys && !isSuperkey && baseCount / rowCount > nearKeyRatio) {
+        if (options.onProgress) options.onProgress(level, results.length);
+        continue;
+      }
       const comboNames = combo.map(i => attributes[i]);
 
       for (let rhs = 0; rhs < attributes.length; rhs++) {

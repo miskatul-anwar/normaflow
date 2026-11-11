@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (engine: fewer coincidental dependencies)
+- **Over-decomposition on real data:** 11 Chinook tables came out as 48 BCNF relations, many of them built from coincidental dependencies. Dependency mining now (a) skips near-unique determinants (their dependencies hold by accident, which also makes mining about 3.7x faster on large tables) and (b) only uses determinants with no missing values. Chinook now yields 409 dependencies instead of 779 and 30 relations instead of 48, and the generated SQL loads into SQLite with foreign keys enforced and no violations (it did not load before).
+- **Foreign keys:** a link is no longer drawn in both directions between a key and its child table (it produced a bogus 1:1 `invoice.InvoiceId -> invoiceline.InvoiceLineId`), and links where not every value matches are listed as unplaced instead of becoming a constraint that fails on load.
+- **CSV:** the delimiter sniffer no longer misreads files with escaped quotes followed by delimiter-heavy text.
+
 ### Fixed (Output page, part 4)
 - **Crow's foot** has the **Show attributes** toggle too (the Mermaid diagram collapses to table names only), so all four ERD notations share the same controls.
 - **Normal Forms** in the sidebar counted relations across all four levels (145 for 11 tables); it now shows the relations in the final schema.

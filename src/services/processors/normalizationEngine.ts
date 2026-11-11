@@ -291,7 +291,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
   static async mineFunctionalDependencies(
     data: any[],
     maxLhsSize: number = 4,
-    mineOptions: { nullSemantics?: 'equal' | 'distinct'; signal?: AbortSignal; timeBudgetMs?: number; sampleSize?: number } = {},
+    mineOptions: { nullSemantics?: 'equal' | 'distinct'; signal?: AbortSignal; timeBudgetMs?: number; sampleSize?: number; nearKeyRatio?: number; nearKeyMinRows?: number; completeDeterminantsOnly?: boolean } = {},
   ): Promise<FunctionalDependency[]> {
     return (await this.mineFunctionalDependenciesDetailed(data, maxLhsSize, mineOptions)).fds;
   }
@@ -303,7 +303,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
   static async mineFunctionalDependenciesDetailed(
     data: any[],
     maxLhsSize: number = 4,
-    mineOptions: { nullSemantics?: 'equal' | 'distinct'; signal?: AbortSignal; timeBudgetMs?: number; sampleSize?: number } = {},
+    mineOptions: { nullSemantics?: 'equal' | 'distinct'; signal?: AbortSignal; timeBudgetMs?: number; sampleSize?: number; nearKeyRatio?: number; nearKeyMinRows?: number; completeDeterminantsOnly?: boolean } = {},
   ): Promise<{ fds: FunctionalDependency[]; truncated: boolean; levelReached: number; maxLhsSize: number; sampling?: SamplingInfo; partitionCache?: { hits: number; misses: number } }> {
     if (!data || data.length === 0) {
       this.logger.warn('No data provided for FD mining');

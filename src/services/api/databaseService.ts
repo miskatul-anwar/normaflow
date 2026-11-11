@@ -28,6 +28,10 @@ export interface ProcessingOptions {
   maxSampleSize?: number;
   /** Rows used to propose dependencies; every reported one is verified on all rows. */
   fdSampleSize?: number;
+  /** Skip determinants that are nearly (but not exactly) unique on tables of 200+ rows; 1 disables. Default 0.9. */
+  nearKeyRatio?: number;
+  /** Never use columns with missing values as determinants (they cannot be keys). Default true. */
+  completeDeterminantsOnly?: boolean;
   /** Time budget for functional-dependency mining, in milliseconds (default 30 000). */
   timeout?: number;
   enableParallelProcessing?: boolean;
@@ -852,6 +856,8 @@ export class DatabaseService {
         signal: this.abortController?.signal,
         timeBudgetMs: options.timeout ?? 30_000,
         sampleSize: options.fdSampleSize ?? 10_000,
+        nearKeyRatio: options.nearKeyRatio ?? 0.9,
+        completeDeterminantsOnly: options.completeDeterminantsOnly ?? true,
       });
       functionalDependencies = mined.fds;
       this.cacheStats.hits += mined.partitionCache?.hits ?? 0;

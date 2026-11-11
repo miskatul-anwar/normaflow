@@ -261,3 +261,15 @@ describe('CSVProcessor', () => {
     });
   });
 });
+
+describe('delimiter detection with escaped quotes', () => {
+  it('is not fooled by delimiter-like characters after an escaped quote inside a quoted field', () => {
+    // One escaped quote ("") and then lots of | ; and tab characters, as in text exported from a BLOB column.
+    const blob = `b'\\xff ""' ` + '| ; \t '.repeat(300);
+    const text = `id,name,desc,picture\r\n1,Beverages,"Soft drinks, teas","${blob}"\r\n2,Condiments,"Sweet and savory","${blob}"\r\n`;
+    expect(CSVProcessor.detectDelimiter(text)).toBe(',');
+    const parsed = CSVProcessor.parse(text);
+    expect(parsed.headers).toEqual(['id', 'name', 'desc', 'picture']);
+    expect(parsed.data.length).toBe(2);
+  });
+});

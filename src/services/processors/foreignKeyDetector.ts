@@ -243,7 +243,12 @@ export function detectForeignKeys(
     chosen.push(c);
   }
 
-  const single = chosen
+  // A link whose source column is its own table's key, while another table references that key with a
+  // non-unique column, is the wrong way round (the real one-to-many runs child -> parent). Two dense id
+  // sequences overlapping by chance produce such links; keeping them creates reference cycles.
+  const referencedByNonUnique = new Set(chosen.filter(c => !c.src.unique).map(c => c.tgt.table));
+  const oriented = chosen.filter(c => !(c.src.unique && referencedByNonUnique.has(c.src.table)));
+  const single = oriented
     .sort((a, b) => b.score - a.score || a.src.table.localeCompare(b.src.table))
     .map(c => {
       const optional = c.src.nonNull < c.src.total;

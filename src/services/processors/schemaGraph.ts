@@ -109,6 +109,12 @@ export function buildSchema(tables: TableSchemaInput[], cross: CrossTableRelatio
   const unplaced: BuiltSchema['unplaced'] = [];
 
   for (const link of cross) {
+    // A constraint the data violates would make the exported DDL and INSERTs fail to load; keep such links
+    // out of the schema and report them instead.
+    if (link.matchRatio < 1 - 1e-9) {
+      unplaced.push({ link, reason: `only ${(link.matchRatio * 100).toFixed(1)}% of its values are contained in the target, so it is not emitted as a constraint` });
+      continue;
+    }
     const srcCols = link.sourceColumns ?? [link.sourceColumn];
     const tgtCols = link.targetColumns ?? [link.targetColumn];
     const label = (t: string, cols: string[]) => `${t}.${cols.join('+')}`;
