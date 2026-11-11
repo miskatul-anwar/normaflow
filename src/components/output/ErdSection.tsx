@@ -33,7 +33,8 @@ function save(blob: Blob, name: string) {
 
 export function ErdSection({ relations, erdContent }: Props) {
   const [notation, setNotation] = useState<Notation>('chen');
-  const [showAttributes, setShowAttributes] = useState(() => attributeCount(relations) <= 80);
+  // Large schemas open as the compact entity / relationship overview; the checkbox brings the attributes back.
+  const [showAttributes, setShowAttributes] = useState(() => relations.length <= 12 && attributeCount(relations) <= 80);
   const [svg, setSvg] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed about 800 lines of unused legacy CSS.
 
 ### Changed (design consistency)
+- Large schemas (more than 12 relations) open the ERD as the compact entity / relationship overview instead of with every attribute drawn; **Show attributes** brings them back.
 - Text sizes are down from nine to seven steps (the 10.5 and 11.5 px sizes folded into 11 px) and the pipeline step chips use the same 8 px radius as buttons. `npm run audit:design` measures typefaces, text sizes, button heights and radii, and card radii on every view in both themes, and the rules are written down in `docs/DESIGN.md`.
 
 ### Fixed (accessibility, WCAG 2.1 AA)
