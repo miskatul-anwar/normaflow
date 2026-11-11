@@ -18,6 +18,8 @@ export interface ChenRelation {
 }
 
 export interface ChenOptions {
+  /** Left-to-right tree layout (use with Graphviz `dot`); better than a force layout for big schemas. */
+  tree?: boolean;
   /** Draw attribute ellipses. Off gives a compact entity/relationship overview. */
   attributes?: boolean;
 }
@@ -40,14 +42,14 @@ export function isWeak(r: ChenRelation): boolean {
   return !isJunction(r) && pk.some(c => fkCols.has(c)) && pk.some(c => !fkCols.has(c));
 }
 
-export function buildChenDot(relations: ChenRelation[], { attributes = true }: ChenOptions = {}): string {
+export function buildChenDot(relations: ChenRelation[], { attributes = true, tree = false }: ChenOptions = {}): string {
   const known = new Set(relations.map(r => r.name));
   const entityId = new Map<string, string>();
   let counter = 0;
   const next = (p: string) => `${p}${counter++}`;
   const lines: string[] = [
     'graph ERD {',
-    '  graph [overlap=false, splines=true, sep="+8", outputorder=edgesfirst, pad=0.3, bgcolor="white", pack=true, packmode="node"];',
+    `  graph [overlap=false, splines=true, sep="+8", outputorder=edgesfirst, pad=0.3, bgcolor="white", pack=true, packmode="node"${tree ? ', rankdir=LR, nodesep=0.25, ranksep=0.6' : ''}];`,
     '  node [fontname="Helvetica", fontsize=11, color="#374151", fontcolor="#111827"];',
     '  edge [color="#6b7280", fontname="Helvetica", fontsize=10, fontcolor="#0f766e"];',
   ];

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, Download, AlertCircle, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { Check, Copy, Download, AlertCircle, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useCopy } from '../../hooks/useCopy';
 import { buildChenDot, attributeCount } from '../../services/erd/chenErd';
 import { buildBarkerDot, buildUmlDot, type BoxRelation } from '../../services/erd/boxNotations';
 import { renderDot } from '../../services/erd/renderDot';
-import { SVGPreviewSection } from './SVGPreviewSection';
+import { renderMermaid } from '../../services/erd/renderMermaid';
 
 type Notation = 'chen' | 'crow' | 'barker' | 'uml';
 
@@ -37,6 +38,7 @@ export function ErdSection({ relations, erdContent }: Props) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [zoom, setZoom] = useState(1);
+  const { copied, copy } = useCopy();
   const clampZoom = (z: number) => Math.min(6, Math.max(0.5, Math.round(z * 100) / 100));
 
   // Graphviz reports the natural size in points; small diagrams should not be stretched to the panel width.
@@ -48,17 +50,16 @@ export function ErdSection({ relations, erdContent }: Props) {
   const dot = useMemo(() => {
     if (notation === 'barker') return buildBarkerDot(relations, { attributes: showAttributes });
     if (notation === 'uml') return buildUmlDot(relations, { attributes: showAttributes });
-    return buildChenDot(relations, { attributes: showAttributes });
+    return buildChenDot(relations, { attributes: showAttributes, tree: relations.length > 10 });
   }, [relations, showAttributes, notation]);
   // Boxes lay out best top-down; Chen's many small shapes spread better with a force layout.
-  const engine = notation === 'chen' ? 'neato' : 'dot';
+  const engine = notation === 'chen' && relations.length <= 10 ? 'neato' : 'dot';
 
   useEffect(() => {
-    if (notation === 'crow') return;
     let cancelled = false;
     setLoading(true);
     setError('');
-    renderDot(dot, engine)
+    (notation === 'crow' ? renderMermaid(erdContent) : renderDot(dot, engine))
       .then(out => {
         if (!cancelled) setSvg(out);
       })
@@ -71,7 +72,11 @@ export function ErdSection({ relations, erdContent }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [dot, notation, engine]);
+  }, [dot, notation, engine, erdContent]);
+
+  const source = notation === 'crow' ? erdContent : dot;
+  const sourceLabel = notation === 'crow' ? 'Mermaid' : 'DOT';
+  const sourceExt = notation === 'crow' ? 'mmd' : 'dot';
 
   const tab = (id: Notation) => (
     <Button key={id} size="sm" variant={notation === id ? 'primary' : 'secondary'} onClick={() => setNotation(id)} aria-pressed={notation === id}>
@@ -87,7 +92,7 @@ export function ErdSection({ relations, erdContent }: Props) {
             .filter(n => n !== 'crow' || erdContent)
             .map(tab)}
         </div>
-        {notation !== 'crow' && (
+        {(
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center rounded-lg border border-gray-200 bg-white" role="group" aria-label="Zoom">
               <Button size="sm" variant="ghost" onClick={() => setZoom(z => clampZoom(z / 1.25))} aria-label="Zoom out" title="Zoom out"><ZoomOut /></Button>
@@ -95,15 +100,17 @@ export function ErdSection({ relations, erdContent }: Props) {
               <Button size="sm" variant="ghost" onClick={() => setZoom(z => clampZoom(z * 1.25))} aria-label="Zoom in" title="Zoom in"><ZoomIn /></Button>
               <Button size="sm" variant="ghost" onClick={() => setZoom(1)} aria-label="Fit to width" title="Fit to width"><Maximize2 /></Button>
             </div>
-            <label className="mr-2 flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" checked={showAttributes} onChange={e => setShowAttributes(e.target.checked)} />
-              Show attributes
-            </label>
-            <Button size="sm" onClick={() => void navigator.clipboard.writeText(dot)}>
-              <Copy /> Copy DOT
+            {notation !== 'crow' && (
+              <label className="mr-2 flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" checked={showAttributes} onChange={e => setShowAttributes(e.target.checked)} />
+                Show attributes
+              </label>
+            )}
+            <Button size="sm" onClick={() => void copy(source)}>
+              {copied ? <Check className="text-teal-600" /> : <Copy />} {copied ? 'Copied' : `Copy ${sourceLabel}`}
             </Button>
-            <Button size="sm" onClick={() => save(new Blob([dot], { type: 'text/vnd.graphviz' }), `erd_${notation}.dot`)}>
-              <Download /> DOT
+            <Button size="sm" onClick={() => save(new Blob([source], { type: 'text/plain' }), `erd_${notation}.${sourceExt}`)}>
+              <Download /> {sourceExt.toUpperCase()}
             </Button>
             <Button variant="primary" size="sm" disabled={!svg} onClick={() => save(new Blob([svg], { type: 'image/svg+xml' }), `erd_${notation}.svg`)}>
               <Download /> SVG
@@ -112,9 +119,7 @@ export function ErdSection({ relations, erdContent }: Props) {
         )}
       </div>
 
-      {notation === 'crow' ? (
-        <SVGPreviewSection erdContent={erdContent} />
-      ) : (
+      {(
         <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
           {error ? (
             <div className="flex items-center gap-2 p-6 text-sm text-red-700">
@@ -134,7 +139,7 @@ export function ErdSection({ relations, erdContent }: Props) {
             </div>
           )}
           <div className="flex flex-wrap gap-x-5 gap-y-1 border-t border-gray-100 bg-gray-50 px-4 py-2 text-xs text-gray-600">
-            {LEGEND[notation].map(l => <span key={l}>{l}</span>)}
+            {notation === 'crow' ? <span>Crow's foot notation: PK / FK per attribute, cardinality on each line</span> : LEGEND[notation].map(l => <span key={l}>{l}</span>)}
             <span>Ctrl + scroll to zoom</span>
           </div>
         </div>

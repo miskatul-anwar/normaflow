@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Files, FolderOpen, Code, Table, FileText, Database, GitBranch, Image, Download, ChevronRight, ChevronDown, Copy } from 'lucide-react';
+import { Files, FolderOpen, Code, Table, FileText, Database, GitBranch, Image, Download, ChevronRight, ChevronDown, Copy, Check } from 'lucide-react';
 import { OutputFile } from '../../types';
 import { Button, IconButton } from '@/components/ui/button';
+import { useCopy } from '../../hooks/useCopy';
 
 interface GeneratedFilesSectionProps {
   outputFiles: OutputFile[];
@@ -11,6 +12,8 @@ interface GeneratedFilesSectionProps {
 export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
+  const [copiedFile, setCopiedFile] = useState<string | null>(null);
+  const { copy } = useCopy();
 
   if (!outputFiles || outputFiles.length === 0) {
     return (
@@ -179,11 +182,12 @@ export function GeneratedFilesSection({ outputFiles }: GeneratedFilesSectionProp
                             variant="ghost"
                             size="icon-sm"
                             className="text-gray-300 hover:bg-gray-700 hover:text-white"
-                            label={`Copy ${file.name}`}
-                            icon={<Copy />}
+                            label={copiedFile === file.name ? `Copied ${file.name}` : `Copy ${file.name}`}
+                            icon={copiedFile === file.name ? <Check /> : <Copy />}
                             onClick={() => {
-                              const content = getFileContentString(file);
-                              navigator.clipboard.writeText(content);
+                              void copy(getFileContentString(file));
+                              setCopiedFile(file.name);
+                              setTimeout(() => setCopiedFile(c => (c === file.name ? null : c)), 1600);
                             }}
                           />
                         </div>

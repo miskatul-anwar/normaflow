@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, Copy, Download, Layers, GitBranch,
+  ArrowLeft, Check, Copy, Download, Layers, GitBranch,
   Code, Activity, Database, FileText, BarChart3, Shield, Key, Cpu
 } from 'lucide-react';
 
@@ -18,6 +18,7 @@ import { ErdSection } from './output/ErdSection';
 import { CodeViewer } from './output/CodeViewer';
 import { Button } from '@/components/ui/button';
 import type { WorkspaceTab } from '../hooks/useWorkspaceTabs';
+import { useCopy } from '../hooks/useCopy';
 import { loadCachedResult, saveCachedResult } from '../utils/resultCache';
 
 export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?: WorkspaceTab[] }) {
@@ -145,6 +146,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
   }, [safeResults, multiTables]);
 
   const [activeTab, setActiveTab] = useState("overview");
+  const { copied: sqlCopied, copy: copySql } = useCopy();
 
   const sqlFile = useMemo(() => {
     const files = safeResults?.outputFiles || [];
@@ -411,14 +413,14 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
           )}
 
           {activeTab === 'sql' && sqlFile?.content && (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h4 className="text-lg font-semibold text-gray-900">
-                  SQL Data Definition Language (DDL) {isMultiTable && '(Consolidated Multi-Table)'}
+            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-5 py-3">
+                <h4 className="text-sm font-semibold text-gray-900">
+                  SQL schema <span className="font-normal text-gray-500">{isMultiTable ? '· consolidated, all tables' : '· DDL'}</span>
                 </h4>
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={() => navigator.clipboard.writeText(sqlFile.content)}>
-                    <Copy /> Copy SQL
+                  <Button size="sm" onClick={() => void copySql(sqlFile.content)}>
+                    {sqlCopied ? <Check className="text-teal-600" /> : <Copy />} {sqlCopied ? 'Copied' : 'Copy SQL'}
                   </Button>
                   <Button
                     variant="primary"

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (Output page polish, part 3)
+- **Crow's foot** now has the same toolbar as the other notations: zoom, fit, Copy Mermaid, download `.mmd` and SVG. All four notations render through one viewer.
+- **Chen** diagrams of large schemas (more than 10 relations) use a left-to-right tree layout instead of a force layout, so labels stay readable at 100%.
+- **Copy buttons** (SQL, ERD source, generated-file previews) confirm with a check mark and "Copied" for a moment; a blocked clipboard no longer throws.
+- **SQL tab** header matches the other panels (compact title, same corners).
+
 ### Added (ERD notations)
 - The ERD tab now offers four notations: **Chen**, **Crow's foot**, **Barker** and **UML**. Barker shows rounded entities with `#` unique identifier / `*` mandatory / `o` optional attributes (optional is read from empty values in your data), dashed lines for optional relationships and a bar on the crow's foot when the relationship is part of the identifier. UML shows class boxes with typed attributes and «PK» / «FK» stereotypes and multiplicities (`1`, `0..1`, `0..*`, `1..*`). Chen, Barker and UML are drawn by the bundled Graphviz, with zoom, optional attribute lists and DOT / SVG download named after the notation. Large schemas lay out left-to-right so they grow downwards. Chen cardinality labels now sit beside the entity instead of under its edge.
 
