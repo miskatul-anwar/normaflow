@@ -1,8 +1,57 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitBranch, TrendingUp, TrendingDown, BarChart3, ArrowRight, ChevronRight, ChevronDown, Info } from 'lucide-react';
 import { FunctionalDependency } from '../../types';
 import { Button } from '@/components/ui/button';
+
+/** The analysis for one dependency; rendered directly under the row it belongs to. */
+function DependencyAnalysis({ fd }: { fd: FunctionalDependency }) {
+  return (
+      <div className="p-6">
+        <h6 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <Info className="w-4 h-4" /> Dependency Analysis
+        </h6>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">Unique Groups:</span>
+              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                {fd.uniqueGroups || 'N/A'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">Violations:</span>
+              <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
+                {fd.violations || 0}
+              </span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">LHS Size:</span>
+              <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
+                {Array.isArray(fd.lhs) ? fd.lhs.length : 1}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">Minimality:</span>
+              <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Verified</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
+          <span className="font-medium text-gray-700">Interpretation:</span>
+          <p className="text-gray-600 mt-1">
+            {(fd.confidence || 0) > 0.98
+              ? 'This dependency is highly reliable and recommended for normalization. It shows a strong deterministic relationship between the left-hand side attributes and the right-hand side attribute.'
+              : (fd.confidence || 0) > 0.90
+              ? 'This dependency has moderate confidence and may be useful for normalization. Consider reviewing the violations to understand data quality issues.'
+              : 'This dependency has low confidence and should be reviewed carefully. High violation count suggests potential data quality issues or complex relationships.'}
+          </p>
+        </div>
+      </div>
+  );
+}
 
 export function FunctionalDependenciesSection({ fdData }: { fdData: FunctionalDependency[] }) {
   const [expandedFD, setExpandedFD] = useState<number | null>(null);
@@ -86,7 +135,8 @@ export function FunctionalDependenciesSection({ fdData }: { fdData: FunctionalDe
                 const qualityColor = (fd.confidence || 0) > 0.98 ? 'text-green-600 bg-green-100' : (fd.confidence || 0) > 0.90 ? 'text-yellow-600 bg-yellow-100' : 'text-red-600 bg-red-100';
 
                 return (
-                  <tr key={index} className="hover:bg-gray-50">
+                  <Fragment key={index}>
+                  <tr className={expandedFD === index ? 'bg-gray-50' : 'hover:bg-gray-50'}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                         <span className="font-mono">{lhsStr}</span>
@@ -113,66 +163,28 @@ export function FunctionalDependenciesSection({ fdData }: { fdData: FunctionalDe
                       </Button>
                     </td>
                   </tr>
+                  <AnimatePresence initial={false}>
+                    {expandedFD === index && (
+                      <tr>
+                        <td colSpan={5} className="p-0">
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="overflow-hidden border-y border-gray-200 bg-gray-50"
+                          >
+                            <DependencyAnalysis fd={fd} />
+                          </motion.div>
+                        </td>
+                      </tr>
+                    )}
+                  </AnimatePresence>
+                  </Fragment>
                 );
               })}
             </tbody>
           </table>
         </div>
-
-        <AnimatePresence>
-          {expandedFD !== null && fdData[expandedFD] && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="border-t border-gray-200 bg-gray-50 overflow-hidden"
-            >
-              <div className="p-6">
-                <h6 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Info className="w-4 h-4" /> Dependency Analysis
-                </h6>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-700">Unique Groups:</span>
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                        {fdData[expandedFD].uniqueGroups || 'N/A'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-700">Violations:</span>
-                      <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
-                        {fdData[expandedFD].violations || 0}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-700">LHS Size:</span>
-                      <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
-                        {Array.isArray(fdData[expandedFD].lhs) ? fdData[expandedFD].lhs.length : 1}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-700">Minimality:</span>
-                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Verified</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
-                  <span className="font-medium text-gray-700">Interpretation:</span>
-                  <p className="text-gray-600 mt-1">
-                    {(fdData[expandedFD].confidence || 0) > 0.98
-                      ? 'This dependency is highly reliable and recommended for normalization. It shows a strong deterministic relationship between the left-hand side attributes and the right-hand side attribute.'
-                      : (fdData[expandedFD].confidence || 0) > 0.90
-                      ? 'This dependency has moderate confidence and may be useful for normalization. Consider reviewing the violations to understand data quality issues.'
-                      : 'This dependency has low confidence and should be reviewed carefully. High violation count suggests potential data quality issues or complex relationships.'}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );
