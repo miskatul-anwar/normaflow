@@ -390,7 +390,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
           )}
 
           {activeTab === 'functional-dependencies' && (
-            <FunctionalDependenciesSection fdData={fdData} />
+            <FunctionalDependenciesSection fdData={fdData} tableRows={isMultiTable ? Object.fromEntries(multiTables.map((t: any) => [t.tableName, t.rowCount])) : undefined} />
           )}
 
           {activeTab === 'cardinality' && (

@@ -58,13 +58,24 @@ const PAGE = 50;
 const level = (c: number | undefined): Exclude<Quality, 'all'> => ((c || 0) > 0.98 ? 'high' : (c || 0) > 0.9 ? 'medium' : 'low');
 
 /** `fdData` entries may carry the `table` they were mined from (multi-table runs). */
-export function FunctionalDependenciesSection({ fdData }: { fdData: Array<FunctionalDependency & { table?: string }> }) {
+export const SMALL_TABLE_ROWS = 100;
+
+export function FunctionalDependenciesSection({
+  fdData,
+  tableRows,
+}: {
+  fdData: Array<FunctionalDependency & { table?: string }>;
+  /** Row count per table, so the page can warn about dependencies mined from very small tables. */
+  tableRows?: Record<string, number>;
+}) {
   const [expandedFD, setExpandedFD] = useState<number | null>(null);
   const [query, setQuery] = useState('');
   const [quality, setQuality] = useState<Quality>('all');
   const [shown, setShown] = useState(PAGE);
 
   const hasTables = fdData.some(f => f.table);
+  const smallTables = Object.entries(tableRows ?? {}).filter(([name, rows]) => rows < SMALL_TABLE_ROWS && fdData.some(f => f.table === name));
+  const smallCount = fdData.filter(f => f.table && smallTables.some(([n]) => n === f.table)).length;
   // Keep the original index so an open analysis stays attached to its row while filtering.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -130,6 +141,16 @@ export function FunctionalDependenciesSection({ fdData }: { fdData: Array<Functi
           </div>
         </div>
       </div>
+
+      {smallTables.length > 0 && (
+        <div role="note" className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <p>
+            {smallCount} of these dependencies come from {smallTables.length === 1 ? 'a table' : `${smallTables.length} tables`} with fewer than {SMALL_TABLE_ROWS} rows (
+            {smallTables.map(([n, r]) => `${n}: ${r}`).join(', ')}). With so few rows, a dependency can hold by chance, so treat those as candidates to check, not as rules.
+          </p>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-5 py-3">

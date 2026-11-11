@@ -59,3 +59,22 @@ describe('FunctionalDependenciesSection list handling', () => {
     expect(screen.getByText(/No dependencies match/)).toBeTruthy();
   });
 });
+
+describe('FunctionalDependenciesSection small-table warning', () => {
+  const fd = (table: string, i: number) => ({ lhs: [`a${i}`], rhs: `b${i}`, confidence: 1, coverage: 1, violations: 0, uniqueGroups: 1, table });
+
+  it('warns when dependencies come from tables with fewer than 100 rows', () => {
+    render(<FunctionalDependenciesSection fdData={[fd('customer', 1), fd('customer', 2), fd('invoice', 3)] as any} tableRows={{ customer: 59, invoice: 412 }} />);
+    const note = screen.getByRole('note');
+    expect(note.textContent).toContain('2 of these dependencies');
+    expect(note.textContent).toContain('customer: 59');
+    expect(note.textContent).not.toContain('invoice');
+  });
+
+  it('stays quiet when every table is large or the counts are unknown', () => {
+    const { rerender } = render(<FunctionalDependenciesSection fdData={[fd('invoice', 1)] as any} tableRows={{ invoice: 412 }} />);
+    expect(screen.queryByRole('note')).toBeNull();
+    rerender(<FunctionalDependenciesSection fdData={[fd('invoice', 1)] as any} />);
+    expect(screen.queryByRole('note')).toBeNull();
+  });
+});

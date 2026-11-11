@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Foreign keys:** a link is no longer drawn in both directions between a key and its child table (it produced a bogus 1:1 `invoice.InvoiceId -> invoiceline.InvoiceLineId`), and links where not every value matches are listed as unplaced instead of becoming a constraint that fails on load.
 - **CSV:** the delimiter sniffer no longer misreads files with escaped quotes followed by delimiter-heavy text.
 
+### Added (Output page, part 6)
+- **Small-table warning** on the Dependencies tab: when dependencies come from tables with fewer than 100 rows, a note says how many (Chinook: 295 of 409, from `customer`, `employee`, `genre`, `mediatype` and `playlist`) and that with so few rows a dependency can hold by chance, so they should be treated as candidates to check. It does not change what the engine mines.
+
 ### Fixed (Output page, part 5)
 - **Narrow windows:** the dependency table no longer clips its **View** column below ~1000 px (Coverage and Quality columns hide as the window narrows). Checked at 900x640, 1300x820 and 1700x1000.
 - **Generated SQL:** per-table comments no longer promise "Performance optimized" / "Optimized for reference queries" / "Optimized for analytical queries" (they now say what the table is), and the section banner no longer says "VALIDATED".
