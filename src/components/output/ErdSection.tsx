@@ -5,7 +5,7 @@ import { useCopy } from '../../hooks/useCopy';
 import { buildChenDot, attributeCount } from '../../services/erd/chenErd';
 import { buildBarkerDot, buildUmlDot, type BoxRelation } from '../../services/erd/boxNotations';
 import { renderDot } from '../../services/erd/renderDot';
-import { renderMermaid } from '../../services/erd/renderMermaid';
+import { renderMermaid, withoutAttributes } from '../../services/erd/renderMermaid';
 
 type Notation = 'chen' | 'crow' | 'barker' | 'uml';
 
@@ -55,11 +55,15 @@ export function ErdSection({ relations, erdContent }: Props) {
   // Boxes lay out best top-down; Chen's many small shapes spread better with a force layout.
   const engine = notation === 'chen' && relations.length <= 10 ? 'neato' : 'dot';
 
+  const source = notation === 'crow' ? (showAttributes ? erdContent : withoutAttributes(erdContent)) : dot;
+  const sourceLabel = notation === 'crow' ? 'Mermaid' : 'DOT';
+  const sourceExt = notation === 'crow' ? 'mmd' : 'dot';
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError('');
-    (notation === 'crow' ? renderMermaid(erdContent) : renderDot(dot, engine))
+    (notation === 'crow' ? renderMermaid(source) : renderDot(dot, engine))
       .then(out => {
         if (!cancelled) setSvg(out);
       })
@@ -72,11 +76,8 @@ export function ErdSection({ relations, erdContent }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [dot, notation, engine, erdContent]);
+  }, [dot, notation, engine, source]);
 
-  const source = notation === 'crow' ? erdContent : dot;
-  const sourceLabel = notation === 'crow' ? 'Mermaid' : 'DOT';
-  const sourceExt = notation === 'crow' ? 'mmd' : 'dot';
 
   const tab = (id: Notation) => (
     <Button key={id} size="sm" variant={notation === id ? 'primary' : 'secondary'} onClick={() => setNotation(id)} aria-pressed={notation === id}>
@@ -100,12 +101,10 @@ export function ErdSection({ relations, erdContent }: Props) {
               <Button size="sm" variant="ghost" onClick={() => setZoom(z => clampZoom(z * 1.25))} aria-label="Zoom in" title="Zoom in"><ZoomIn /></Button>
               <Button size="sm" variant="ghost" onClick={() => setZoom(1)} aria-label="Fit to width" title="Fit to width"><Maximize2 /></Button>
             </div>
-            {notation !== 'crow' && (
-              <label className="mr-2 flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={showAttributes} onChange={e => setShowAttributes(e.target.checked)} />
-                Show attributes
-              </label>
-            )}
+            <label className="mr-2 flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={showAttributes} onChange={e => setShowAttributes(e.target.checked)} />
+              Show attributes
+            </label>
             <Button size="sm" onClick={() => void copy(source)}>
               {copied ? <Check className="text-teal-600" /> : <Copy />} {copied ? 'Copied' : `Copy ${sourceLabel}`}
             </Button>

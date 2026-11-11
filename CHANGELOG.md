@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed (Output page, part 4)
+- **Crow's foot** has the **Show attributes** toggle too (the Mermaid diagram collapses to table names only), so all four ERD notations share the same controls.
 - **Normal Forms** in the sidebar counted relations across all four levels (145 for 11 tables); it now shows the relations in the final schema.
 - **Report:** the quality chips for a multi-table run read "Dependencies lost (9/11 tables)" when 9 of 11 were preserved; they now say "Dependencies preserved (9/11 tables)" and turn amber unless all pass. "Data retained" is no longer blank for multi-table runs.
 - **Primary key choice:** when two candidate keys identify each other (an id and a unique name), 3NF synthesis now keeps the preferred one (the id) instead of whichever came first in the minimal cover. Album is keyed on `AlbumId`, not `Title`.

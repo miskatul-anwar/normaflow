@@ -67,3 +67,14 @@ describe('all notations render with the bundled Graphviz', () => {
     }
   }, 30_000);
 });
+
+import { withoutAttributes } from './renderMermaid';
+describe('Mermaid without attributes', () => {
+  it('collapses entity blocks and leaves relationships alone', () => {
+    const src = 'erDiagram\n  customer {\n    int id PK\n    string name\n  }\n  order {\n    int id PK\n  }\n  customer ||--o{ order : "places"\n';
+    const out = withoutAttributes(src);
+    expect(out).not.toContain('int id');
+    expect(out).toContain('customer {');
+    expect(out).toContain('customer ||--o{ order : "places"');
+  });
+});
