@@ -99,3 +99,5 @@ export const WEAK_ALIASES: Array<{ operation: string; pattern: RegExp }> = [
 
 export const NEGATION = /\b(don'?t|do not|dont|without|skip|exclude|except|excluding|no need( to| for)?|never|not)\b/i;
 export const RUN_WORDS = /\b(run|execute|go ahead|start it|and run|then run)\b/i;
+/** Negation after the operation: "sql is not needed", "skip nothing but erd is unnecessary". */
+export const TRAILING_NEGATION = /\b(is(n'?t| not)|are(n'?t| not)|not) (needed|required|necessary|wanted)\b|\bunnecessary\b|\bno thanks\b/;

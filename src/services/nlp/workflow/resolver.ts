@@ -6,6 +6,7 @@ import { getAnchorIndex, scoreOperations } from './anchorIndex';
 import { EmbeddingUnavailableError, type EmbeddingProvider } from './embeddingProvider';
 import { resolveLexical, splitClauses, type Dialect } from './lexicalResolver';
 import { planFor, PlanConflictError } from './planner';
+import { prepareInput } from './inputPrep';
 import { ALL_OPERATION_NAMES } from '../../../config/operations';
 
 export interface Resolution {
@@ -38,7 +39,23 @@ export type ResolveMode = 'hybrid' | 'lexical' | 'embedding';
 export interface ResolveOptions {
   mode?: ResolveMode;
   thresholds?: Thresholds;
+  /** Give up on the embedding model after this long and use keywords only. */
+  embedTimeoutMs?: number;
 }
+
+/** First use loads the model, so this is generous; a hung worker must never leave the UI waiting. */
+export const EMBED_TIMEOUT_MS = 20_000;
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new EmbeddingUnavailableError('Embedding model timed out')), ms);
+  });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
+}
+
+const validVectors = (vs: unknown, n: number): vs is number[][] =>
+  Array.isArray(vs) && vs.length === n && vs.every(v => Array.isArray(v) && v.length > 0 && v.every(x => Number.isFinite(x)));
 
 const EMPTY: Resolution = {
   targets: [],
@@ -52,10 +69,16 @@ const EMPTY: Resolution = {
 };
 
 export async function resolve(
-  text: string,
+  rawText: string,
   provider: EmbeddingProvider,
-  { mode = 'hybrid', thresholds = DEFAULT_THRESHOLDS }: ResolveOptions = {},
+  { mode = 'hybrid', thresholds = DEFAULT_THRESHOLDS, embedTimeoutMs = EMBED_TIMEOUT_MS }: ResolveOptions = {},
 ): Promise<Resolution> {
+  const prepared = prepareInput(rawText);
+  if (!prepared.text) {
+    return { ...EMPTY, message: 'Type what you want to do, for example "convert to 3NF and generate SQL".' };
+  }
+  const text = prepared.text;
+  const inputNote = prepared.truncated ? 'Only the first 400 characters of the request were used.' : undefined;
   const lexical = mode === 'embedding' ? { targets: [], excluded: [], pending: [], options: resolveLexical(text).options, confidence: 'none' as const } : resolveLexical(text);
 
   const targets = [...lexical.targets];
@@ -73,8 +96,11 @@ export async function resolve(
       ? [splitClauses(text).join(' ')].filter(Boolean)
       : lexical.pending;
     try {
-      const index = await getAnchorIndex(provider);
-      const vectors = await provider.embed(queries, 'query');
+      const index = await withTimeout(getAnchorIndex(provider), embedTimeoutMs);
+      const vectors = await withTimeout(provider.embed(queries, 'query'), embedTimeoutMs);
+      if (!validVectors(vectors, queries.length) || vectors[0].length !== index.vectors[0]?.length) {
+        throw new EmbeddingUnavailableError('Embedding model returned unusable vectors');
+      }
       let accepted = 0;
       let sawLow = false;
       vectors.forEach(v => {
@@ -106,6 +132,7 @@ export async function resolve(
     }
   }
 
+  note = [note, inputNote].filter(Boolean).join(' ') || undefined;
   const base: Resolution = { ...EMPTY, options: lexical.options, candidates, source, confidence, excluded };
 
   const both = targets.filter(t => excluded.includes(t));
@@ -123,6 +150,10 @@ export async function resolve(
 
   try {
     const { plan, addedAsDependencies } = planFor(targets, new Set(excluded));
+    // Last line of defence: a plan must only name real operations, once each.
+    if (plan.some(p => !ALL_OPERATION_NAMES.includes(p)) || new Set(plan).size !== plan.length) {
+      return { ...base, targets: [], confidence: 'none', message: 'I could not build a valid pipeline from that request.' };
+    }
     return { ...base, targets, plan, addedAsDependencies, message: note };
   } catch (e) {
     if (e instanceof PlanConflictError) {

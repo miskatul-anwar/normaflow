@@ -54,7 +54,7 @@ export function NLCommandBar({ nl, active = true }: { nl: NLWorkflow; active?: b
         className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-1.5 shadow-sm focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-600/30"
       >
         <Sparkles className="ml-2 size-4 shrink-0 text-teal-600" aria-hidden />
-        <input
+        <input maxLength={1000}
           id={inputId}
           type="text"
           value={draft}
