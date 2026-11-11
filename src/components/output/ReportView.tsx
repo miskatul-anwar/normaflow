@@ -158,7 +158,7 @@ export function ReportView({ results, markdown, fdData, levels, filename = 'norm
             {levels.map((lvl, i) => (
               <li key={lvl.id} className="flex gap-3">
                 <div className="flex flex-col items-center">
-                  <span className="flex size-7 items-center justify-center rounded-full bg-teal-600 text-xs font-semibold text-white">{lvl.id}</span>
+                  <span className="flex h-7 min-w-[3.5rem] items-center justify-center rounded-full bg-teal-600 px-2.5 text-xs font-semibold text-white">{lvl.id}</span>
                   {i < levels.length - 1 && <span className="mt-1 w-px flex-1 bg-gray-200" />}
                 </div>
                 <div className="min-w-0 flex-1 pb-1">
