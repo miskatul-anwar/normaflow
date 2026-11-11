@@ -4560,7 +4560,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     schemaAnalysis: any
   ): Promise<string> {
     let sql = '-- ================================================================\n';
-    sql += '-- VALIDATED TABLE CREATION (Dependency-Ordered)\n';
+    sql += '-- TABLE CREATION (dependency-ordered)\n';
     sql += '-- ================================================================\n\n';
     
     for (const relation of orderedRelations) {
@@ -4585,13 +4585,13 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     sql += `-- Attributes: ${relation.attributes.length}, Rows: ${relation.metadata.rowCount.toLocaleString()}\n`;
     
     if (analysis.complexTables?.includes(relation)) {
-      sql += '-- Classification: COMPLEX TABLE - Performance optimized\n';
+      sql += '-- Kind: complex table (many columns)\n';
     }
     if (analysis.lookupTables?.includes(relation)) {
-      sql += '-- Classification: LOOKUP TABLE - Optimized for reference queries\n';
+      sql += '-- Kind: lookup table\n';
     }
     if (analysis.factTables?.includes(relation)) {
-      sql += '-- Classification: FACT TABLE - Optimized for analytical queries\n';
+      sql += '-- Kind: fact table\n';
     }
     
     sql += `CREATE TABLE ${tableName} (\n`;
