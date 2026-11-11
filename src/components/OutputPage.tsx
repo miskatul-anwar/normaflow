@@ -417,7 +417,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
             <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
               <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-5 py-3">
                 <h4 className="text-sm font-semibold text-gray-900">
-                  SQL schema <span className="font-normal text-gray-500">{isMultiTable ? '· consolidated, all tables' : '· DDL'}</span>
+                  SQL schema <span className="hidden font-normal text-gray-500 lg:inline">{isMultiTable ? '· consolidated, all tables' : '· DDL'}</span>
                 </h4>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={() => void copySql(sqlFile.content)}>
