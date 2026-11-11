@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-11-11
+
 ### Changed (system notifications)
-- Messages no longer pop up inside the app. Pipeline results, errors, warnings, saves and uploads are sent to the operating system's notification centre, titled **NormaFlow · <workspace name>** (a renamed workspace shows its new name) with the app icon and the message as the text. Routine confirmations (adding a step, connecting two steps) are only logged. The in-app toast stack, the bottom status pill and the notification sound are removed, and the `sonner` dependency with them.
+- Messages no longer pop up inside the app. Pipeline results, errors, warnings, saves and uploads are sent to the operating system's notification centre. The title is the **workspace name** (a renamed workspace shows its new name) and the text is the message; the OS already shows the app name and icon. Routine confirmations (adding a step, connecting two steps) are only logged. The in-app toast stack, the bottom status pill and the notification sound are removed, and the `sonner` dependency with them.
 - The desktop app uses the Tauri notification plugin (permission is asked on first use); a plain browser falls back to the Web Notifications API; if neither is allowed nothing is shown.
 - The **Undo** that used to sit on the "Pipeline built" toast is now an **Undo last build** button under the command bar.
 

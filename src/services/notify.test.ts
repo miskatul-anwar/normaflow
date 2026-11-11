@@ -24,10 +24,10 @@ afterEach(() => {
 });
 
 describe('notification content', () => {
-  it('names the app and the workspace, and carries the message', async () => {
+  it('titles it with the workspace name only, and carries the message', async () => {
     const { composeNotification } = await load();
     expect(composeNotification('Pipeline completed for 2 table(s)', 'Sales data')).toEqual({
-      title: 'NormaFlow · Sales data',
+      title: 'Sales data',
       body: 'Pipeline completed for 2 table(s)',
     });
   });
@@ -44,17 +44,17 @@ describe('desktop (Tauri) delivery', () => {
     (window as any).__TAURI_INTERNALS__ = {};
   });
 
-  it('sends a system notification titled with the app and the current workspace name', async () => {
+  it('sends a system notification titled with the current workspace name', async () => {
     const { notify, setWorkspaceNameResolver } = await load();
     let name = 'Workspace 1';
     setWorkspaceNameResolver(id => (id === 't1' ? name : undefined));
     notify('success', 'Workflow saved (4 operations)', 't1');
     await flush();
-    expect(sendNotification).toHaveBeenCalledWith({ title: 'NormaFlow · Workspace 1', body: 'Workflow saved (4 operations)' });
+    expect(sendNotification).toHaveBeenCalledWith({ title: 'Workspace 1', body: 'Workflow saved (4 operations)' });
     name = 'Chinook'; // a rename is picked up
     notify('error', 'Processing failed', 't1');
     await flush();
-    expect(sendNotification).toHaveBeenLastCalledWith({ title: 'NormaFlow · Chinook', body: 'Processing failed' });
+    expect(sendNotification).toHaveBeenLastCalledWith({ title: 'Chinook', body: 'Processing failed' });
   });
 
   it('asks for permission once and stays silent when it is refused', async () => {
@@ -97,7 +97,7 @@ describe('browser fallback', () => {
     setWorkspaceNameResolver(() => 'Workspace 2');
     notify('success', 'Pipeline completed', 't2');
     await flush();
-    expect(ctor).toHaveBeenCalledWith('NormaFlow · Workspace 2', expect.objectContaining({ body: 'Pipeline completed', icon: expect.stringMatching(/icon\.png$/) }));
+    expect(ctor).toHaveBeenCalledWith('Workspace 2', expect.objectContaining({ body: 'Pipeline completed', icon: expect.stringMatching(/icon\.png$/) }));
   });
 
   it('does nothing visible when notifications are unavailable', async () => {

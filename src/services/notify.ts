@@ -2,7 +2,7 @@
  * System notifications. The app has no in-app toasts: progress and results are reported
  * through the operating system's notification centre, as
  *
- *     NormaFlow · <workspace name>        (+ the app icon, which the OS shows beside it)
+ *     <workspace name>        (the OS already shows the app name and icon beside it)
  *     <message>
  *
  * In the desktop app this uses the Tauri notification plugin; in a plain browser (development)
@@ -29,12 +29,12 @@ export interface NotificationContent {
 const MAX_BODY = 240;
 const clean = (s: string) => s.replace(/\s+/g, ' ').trim();
 
-/** What the OS will show: app name and workspace in the title, the message in the body. */
+/** What the OS will show: the workspace name as the title, the message as the body. The app name is the OS's job. */
 export function composeNotification(message: string, workspace?: string): NotificationContent {
   const name = workspace ? clean(workspace) : '';
   const body = clean(message);
   return {
-    title: name ? `${APP_NAME} · ${name}` : APP_NAME,
+    title: name || APP_NAME,
     body: body.length > MAX_BODY ? `${body.slice(0, MAX_BODY - 1)}…` : body,
   };
 }
