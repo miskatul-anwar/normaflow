@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed (Output page, part 5)
 - **Narrow windows:** the dependency table no longer clips its **View** column below ~1000 px (Coverage and Quality columns hide as the window narrows). Checked at 900x640, 1300x820 and 1700x1000.
+- **Normal Forms** at 900 px: the BCNF tab was cut off and long relation names ran into the attribute count; the tab labels shorten and the card header wraps.
 - **Quality Assurance:** "Lost Dependencies: 0" is grey instead of an alarming red.
 - **Chen ERD:** the 1 / M / N cardinality labels sit clear of the entity boxes.
 

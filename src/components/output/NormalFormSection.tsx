@@ -75,7 +75,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
               >
                 <Icon className="size-4" aria-hidden />
                 {short}
-                <span className="hidden text-xs font-normal text-gray-400 md:inline">{full.replace(' normal form', '')}</span>
+                <span className="hidden text-xs font-normal text-gray-400 xl:inline">{full.replace(' normal form', '')}</span>
                 {has && <span className={`rounded-full px-2 py-0.5 text-xs ${activeNF === id ? 'bg-teal-50 text-teal-700' : 'bg-gray-100 text-gray-600'}`}>{n}</span>}
               </button>
             ))}
@@ -87,7 +87,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
             <div className="space-y-4">
               {activeRelations.map((relation, index) => (
                 <div key={index} className="rounded-lg border border-gray-200 p-4 transition-shadow hover:shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                     <h4 className="flex items-center gap-2 text-base font-semibold text-gray-900">
                       <Table className="w-5 h-5 text-gray-500" />
                       {relation.name}
