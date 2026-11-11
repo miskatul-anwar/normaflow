@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import type { Node } from '@xyflow/react';
 
 import { PanelLeftOpen } from 'lucide-react';
 import Heading from './components/heading';
-import OutputPage from './components/OutputPage';
+const OutputPage = lazy(() => import('./components/OutputPage'));
 import { OperationPalette } from './components/workflow/OperationPalette';
 import { FlowCanvas } from './components/workflow/FlowCanvas';
 import { useNormalization } from './hooks/useNormalization';
@@ -415,7 +415,15 @@ function AppShell() {
       <Routes>
         <Route path="/" element={null} />
         {/* Keyed by tab so each workspace gets its own results, section and scroll position. */}
-        <Route path="/output" element={<OutputPage key={activeId} tabId={activeId} tabs={tabs} />} />
+        <Route
+          path="/output"
+          element={
+            // The Output page (tables, SQL viewer, diagrams) loads on first visit, not at start-up.
+            <Suspense fallback={null}>
+              <OutputPage key={activeId} tabId={activeId} tabs={tabs} />
+            </Suspense>
+          }
+        />
       </Routes>
     </div>
   );

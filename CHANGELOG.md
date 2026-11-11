@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (smaller start-up bundle)
+- The start-up JavaScript dropped from about 1.95 MB to about 0.8 MB (React, the flow canvas and the app). The Output page, Mermaid (crow's-foot diagrams) and the PDF library now load on first use. Build warning about large chunks is gone: what remains above 500 kB is Graphviz WebAssembly, Mermaid's diagram engines, the spreadsheet parser and the embedding worker, all loaded on demand from the installed app.
+
 ## [3.0.0] - 2026-11-11
 
 ### Changed (system notifications)

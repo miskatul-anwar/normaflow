@@ -30,6 +30,22 @@ export default defineConfig(async () => ({
   // Workers are created with { type: 'module' }; build them as ES modules so they can
   // lazy-load code (the spreadsheet parser) instead of bundling it into every start.
   worker: { format: 'es' as const },
+  build: {
+    // What remains above 500 kB is loaded on demand from the installed app's own files (no network):
+    // Graphviz WebAssembly, Mermaid diagram engines, the spreadsheet parser and the embedding worker.
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        // Stable vendor chunks keep the start-up bundle small and let the cache survive app-only changes.
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('@xyflow') || id.includes('d3-')) return 'flow';
+          if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) return 'react';
+          return undefined;
+        },
+      },
+    },
+  },
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   clearScreen: false,
   server: {

@@ -101,9 +101,7 @@ export function ReportView({ results, markdown, fdData, levels, filename = 'norm
   const download = async () => {
     setBusy(true);
     try {
-      // Let the button repaint before the synchronous PDF build.
-      await new Promise(r => setTimeout(r, 0));
-      downloadMarkdownAsPdf(markdown, `${filename}.pdf`, 'NormaFlow report');
+      await downloadMarkdownAsPdf(markdown, `${filename}.pdf`, 'NormaFlow report');
     } finally {
       setBusy(false);
     }

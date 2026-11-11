@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react';
-import mermaid from 'mermaid';
 import { Copy, Download, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+// Mermaid is large, so it is loaded when a crow's-foot diagram is first drawn.
 // Diagrams are built from untrusted CSV headers: never let Mermaid run scripts or raw HTML.
-mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
+let mermaidReady: Promise<typeof import('mermaid').default> | null = null;
+function loadMermaid() {
+  mermaidReady ??= import('mermaid').then(m => {
+    m.default.initialize({ startOnLoad: false, securityLevel: 'strict' });
+    return m.default;
+  });
+  return mermaidReady;
+}
 
 interface SVGPreviewSectionProps {
   erdContent: string;
@@ -26,6 +33,7 @@ export function SVGPreviewSection({ erdContent }: SVGPreviewSectionProps) {
       setIsLoading(true);
       setError('');
       const uniqueId = `erd-preview-${Math.random().toString(36).substring(2, 9)}`;
+      const mermaid = await loadMermaid();
       const { svg } = await mermaid.render(uniqueId, content);
       setSvgContent(svg);
       setIsLoading(false);

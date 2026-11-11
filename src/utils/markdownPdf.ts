@@ -2,10 +2,10 @@
  * Markdown -> PDF, entirely in the browser (jsPDF). Used by the report's Download button.
  * Handles what the generated reports contain: headings, paragraphs, lists, GFM tables,
  * code blocks, quotes and rules. Inline styling is flattened to plain text.
+ * jsPDF is loaded on first use so it stays out of the start-up bundle.
  */
 import { marked, type Token, type Tokens } from 'marked';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import type { jsPDF } from 'jspdf';
 
 // Built-in PDF fonts are WinAnsi only: map the symbols reports use, drop the rest.
 const SYMBOLS: Record<string, string> = {
@@ -33,8 +33,9 @@ function inlineText(tokens: Token[] | undefined, fallback = ''): string {
 
 const decode = (s: string) => s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 
-export function markdownToPdf(markdown: string, title = 'Report'): jsPDF {
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+export async function markdownToPdf(markdown: string, title = 'Report'): Promise<jsPDF> {
+  const [{ jsPDF: PDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
+  const doc = new PDF({ unit: 'pt', format: 'a4' });
   const margin = 48;
   const width = doc.internal.pageSize.getWidth() - margin * 2;
   const bottom = doc.internal.pageSize.getHeight() - margin;
@@ -136,6 +137,6 @@ export function markdownToPdf(markdown: string, title = 'Report'): jsPDF {
   return doc;
 }
 
-export function downloadMarkdownAsPdf(markdown: string, filename: string, title?: string): void {
-  markdownToPdf(markdown, title ?? filename).save(filename.endsWith('.pdf') ? filename : `${filename}.pdf`);
+export async function downloadMarkdownAsPdf(markdown: string, filename: string, title?: string): Promise<void> {
+  (await markdownToPdf(markdown, title ?? filename)).save(filename.endsWith('.pdf') ? filename : `${filename}.pdf`);
 }

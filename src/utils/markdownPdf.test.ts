@@ -4,14 +4,14 @@ import { mineFunctionalDependencies } from '../services/processors/fdMiner';
 
 describe('markdown to PDF', () => {
   const md = '# Title\n\nSome **bold** text with `code`.\n\n- a\n- b\n\n| A | B |\n|---|---|\n| 1 → 2 | ✅ |\n\n```sql\nCREATE TABLE t (id INT);\n```\n\n<script>alert(1)</script>\n';
-  it('produces a valid multi-element PDF', () => {
-    const doc = markdownToPdf(md, 'Test');
+  it('produces a valid multi-element PDF', async () => {
+    const doc = await markdownToPdf(md, 'Test');
     const bytes = new Uint8Array(doc.output('arraybuffer'));
     expect(String.fromCharCode(...bytes.slice(0, 5))).toBe('%PDF-');
     expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
   });
-  it('paginates long reports', () => {
-    const doc = markdownToPdf(Array.from({ length: 300 }, (_, i) => `Line ${i}`).join('\n\n'));
+  it('paginates long reports', async () => {
+    const doc = await markdownToPdf(Array.from({ length: 300 }, (_, i) => `Line ${i}`).join('\n\n'));
     expect(doc.getNumberOfPages()).toBeGreaterThan(2);
   });
   it('maps symbols to the PDF-safe subset', () => {
