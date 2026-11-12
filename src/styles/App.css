@@ -512,9 +512,11 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 }
 .nf-tabbar {
   display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  padding: 0.4rem 0.75rem 0;
+  align-items: center;
+  /* Floating pills on the page background. The space around the strip equals the shell's own gap, so the tabs sit the
+     same distance from the window edge and from the header below. */
+  gap: 0.5rem;
+  padding: 0.75rem 0.75rem 0.75rem;
   overflow-x: auto;
   flex: none;
 }
@@ -522,7 +524,7 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   margin-left: auto;
   display: flex;
   align-items: center;
-  padding: 0 0 4px 8px;
+  padding: 0 0 0 8px;
 }
 .nf-tab {
   display: flex;
@@ -530,32 +532,26 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   gap: 6px;
   max-width: 200px;
   min-width: 96px;
-  padding: 6px 8px 6px 12px;
+  padding: 7px 8px 7px 14px;
   font-size: 12px;
   font-weight: 500;
   color: var(--nf-text-2);
-  background: var(--tab-bg, color-mix(in srgb, var(--nf-surface) 55%, transparent));
+  background: var(--tab-bg, color-mix(in srgb, var(--nf-surface) 94%, transparent));
   border: 1px solid var(--nf-border-strong);
-  border-top: 3px solid var(--tab-accent, transparent);
-  border-bottom: none;
-  border-radius: 10px 10px 0 0;
+  border-radius: 0.85rem; /* the header's radius: every floating piece is rounded the same */
+  /* A coloured tab shows its colour as a bar along the top edge, inside the rounded shape. */
+  box-shadow: inset 0 3px 0 var(--tab-accent, transparent), 0 1px 4px rgba(0, 0, 0, 0.05);
   cursor: pointer;
   user-select: none;
 }
 .nf-tab:hover {
-  background: color-mix(in srgb, var(--nf-surface) 85%, transparent);
+  background: var(--tab-bg, var(--nf-surface));
 }
 .nf-tab.is-active {
   color: var(--nf-text);
-  background: var(--tab-bg, var(--nf-surface-2));
-  border-left-color: transparent;
-  border-right-color: transparent;
-  /* Overlap the header by 1px so the two surfaces join without a seam. */
-  position: relative;
-  z-index: 2;
-  margin-bottom: -1px;
-  padding-bottom: 7px;
-  box-shadow: -1px 0 0 rgba(15, 23, 42, 0.07), 1px 0 0 rgba(15, 23, 42, 0.07);
+  background: var(--tab-bg, var(--nf-surface));
+  border-color: #0d9488;
+  box-shadow: inset 0 3px 0 var(--tab-accent, transparent), 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 .nf-tab:focus-visible {
   outline: 2px solid #0d9488;
@@ -688,7 +684,7 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   outline: none;
 }
 
-/* Seamless tab → header: the header takes the active tab's surface and sits directly under the strip. */
+/* The header takes the active tab's tint and floats below the strip, one shell gap away. */
 .nf-app {
   --nf-chrome-bg: var(--nf-chrome-base);
 }
@@ -699,10 +695,6 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
   background: var(--nf-chrome-bg);
   backdrop-filter: none;
   transition: background-color 0.15s ease;
-}
-/* A first tab shares the header's left edge, so that corner must be square. */
-.nf-app.is-first-active .nf-header {
-  border-top-left-radius: 0;
 }
 .nf-tab {
   transition: background-color 0.15s ease;

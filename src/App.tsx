@@ -389,7 +389,7 @@ function AppShell() {
 
   return (
     <div
-      className={`nf-app${tabs[0]?.id === activeId ? ' is-first-active' : ''}`}
+      className="nf-app"
       // The header takes the active tab's surface colour so the two read as one piece, on both pages.
       style={{ ['--nf-chrome-bg' as string]: activeSurface(tabs.find(t => t.id === activeId)?.color ?? null) }}
     >

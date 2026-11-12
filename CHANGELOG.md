@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (floating workspace tabs)
+- The workspace tabs are now floating, fully rounded pills with the same radius and shadow as the header, instead of file-folder tabs joined to it. The space is even: 12 px above the strip, 12 px between the strip and the header, 12 px at the left edge, 8 px between tabs. The active tab has a teal outline; a tab colour shows as a bar along its top edge. The header still takes the active tab's tint.
+
 ### Added (model-based relation names)
 - Relations created by normalization are no longer named by joining column names (`address_city_zip`). The engine gives each new relation an opaque id (`relation_1`, ...); the relation that holds the table's key keeps the file name; the others are named by a small on-device model (SmolLM2-360M-Instruct, 4-bit, Apache-2.0) as one noun phrase, or stay "unnamed" with their id when there is no answer. No naming rules are written by hand.
 - The model sees the **column names only** (never rows) and runs in a Web Worker with remote loading off, so data stays on the machine. Only the relations of the final schema are named (one model call per distinct set of columns, about 1 s each in Node; about 58 s for a 3-relation table including the first model load in Chromium).
