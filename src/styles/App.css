@@ -822,3 +822,23 @@ code, pre, kbd, samp, .font-mono, pre *, code * {
 .react-flow__controls-button {
   transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
+
+/* Modal dialog (workspace naming). */
+.nf-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(var(--nf-shadow), 0.45);
+}
+.nf-modal {
+  width: min(420px, 100%);
+  padding: 1.25rem;
+  background: var(--nf-surface);
+  border: 1px solid var(--nf-border);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px -12px rgba(var(--nf-shadow), 0.35);
+}

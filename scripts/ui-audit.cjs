@@ -91,6 +91,8 @@ const overflowProbe = () => {
           for (const o of await page.evaluate(overflowProbe)) findings.push(`${tag} / ${view}: ${o}`);
         };
         await page.goto(URL);
+        await check('workspace naming dialog');
+        await page.getByRole('button', { name: 'Start' }).click();
         await check('pipeline, empty');
         await page.setInputFiles('input[type=file]', files);
         await page.fill('input[aria-label^="Describe"]', REQUEST);

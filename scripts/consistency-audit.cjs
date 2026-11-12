@@ -55,6 +55,7 @@ const probe = () => {
     const page = await browser.newPage({ viewport: { width: 1300, height: 820 } });
     await page.addInitScript(t => localStorage.setItem('normaflow.theme', t), theme);
     await page.goto(URL);
+    await page.getByRole('button', { name: 'Start' }).click(); // the launch dialog asks for a workspace name
     await page.setInputFiles('input[type=file]', FILES);
     await page.fill('input[aria-label^="Describe"]', REQUEST);
     await page.keyboard.press('Enter');

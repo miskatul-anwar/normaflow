@@ -36,10 +36,12 @@ export function useWorkspaceTabs() {
   const activeRef = useRef(activeId);
   activeRef.current = activeId;
 
-  const addTab = useCallback((): string | null => {
+  /** Adds a tab. A given name is used as is (and stops a loaded file from renaming it); otherwise "Workspace n". */
+  const addTab = useCallback((name?: string): string | null => {
     if (tabsRef.current.length >= MAX_TABS) return null;
     const n = ++counter.current;
-    const tab: WorkspaceTab = { id: `t${n}`, title: `Workspace ${n}`, autoTitle: true, color: null };
+    const given = name?.trim().slice(0, 40);
+    const tab: WorkspaceTab = { id: `t${n}`, title: given || `Workspace ${n}`, autoTitle: !given, color: null };
     tabsRef.current = [...tabsRef.current, tab];
     setTabs(tabsRef.current);
     setActiveId(tab.id);
@@ -106,5 +108,8 @@ export function useWorkspaceTabs() {
     });
   }, []);
 
-  return { tabs, activeId, status, addTab, closeTab, renameTab, setTabColor, suggestTitle, selectTab, cycleTab, setStatus };
+  /** The default name the next new workspace would get. */
+  const nextDefaultName = useCallback(() => `Workspace ${counter.current + 1}`, []);
+
+  return { tabs, activeId, nextDefaultName, status, addTab, closeTab, renameTab, setTabColor, suggestTitle, selectTab, cycleTab, setStatus };
 }

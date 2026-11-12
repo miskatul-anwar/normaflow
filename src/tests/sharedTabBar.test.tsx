@@ -37,7 +37,9 @@ describe('one tab bar for the pipeline and the output page', () => {
     saveCachedResult(sqlResult('SELECT 2;'), 't2');
     window.history.pushState({}, '', '/output');
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'New workspace' })); // adds t2 and selects it
+    fireEvent.click(screen.getByRole('button', { name: 'Start' })); // the first workspace is named on launch
+    fireEvent.click(screen.getByRole('button', { name: 'New workspace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create workspace' })); // accepts "Workspace 2"; adds t2 and selects it
     expect(window.location.pathname).toBe('/output');
     expect(document.querySelector('[aria-current="true"].nf-tab-title')!.textContent).toContain('Workspace 2');
 

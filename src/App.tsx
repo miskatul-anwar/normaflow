@@ -12,7 +12,8 @@ import { useNormalization } from './hooks/useNormalization';
 import { useNLWorkflow } from './hooks/useNLWorkflow';
 import { NLCommandBar } from './components/nl/NLCommandBar';
 import { WorkspaceTabBar } from './components/workflow/WorkspaceTabBar';
-import { useWorkspaceTabs, type TabStatus } from './hooks/useWorkspaceTabs';
+import { useWorkspaceTabs, MAX_TABS, type TabStatus } from './hooks/useWorkspaceTabs';
+import { WorkspaceNameDialog } from './components/workflow/WorkspaceNameDialog';
 import { activeSurface } from './utils/tabColors';
 import { prerequisitesToAdd } from './services/nlp/workflow/planner';
 import { usePaletteResize } from './hooks/usePaletteResize';
@@ -342,6 +343,13 @@ function AppShell() {
   const tabsApi = useWorkspaceTabs();
   const { tabs, activeId, status, addTab, closeTab, cycleTab } = tabsApi;
 
+  // Naming: the first workspace is named when the app opens, every new one when + is pressed.
+  const [naming, setNaming] = useState<'first' | 'new' | null>('first');
+  const askForNewWorkspace = useCallback(() => {
+    if (tabsRef.current.length >= MAX_TABS) return;
+    setNaming('new');
+  }, []);
+
   // System notifications name the workspace (its current title, so renames are picked up).
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
@@ -366,7 +374,7 @@ function AppShell() {
       const mod = e.ctrlKey || e.metaKey;
       if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 't') {
         e.preventDefault();
-        addTab();
+        askForNewWorkspace();
       } else if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'w') {
         e.preventDefault();
         requestClose(activeId);
@@ -377,7 +385,7 @@ function AppShell() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [activeId, addTab, cycleTab, requestClose]);
+  }, [activeId, askForNewWorkspace, cycleTab, requestClose]);
 
   return (
     <div
@@ -391,7 +399,7 @@ function AppShell() {
         activeId={activeId}
         status={status}
         onSelect={tabsApi.selectTab}
-        onAdd={addTab}
+        onAdd={askForNewWorkspace}
         onClose={requestClose}
         onRename={tabsApi.renameTab}
         onColor={tabsApi.setTabColor}
@@ -426,6 +434,29 @@ function AppShell() {
           }
         />
       </Routes>
+      {naming === 'first' && (
+        <WorkspaceNameDialog
+          title="Name your workspace"
+          suggestion={tabs[0]?.title ?? 'Workspace 1'}
+          confirmLabel="Start"
+          onConfirm={name => {
+            if (tabs[0]) tabsApi.renameTab(tabs[0].id, name);
+            setNaming(null);
+          }}
+        />
+      )}
+      {naming === 'new' && (
+        <WorkspaceNameDialog
+          title="New workspace"
+          suggestion={tabsApi.nextDefaultName()}
+          existing={tabs.map(t => t.title)}
+          onCancel={() => setNaming(null)}
+          onConfirm={name => {
+            addTab(name);
+            setNaming(null);
+          }}
+        />
+      )}
     </div>
   );
 }

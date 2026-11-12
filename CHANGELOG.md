@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (workspace naming)
+- The app asks for a workspace name when it opens, and the **+** button (or Ctrl/Cmd+T) asks for a name before adding a workspace. Enter confirms, Escape or Cancel adds nothing (the first prompt cannot be dismissed, since a workspace must exist), an empty name is refused, and a duplicate name is allowed with a note. A name you choose is kept when you upload a file (a file used to rename an untouched tab). The dialog is modal: the page behind it is inert and Tab stays inside.
+
 ### Added
 - **Light and dark mode.** A switch at the end of the workspace strip (so it is on both the pipeline and the Output page) toggles the theme. With no choice made, the app follows the operating system; the choice is remembered. Diagrams stay on a light page in dark mode so their colours stay true.
 - `docs/QUALITY.md`: the app assessed against the ISO/IEC 25010 characteristics and ISO/IEC 25012 data quality, with the evidence for each and what is not covered. `npm run quality` runs the automated gates; `npm run audit:a11y` runs an axe-core audit of the pipeline page and every Output tab in both themes (currently 0 violations).

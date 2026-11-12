@@ -41,6 +41,7 @@ fs.writeFileSync(csv, rows.join('\n'));
       }
     }, theme);
     await page.goto(URL);
+    await page.getByRole('button', { name: 'Start' }).click(); // the launch dialog asks for a workspace name
     await page.setInputFiles('input[type=file]', csv);
     const scan = async name => {
       await page.evaluate(src => {
