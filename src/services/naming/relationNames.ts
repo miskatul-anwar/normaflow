@@ -98,18 +98,29 @@ export interface NameSetOptions {
 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every(x => b.includes(x));
 
 /**
+ * The relation that keeps the table's own (file) name: the one that holds the most columns of the table's key. When no
+ * relation holds the whole key (the decomposition may use an equivalent key), the one with the largest key of its own
+ * wins, which is the relation that links the others, and then the one with the most columns.
+ */
+export function mainOf<T extends Pick<NameableRelation, 'attributes' | 'primaryKey'>>(set: T[], primaryKey: string[]): T | undefined {
+  const held = (r: T) => primaryKey.filter(k => r.attributes.includes(k)).length;
+  return [...set].sort(
+    (a, b) =>
+      held(b) - held(a) ||
+      Number(sameSet(b.primaryKey, primaryKey)) - Number(sameSet(a.primaryKey, primaryKey)) ||
+      b.primaryKey.length - a.primaryKey.length ||
+      b.attributes.length - a.attributes.length,
+  )[0];
+}
+
+/**
  * Gives every relation in one normal-form set its final name and rewrites foreign-key targets to match.
  * `name` becomes a safe identifier; `displayName` is the text people read; `nameSource` says where it came from.
  */
 export function nameRelationSet(set: NameableRelation[], opts: NameSetOptions): void {
   if (set.length === 0) return;
   const registry = opts.registry ?? new IdentifierRegistry();
-  const holdsKey = set.filter(r => opts.primaryKey.length > 0 && opts.primaryKey.every(k => r.attributes.includes(k)));
-  const main = [...(holdsKey.length ? holdsKey : set)].sort(
-    (a, b) =>
-      Number(sameSet(b.primaryKey, opts.primaryKey)) - Number(sameSet(a.primaryKey, opts.primaryKey)) ||
-      b.attributes.length - a.attributes.length,
-  )[0];
+  const main = mainOf(set, opts.primaryKey);
 
   const rename = new Map<string, string>();
   const decided = set.map(r => {

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Root-level leftovers: `NOT_DONE.md`, `IMPROVEMENTS.md` (the audit work list and its open-items file; both remain in git history), a duplicate `icon.png` (the app uses `public/icon.png`) and `shell.nix`.
 
 ### Fixed
+- Relation naming: when the decomposition uses a key equivalent to the table's own (for example `product_name` for `product_id`), no relation held the whole key and the file name went to the first relation, often the wrong one. The file name now goes to the relation holding the most key columns, then the one with the largest key of its own.
 - Output page sidebar: the active row's teal outline was cut off along its top edge when it was the first row under a section heading (Overview, Normal Forms, ERD Diagram); the sticky heading covered it. There is now a little space under each heading.
 
 ### Changed (floating workspace tabs)

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DatabaseService } from '../services/api/databaseService';
-import { cleanModelName, nameRelationSet, relationSignature } from '../services/naming/relationNames';
+import { cleanModelName, mainOf, nameRelationSet, relationSignature } from '../services/naming/relationNames';
 import { namingMessages } from '../services/naming/namingPrompt';
 
 const csv = (name: string, text: string) => new File([text], name, { type: 'text/csv' });
@@ -39,6 +39,18 @@ describe('nameRelationSet', () => {
     expect(b.name).toBe('relation_3');
     expect((b as any).nameSource).toBe('placeholder');
     expect(main.foreignKeys[0].references).toBe('Customer');
+  });
+});
+
+describe('mainOf', () => {
+  it('keeps the file name on the linking relation when no relation holds the whole key', () => {
+    const rel = (name: string, attributes: string[], primaryKey: string[]) => ({ name, attributes, primaryKey });
+    const customers = rel('c', ['customer_id', 'customer_name', 'customer_city'], ['customer_city', 'customer_name']);
+    const orders = rel('o', ['order_id', 'customer_id', 'order_date'], ['order_id']);
+    const lines = rel('l', ['order_id', 'product_name', 'quantity'], ['order_id', 'product_name']);
+    const products = rel('p', ['product_id', 'product_name', 'unit_price'], ['product_name']);
+    // The table's key was (order_id, product_id), but the decomposition used the equivalent product_name.
+    expect(mainOf([customers, orders, lines, products], ['order_id', 'product_id'])).toBe(lines);
   });
 });
 

@@ -9,6 +9,7 @@ import {
   cleanModelName,
   nameRelationSet,
   relationSignature,
+  mainOf,
   type ChosenName,
   type NameableRelation,
 } from './relationNames';
@@ -35,18 +36,6 @@ export interface ApplyNamesOptions {
   onProgress?: (done: number, total: number) => void;
   /** Called when the model could not be used (the relations stay unnamed). */
   onUnavailable?: (reason: string) => void;
-}
-
-const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every(x => b.includes(x));
-
-/** Which relation of a set is the one that keeps the table's name (it is never sent to the model). */
-function mainOf(set: NameableRelation[], primaryKey: string[]): NameableRelation | undefined {
-  const holds = set.filter(r => primaryKey.length > 0 && primaryKey.every(k => r.attributes.includes(k)));
-  return [...(holds.length ? holds : set)].sort(
-    (a, b) =>
-      Number(sameSet(b.primaryKey, primaryKey)) - Number(sameSet(a.primaryKey, primaryKey)) ||
-      b.attributes.length - a.attributes.length,
-  )[0];
 }
 
 export async function applyNames(tables: NamableTable[], opts: ApplyNamesOptions = {}): Promise<void> {
