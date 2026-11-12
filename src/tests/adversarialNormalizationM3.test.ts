@@ -227,7 +227,7 @@ describe('Milestone 3 Challenger: Adversarial Stress Suite for 3NF Synthesis & D
       const relations = await NormalizationEngine.synthesize3NF([], [], data, allAttrs);
 
       expect(relations).toHaveLength(1);
-      expect(relations[0].name).toBe('MainRelation_3NF');
+      expect(relations[0].name).toMatch(/^relation_\d+$/);
       expect(relations[0].sourceType).toBe('3NF_Universal');
       expect([...relations[0].attributes].sort()).toEqual(['colA', 'colB', 'colC']);
       expect(relations[0].primaryKey).toEqual(['colA', 'colB', 'colC']);

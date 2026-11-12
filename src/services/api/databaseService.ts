@@ -10,6 +10,7 @@ import { RelationDetectorService } from '../processors/relationDetector';
 import { chooseKey, type KeyChoice } from '../processors/keySelection';
 import { splitMultiValuedColumns } from '../processors/atomicSplit';
 import { verifyLosslessOnData } from '../processors/instanceVerification';
+import { newRelationId, resetRelationIds } from '../naming/relationNames';
 import { buildSchema, emitMermaidErd, toDecomposedRelations } from '../processors/schemaGraph';
 import { buildMultiTableReport } from '../processors/multiTableReport';
 import { IdentifierRegistry } from '../utils/identifiers';
@@ -836,7 +837,7 @@ export class DatabaseService {
       }
       relations1NF = [
         {
-          name: `${tableName}_1NF`,
+          name: tableName,
           attributes: [...attributes],
           primaryKey: this.suggestPrimaryKey(data, attributes),
           foreignKeys: [],
@@ -948,7 +949,7 @@ export class DatabaseService {
         if (!keyChoice) await runKeyDiscovery();
         sourceRels = [
           {
-            name: 'MainRelation',
+            name: newRelationId(),
             attributes,
             primaryKey: keyChoice!.primaryKey,
             foreignKeys: [],
@@ -3314,6 +3315,7 @@ export class DatabaseService {
     options: ProcessingOptions = {}
   ): Promise<ProcessingResult> {
     const startTime = Date.now();
+    resetRelationIds();
     try {
       if (!files || files.length === 0) {
         throw new Error('No files uploaded for processing.');

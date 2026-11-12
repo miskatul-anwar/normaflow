@@ -11,7 +11,7 @@
  * - Maintains all existing features
  */
 
-import { DataUtils } from '../utils/dataUtils';
+import { newRelationId } from '../naming/relationNames';
 import { Logger } from '../utils/logger';
 import { IdentifierRegistry } from '../utils/identifiers';
 import { inferColumnSqlType } from '../utils/sqlTypes';
@@ -1386,7 +1386,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     if (candidateKeys.length === 0) {
       this.logger.warn('No candidate keys found - cannot properly apply 2NF');
       return [{
-        name: 'MainRelation',
+        name: newRelationId(),
         attributes,
         primaryKey: attributes.slice(0, 1), // Fallback
         foreignKeys: [],
@@ -1422,7 +1422,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     if (partialDependencies.length === 0) {
       this.logger.info('No partial dependencies found - data is already in 2NF');
       return [{
-        name: 'MainRelation',
+        name: newRelationId(),
         attributes,
         primaryKey,
         foreignKeys: [],
@@ -1440,7 +1440,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     // Create relations for partial dependencies
     for (const fd of partialDependencies) {
       const relationAttrs = Array.from(new Set([...fd.lhs, fd.rhs]));
-      const relationName = this.generateRelationName(relationAttrs, '2NF');
+      const relationName = newRelationId();
       const relationData = this.extractRelationData(data, relationAttrs);
       
       relations.push({
@@ -1469,7 +1469,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     if (remainingAttrs.length > 0) {
       const mainRelationData = this.extractRelationData(data, remainingAttrs);
       relations.push({
-        name: 'MainRelation_2NF',
+        name: newRelationId(),
         attributes: remainingAttrs,
         primaryKey,
         foreignKeys: [],
@@ -1553,7 +1553,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
         Array.from(rhsAttrs).forEach(attr => allViolatingRHS.add(attr));
 
         const decompAttrs = Array.from(new Set([...lhs, ...Array.from(rhsAttrs)])).sort();
-        const decompName = `Rel3NF_${rel.name}_${lhs.join('_')}`;
+        const decompName = newRelationId();
         const decompRows = this.extractRelationData(rel.rows || [], decompAttrs);
 
         decomposedRelations.push({
@@ -1592,7 +1592,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
       }
 
       const residualRel: RelationSchema = {
-        name: `${rel.name}_residual`,
+        name: newRelationId(),
         attributes: residualAttrs,
         primaryKey: effectivePK,
         foreignKeys: residualFKs,
@@ -1645,7 +1645,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     if (!fds || fds.length === 0) {
       this.logger.info('No functional dependencies: returning universal relation as candidate key');
       return [{
-        name: 'MainRelation_3NF',
+        name: newRelationId(),
         attributes: [...attributes],
         primaryKey: candidateKeys && candidateKeys[0] ? [...candidateKeys[0]] : [...attributes],
         foreignKeys: [],
@@ -1677,10 +1677,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
 
     for (const g of groupedFDs) {
       const relAttrs = Array.from(new Set([...g.lhs, ...g.rhs])).sort();
-      let relName = this.generateRelationName(relAttrs);
-      if (relationNames.has(relName)) {
-        relName = `${relName}_${synthesized.length + 1}`;
-      }
+      const relName = newRelationId();
       relationNames.add(relName);
 
       const relRows = this.extractRelationData(data || [], relAttrs);
@@ -1752,10 +1749,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     if (!hasCandidateKey) {
       // Pick shortest candidate key
       const keyToAdd = keys.reduce((shortest, k) => k.length < shortest.length ? k : shortest, keys[0]);
-      let keyRelName = this.generateRelationName(keyToAdd, 'Key');
-      if (relationNames.has(keyRelName)) {
-        keyRelName = `${keyRelName}_CK`;
-      }
+      const keyRelName = newRelationId();
       relationNames.add(keyRelName);
 
       const keyRows = this.extractRelationData(data || [], keyToAdd);
@@ -1779,7 +1773,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     const missingAttrs = attributes.filter(a => !coveredAttrs.has(a));
     if (missingAttrs.length > 0) {
       const indRows = this.extractRelationData(data || [], missingAttrs);
-      const indName = this.generateRelationName(missingAttrs, 'Independent');
+      const indName = newRelationId();
       nonRedundant.push({
         name: indName,
         attributes: [...missingAttrs].sort(),
@@ -1937,8 +1931,8 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
         const r1Attrs = Array.from(new Set([...X, ...Y])).sort();
         const r2Attrs = currentAttrs.filter(a => !Y.includes(a)).sort();
 
-        const r1Name = `${current.name}_1_${X.join('_')}`;
-        const r2Name = `${current.name}_2_res`;
+        const r1Name = newRelationId();
+        const r2Name = newRelationId();
 
         decompositionSteps.push({
           sourceRelation: current.name,
@@ -2447,16 +2441,6 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     return new Promise(resolve => setTimeout(resolve, 0));
   }
 
-  private static generateRelationName(attributes: string[], suffix: string = ''): string {
-    const baseName = attributes
-      .map(attr => DataUtils.normalizeName(attr))
-      .sort()
-      .join('_')
-      .substring(0, 40);
-    
-    return suffix ? `${baseName}_${suffix}` : baseName;
-  }
-
   public static extractRelationData(data: any[], attributes: string[]): any[] {
     const seen = new Set<string>();
     const result: any[] = [];
@@ -2542,7 +2526,7 @@ private static validatePrimaryKeyUniqueness(relation: RelationSchema): Validatio
     // If no candidate key is covered, create a relation for the first candidate key
     if (!candidateKeyCovered) {
       const firstCandidateKey = candidateKeys[0];
-      const keyRelationName = this.generateRelationName(firstCandidateKey, 'Key');
+      const keyRelationName = newRelationId();
       
       if (!relationNames.has(keyRelationName)) {
         const relationData = this.extractRelationData(data, firstCandidateKey);

@@ -2,7 +2,7 @@
  * First normal form: move multi-valued columns into child tables.
  *
  * A cell such as `"red; green; blue"` holds several values. Each such column
- * becomes a child relation `<table>_<column>(key…, column)` with one row per
+ * becomes a child relation `(key…, column)` with one row per
  * value, linked to the parent through the parent's key. The parent loses the
  * column, so every remaining cell is atomic.
  */
@@ -10,7 +10,7 @@
 import type { RelationSchema } from '../../types';
 import { DataProcessor } from './dataProcessor';
 import { chooseKey } from './keySelection';
-import { sanitizeIdentifier } from '../utils/identifiers';
+import { newRelationId } from '../naming/relationNames';
 
 export interface AtomicSplit {
   /** Parent rows without the multi-valued columns (and with a surrogate key if one was needed). */
@@ -73,7 +73,7 @@ export function splitMultiValuedColumns(
       }
     });
     children.push({
-      name: `${tableName}_${sanitizeIdentifier(col)}`,
+      name: newRelationId(),
       attributes: [...key, col],
       primaryKey: [...key, col],
       foreignKeys: [],

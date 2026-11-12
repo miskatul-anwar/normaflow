@@ -16,7 +16,7 @@ describe('1NF moves multi-valued columns into child tables', () => {
     const s = splitMultiValuedColumns(rows, ['tags'], 'items')!;
     expect(s.parentAttributes).toEqual(['id', 'name']);
     expect(s.key).toEqual(['id']);
-    expect(s.children[0].name).toBe('items_tags');
+    expect(s.children[0].name).toMatch(/^relation_\d+$/);
     expect(s.children[0].rows).toEqual([
       { id: 1, tags: 'red' },
       { id: 1, tags: 'green' },
@@ -30,10 +30,11 @@ describe('1NF moves multi-valued columns into child tables', () => {
     const result = await new DatabaseService().processFile(csv('items.csv', lines.join('\n')), OPS);
     expect(result.success).toBe(true);
     const rels = result.relations as Array<{ name: string; attributes: string[]; foreignKeys: any[] }>;
-    expect(rels.some(r => r.name === 'items_tags')).toBe(true);
-    const parentWithTags = rels.filter(r => r.name !== 'items_tags' && r.attributes.includes('tags'));
-    expect(parentWithTags).toEqual([]);
-    expect(rels.find(r => r.name === 'items_tags')!.foreignKeys.length).toBe(1);
+    const child = rels.find(r => r.attributes.includes('tags'))!;
+    expect(child).toBeTruthy();
+    expect(child.name).not.toContain('items_tags'); // not built from column names
+    expect(rels.filter(r => r !== child && r.attributes.includes('tags'))).toEqual([]);
+    expect(child.foreignKeys.length).toBe(1);
     expect(result.outputFiles.map(f => f.name).join(' ')).toBeTruthy();
   });
 });

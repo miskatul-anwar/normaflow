@@ -11,6 +11,7 @@
 
 import type { CrossTableRelationship, ForeignKey, RelationSchema } from '../../types';
 import type { DecomposedRelation } from '../api/databaseService';
+import { nameRelationSet } from '../naming/relationNames';
 import { IdentifierRegistry, sanitizeIdentifier } from '../utils/identifiers';
 import { inferColumnTypes } from '../utils/sqlTypes';
 
@@ -75,19 +76,10 @@ export function buildSchema(tables: TableSchemaInput[], cross: CrossTableRelatio
         b.attributes.length - a.attributes.length,
     )[0];
 
-    const rename = new Map<string, string>();
-    for (const r of rels) {
-      const base =
-        r === main
-          ? t.tableName
-          : `${t.tableName}_${r.primaryKey.map(sanitizeIdentifier).join('_')}`.slice(0, 48);
-      rename.set(r.name, names.fresh(base));
-    }
-    for (const r of rels) {
-      for (const fk of r.foreignKeys) fk.references = rename.get(fk.references) ?? fk.references;
-      r.name = rename.get(r.name) ?? r.name;
-      r.sourceTable = t.tableName;
-    }
+    // The relation holding the table's key keeps the file's name; the others keep the name they were given
+    // (a model or user name, or the engine's placeholder id). Nothing here is built from column names.
+    nameRelationSet(rels, { tableName: t.tableName, primaryKey: t.primaryKey, registry: names });
+    for (const r of rels) r.sourceTable = t.tableName;
 
     // Honour the key chosen for the table: synthesis may have keyed the main
     // relation by another candidate key (e.g. a unique price instead of order_id).
