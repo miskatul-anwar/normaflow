@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Output page sidebar: the active row's teal outline was cut off along its top edge when it was the first row under a section heading (Overview, Normal Forms, ERD Diagram); the sticky heading covered it. There is now a little space under each heading.
+
 ### Changed (floating workspace tabs)
 - The workspace tabs are now floating, fully rounded pills with the same radius and shadow as the header, instead of file-folder tabs joined to it. The space is even: 12 px above the strip, 12 px between the strip and the header, 12 px at the left edge, 8 px between tabs. The active tab has a teal outline; a tab colour shows as a bar along its top edge. The header still takes the active tab's tint.
 

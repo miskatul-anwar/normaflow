@@ -54,7 +54,7 @@ export function CustomSidebar({ items, activeTab, onTabChange }: CustomSidebarPr
                 <span className="size-2 rounded-full" style={{ backgroundColor: meta.accent }} aria-hidden />
                 {group.label}
               </h3>
-              <ul className="space-y-0.5">
+              <ul className="space-y-0.5 pt-1">
                 {groupItems.map(item => {
                   const active = activeTab === item.id;
                   const enabled = Boolean(item.hasData);
