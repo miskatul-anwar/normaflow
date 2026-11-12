@@ -5,7 +5,8 @@
 // Models are read from MODELS_DIR (default /tmp/t5), laid out like Hugging Face repos
 // (<model>/config.json, tokenizer.json, onnx/encoder_model_quantized.onnx,
 // onnx/decoder_model_merged_quantized.onnx), for example from Xenova/flan-t5-base.
-// Prompts: shots | q1 | q2 | q4 | q5 (see PROMPTS). Prints the top answer per CSV (the file name is never shown to the model).
+// Encoder-decoder models (T5) use prompts shots | q1 | q2 | q4 | q5; decoder-only chat models (SmolLM2, Qwen) are detected by the
+// missing encoder file and use chat | chatshots, with onnx/model_q4.onnx. Prints the top answer per CSV (the file name is never shown to the model).
 import { pipeline, env } from '@huggingface/transformers';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,12 +35,46 @@ const PROMPTS = {
   q5: (h, ex) => `Here is a database table.\nColumns: ${h.join(', ')}\nSample rows:\n${ex.join('\n')}\n\nWhat real-world thing does one row describe? Reply with a single noun phrase of one to three words.`,
 };
 
-const gen = await pipeline('text2text-generation', model, { dtype: 'q8' });
+const MODELS = process.env.MODELS_DIR ?? '/tmp/t5';
+const decoderOnly = !fs.existsSync(`${MODELS}/${model}/onnx/encoder_model_quantized.onnx`);
+const ask = (h, ex) => `Database table columns: ${h.join(', ')}\n${ex.length ? `Sample rows:\n${ex.join('\n')}\n` : ''}\nName this table with one singular noun phrase of one to three words. Reply with only the name.`;
+const CHAT = {
+  chat: (h, ex) => [{ role: 'system', content: 'You name database tables.' }, { role: 'user', content: ask(h, ex) }],
+  chatshots: (h, ex) => [
+    { role: 'system', content: 'You name database tables.' },
+    ...SHOTS.flatMap(([c, n]) => [{ role: 'user', content: ask(c.split(', '), []) }, { role: 'assistant', content: n }]),
+    { role: 'user', content: ask(h, ex) },
+  ],
+  // Same examples, but the table under test is described by its columns only (no sample values to copy).
+  chatcols: (h) => CHAT.chatshots(h, []),
+};
+// Accepted answers per table (lower case, singular), used to print a score.
+const TRUTH = {
+  album: ['album'], artist: ['artist'], customer: ['customer', 'client'], employee: ['employee', 'staff'], genre: ['genre'],
+  invoice: ['invoice', 'bill'], invoiceline: ['invoice line', 'invoice item', 'line item'], mediatype: ['media type'],
+  playlist: ['playlist'], playlisttrack: ['playlist track', 'playlist item', 'playlist entry', 'playlist song'], track: ['track', 'song'],
+  categories: ['category', 'product category'], customers: ['customer'], employeeterritories: ['employee territory', 'territory assignment', 'employee-territory'],
+  employees: ['employee'], order_details: ['order detail', 'order line', 'order item', 'line item'], orders: ['order'], products: ['product'],
+  regions: ['region'], shippers: ['shipper', 'shipping company'], suppliers: ['supplier', 'vendor'], territories: ['territory'],
+};
+const tidy = a => a.toLowerCase().replace(/["'.]/g, '').replace(/\s+/g, ' ').trim();
+let hit = 0;
+let total = 0;
+const gen = decoderOnly
+  ? await pipeline('text-generation', model, { dtype: 'q4' })
+  : await pipeline('text2text-generation', model, { dtype: 'q8' });
 for (const dir of dirs) {
   for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.csv')).sort()) {
     const p = path.join(dir, f);
     const t0 = Date.now();
-    const out = await gen(PROMPTS[variant](header(p), sample(p)), { max_new_tokens: 16, num_beams: 4 });
-    console.log(f.replace('.csv', '').padEnd(22), '->', JSON.stringify(out[0].generated_text.trim()), `${Date.now() - t0} ms`);
+    const answer = decoderOnly
+      ? (await gen(CHAT[variant](header(p), sample(p)), { max_new_tokens: 12, do_sample: false }))[0].generated_text.at(-1).content
+      : (await gen(PROMPTS[variant](header(p), sample(p)), { max_new_tokens: 16, num_beams: 4 }))[0].generated_text;
+    const key = f.replace('.csv', '').toLowerCase();
+    const ok = (TRUTH[key] ?? []).includes(tidy(answer));
+    total++;
+    if (ok) hit++;
+    console.log(f.replace('.csv', '').padEnd(22), ok ? 'OK ' : '-- ', JSON.stringify(answer.trim()), `${Date.now() - t0} ms`);
   }
 }
+console.log(`exact or accepted synonym: ${hit}/${total}`);

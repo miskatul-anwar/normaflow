@@ -75,3 +75,41 @@ size within that range did not fix it.
 - Phase 2 (internal ids, no concatenated names) is independent of the model and can be built on its own.
   Without a model, the neutral placeholder (`relation_1`) is what every relation would be called until the user names it.
 - Phases 3 to 5 (naming worker, packaging 95 to 275 MB of model files) should not be built for these models.
+
+## Second spike: decoder-only instruction models
+
+Run after the T5 result, at the request of the project owner. Same inputs, same scripts (`chat`, `chatshots`, `chatcols`
+prompts, greedy decoding, up to 12 new tokens, int8-class `q4` weights). Scored strictly against a short list of accepted
+names per table (`TRUTH` in the script): exact match or an accepted synonym, 22 tables (11 Chinook, 11 Northwind).
+
+| Model | Licence | Download | Prompt | Correct |
+|---|---|---|---|---|
+| `T5-class (3 models)` | see above | 95 to 275 MB | all | about 0 of 22 |
+| `SmolLM2-135M-Instruct` | Apache-2.0 | 176 MB | zero-shot, few-shot | 0 of 22 (echoes rows and column lists) |
+| `SmolLM2-360M-Instruct` | Apache-2.0 | 373 MB | zero-shot (columns + sample rows) | 12 of 22 |
+| `SmolLM2-360M-Instruct` | Apache-2.0 | 373 MB | five examples, then columns + sample rows | **15 of 22 (68%)** |
+| `SmolLM2-360M-Instruct` | Apache-2.0 | 373 MB | five examples, then columns only | **15 of 22 (68%)** |
+
+The concatenated names the engine produces today score 0 of 22 by construction (`address_city_zip` is not an
+entity name), so this is the improvement a model could buy.
+
+What the 360M model gets right: `Album`, `Artist`, `Customer`, `Employee`, `Genre`, `Invoice`, `Invoice line`,
+`Playlist`, `Region`, `Shipper`, `Supplier`, `Territory`, `Order line`. What it gets wrong:
+
+- **Junction and detail tables**: `PlaylistTrack` and `EmployeeTerritories` come out as one of their parents
+  (`Playlist`, `Employee`), because the model sees the parent's columns.
+- **Near misses**: `Media`, `Employee information`, `Track of the month`.
+- **Wrong entity**: `Orders` as `Order Line` or `Customer`, `Products` as `Supplier`. Sample rows make this worse in
+  zero-shot mode (`Chai`, `Rock`, a customer's first name), which is why the few-shot prompt without sample values is
+  preferred.
+
+Speed on the Node runtime: about 0.7 to 1.2 s per relation, so a 25-relation schema takes about 20 to 30 s. Not measured
+in the browser WebAssembly runtime, where it would be slower.
+
+### Where this leaves the proposal
+
+- **Quality**: a 360M model names about two thirds of the tables correctly and fails in a recognisable way (junction
+  tables, parents). That is good enough for a "suggested name" the user confirms, and not good enough to be trusted silently.
+- **Size**: 373 MB is a multi-hundred-megabyte model, against requirement 3. The installer would roughly triple.
+  The 135M model, which would fit that requirement better, does not work at all.
+- **Not measured**: Qwen2.5-0.5B (smallest ONNX build 483 MB) and larger models. They would likely do better and cost more.
