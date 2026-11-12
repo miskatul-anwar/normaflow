@@ -27,7 +27,7 @@ Recovering the original tables from a *denormalized* file is weak: with a few
 hundred rows many coincidental dependencies hold (for example
 `customer_name, order_date → order_id`), and 3NF synthesis turns them into
 extra relations. Ranking FDs by plausibility and asking the user to accept or
-reject them (P3-1 in `IMPROVEMENTS.md`) is the planned fix; this harness is how
+reject them is the planned fix; this harness is how
 to measure it.
 
 `src/eval/harness.test.ts` keeps a regression floor (recall and precision of
