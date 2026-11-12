@@ -10,7 +10,7 @@ import { RelationDetectorService } from '../processors/relationDetector';
 import { chooseKey, type KeyChoice } from '../processors/keySelection';
 import { splitMultiValuedColumns } from '../processors/atomicSplit';
 import { verifyLosslessOnData } from '../processors/instanceVerification';
-import { newRelationId, resetRelationIds } from '../naming/relationNames';
+import { newRelationId, resetRelationIds, type NameableRelation } from '../naming/relationNames';
 import { applyNames, type NamerFn, type NamableTable } from '../naming/applyNames';
 import { buildSchema, emitMermaidErd, toDecomposedRelations } from '../processors/schemaGraph';
 import { buildMultiTableReport } from '../processors/multiTableReport';
@@ -1075,7 +1075,7 @@ export class DatabaseService {
 
   /** Gives every relation its final name (table name, user name, model name or "unnamed"). */
   private async nameTables(
-    tables: Array<{ tableName: string; primaryKey: string[]; sets: Array<any[] | undefined>; final: any[] }>,
+    tables: Array<{ tableName: string; primaryKey: string[]; sets: Array<NameableRelation[] | undefined>; final: NameableRelation[] }>,
     options: ProcessingOptions,
     onProgress?: (state: ProcessingState) => void,
   ): Promise<void> {
@@ -1083,7 +1083,7 @@ export class DatabaseService {
       tableName: t.tableName,
       primaryKey: t.primaryKey,
       final: t.final,
-      others: t.sets.filter((set, i, all): set is any[] => !!set && set !== t.final && all.indexOf(set) === i),
+      others: t.sets.filter((set, i, all): set is NameableRelation[] => !!set && set !== t.final && all.indexOf(set) === i),
     }));
     await applyNames(namable, {
       namer: options.namer,

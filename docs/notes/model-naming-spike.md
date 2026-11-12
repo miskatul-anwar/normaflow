@@ -113,3 +113,10 @@ in the browser WebAssembly runtime, where it would be slower.
 - **Size**: 373 MB is a multi-hundred-megabyte model, against requirement 3. The installer would roughly triple.
   The 135M model, which would fit that requirement better, does not work at all.
 - **Not measured**: Qwen2.5-0.5B (smallest ONNX build 483 MB) and larger models. They would likely do better and cost more.
+
+## Outcome
+
+Built with SmolLM2-360M-Instruct (decision of the project owner). Verified in the production web build in Chromium: the 4-bit
+model loads from the bundle on onnxruntime-web WASM (no remote requests) and named the two split-out relations of a test
+table `Customer` and `Product`; the whole run took about 58 s, mostly first model load. Not verified: the Tauri installer
+build and warm-up time on slower machines.

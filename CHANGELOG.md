@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (model-based relation names)
+- Relations created by normalization are no longer named by joining column names (`address_city_zip`). The engine gives each new relation an opaque id (`relation_1`, ...); the relation that holds the table's key keeps the file name; the others are named by a small on-device model (SmolLM2-360M-Instruct, 4-bit, Apache-2.0) as one noun phrase, or stay "unnamed" with their id when there is no answer. No naming rules are written by hand.
+- The model sees the **column names only** (never rows) and runs in a Web Worker with remote loading off, so data stays on the machine. Only the relations of the final schema are named (one model call per distinct set of columns, about 1 s each in Node; about 58 s for a 3-relation table including the first model load in Chromium).
+- Names are marked **suggested** (model) or **unnamed**, with a **rename** link. A name you type is remembered for the same table and columns and wins over the model on the next run. Output text (ERD, SQL, report) uses these names; a rename shows in the relation list at once and in generated text on the next run.
+- Measured quality: 15 of 22 tables named correctly (68%) on Chinook and Northwind; junction tables tend to come out as one of their parents. Treat names as suggestions. See `docs/notes/model-naming-spike.md`.
+- **Installer size:** the model is about 373 MB and is fetched at build time by `scripts/prepare-nl-assets.mjs` (SHA-256 checked, git-ignored); release builds fail if it cannot be fetched. This is a conscious departure from the "no multi-hundred-MB model" goal, accepted by the project owner.
+- Tests, the CLI and builds without the model name relations by id (`relation_N`) and say so; existing tests now assert structure rather than concatenated names.
+
 ### Added (workspace naming)
 - The app asks for a workspace name when it opens, and the **+** button (or Ctrl/Cmd+T) asks for a name before adding a workspace. Enter confirms, Escape or Cancel adds nothing (the first prompt cannot be dismissed, since a workspace must exist), an empty name is refused, and a duplicate name is allowed with a note. A name you choose is kept when you upload a file (a file used to rename an untouched tab). The dialog is modal: the page behind it is inert and Tab stays inside.
 
