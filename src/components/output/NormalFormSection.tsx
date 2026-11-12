@@ -218,6 +218,7 @@ function RelationTitle({ relation }: { relation: RelationSchema }) {
     return (
       <input
         autoFocus
+        onFocus={e => e.target.select()}
         aria-label="Relation name"
         defaultValue={source === 'placeholder' ? '' : shown}
         placeholder="Name this relation"
