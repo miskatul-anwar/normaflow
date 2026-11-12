@@ -11,6 +11,7 @@ import { chooseKey, type KeyChoice } from '../processors/keySelection';
 import { splitMultiValuedColumns } from '../processors/atomicSplit';
 import { verifyLosslessOnData } from '../processors/instanceVerification';
 import { newRelationId, resetRelationIds } from '../naming/relationNames';
+import { applyNames, type NamerFn, type NamableTable } from '../naming/applyNames';
 import { buildSchema, emitMermaidErd, toDecomposedRelations } from '../processors/schemaGraph';
 import { buildMultiTableReport } from '../processors/multiTableReport';
 import { IdentifierRegistry } from '../utils/identifiers';
@@ -46,6 +47,10 @@ export interface ProcessingOptions {
   acceptApproximateFDs?: boolean;
   /** SQL dialect for multi-table DDL (default `sqlite`). */
   sqlDialect?: SQLDialect;
+  /** Writes relation names (the on-device model). Absent in tests and the CLI: relations stay "unnamed". */
+  namer?: NamerFn | null;
+  /** Names the user typed, by relation signature (see `relationSignature`). They always win over the model. */
+  userNames?: Record<string, string>;
 }
 
 /** Everything the shared analysis routine produces for one table. */
@@ -502,11 +507,12 @@ export class DatabaseService {
       }
 
       // Phases 2-4: run the selected operations through the shared analysis routine.
+      const singleTableName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase() || 'table';
       const analysis = await this.analyzeRows({
         rows: processedData,
         selectedOperations,
         options: enhancedOptions,
-        tableName: file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase() || 'table',
+        tableName: singleTableName,
         startTime,
         onProgress,
       });
@@ -524,6 +530,16 @@ export class DatabaseService {
       losslessCheck = analysis.losslessCheck;
       dependencyPreservation = analysis.dependencyPreservation;
       for (const note of analysis.notes) this.logger.warn(note);
+      await this.nameTables(
+        [{
+          tableName: singleTableName,
+          primaryKey: analysis.keyChoice?.primaryKey ?? (analysis.keyResult?.primaryKey as string[] | undefined) ?? [],
+          sets: [relations1NF, relations2NF, relations3NF, relationsBCNF],
+          final: relations3NF,
+        }],
+        enhancedOptions,
+        onProgress,
+      );
       this.addPerformanceCheckpoint('Analysis Complete');
 
       // Phase 5: Optimized Output Generation (90-100%)
@@ -1055,6 +1071,27 @@ export class DatabaseService {
       dependencyPreservation,
       notes,
     };
+  }
+
+  /** Gives every relation its final name (table name, user name, model name or "unnamed"). */
+  private async nameTables(
+    tables: Array<{ tableName: string; primaryKey: string[]; sets: Array<any[] | undefined>; final: any[] }>,
+    options: ProcessingOptions,
+    onProgress?: (state: ProcessingState) => void,
+  ): Promise<void> {
+    const namable: NamableTable[] = tables.map(t => ({
+      tableName: t.tableName,
+      primaryKey: t.primaryKey,
+      final: t.final,
+      others: t.sets.filter((set, i, all): set is any[] => !!set && set !== t.final && all.indexOf(set) === i),
+    }));
+    await applyNames(namable, {
+      namer: options.namer,
+      userNames: options.userNames,
+      onProgress: (done, total) =>
+        onProgress?.({ phase: 'NORMAL', operation: 'naming', progress: 88, message: `Naming relations ${done}/${total}…` }),
+      onUnavailable: reason => this.logger.warn(`Relation naming model unavailable (${reason}); relations are left unnamed.`),
+    });
   }
 
   // ========== OPTIMIZED HELPER METHODS ==========
@@ -3410,6 +3447,17 @@ export class DatabaseService {
           notes: analysis.notes,
         };
       });
+
+      await this.nameTables(
+        tables.map(t => ({
+          tableName: t.tableName,
+          primaryKey: t.primaryKey,
+          sets: [t.firstNormalForm, t.secondNormalForm, t.thirdNormalForm, t.bcnf],
+          final: t.thirdNormalForm.length ? t.thirdNormalForm : t.secondNormalForm,
+        })),
+        options,
+        onProgress,
+      );
 
       const nerResults: Record<string, any[]> = {};
       tables.forEach(t => {

@@ -23,6 +23,7 @@ export interface NameableRelation {
   foreignKeys: Array<{ references: string }>;
   displayName?: string;
   nameSource?: NameSource;
+  sourceTable?: string;
 }
 
 let counter = 0;
@@ -126,6 +127,7 @@ export function nameRelationSet(set: NameableRelation[], opts: NameSetOptions): 
   for (const d of decided) {
     d.r.displayName = d.source === 'placeholder' ? undefined : d.text;
     d.r.nameSource = d.source;
+    d.r.sourceTable = opts.tableName;
     d.r.name = rename.get(d.r.name) ?? d.r.name;
   }
 }

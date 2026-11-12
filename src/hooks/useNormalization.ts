@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { runEngine, type EngineRun } from '../services/api/engineClient';
+import { createWorkerNamer } from '../services/naming/workerNamer';
+import { loadUserNames, modelNamingEnabled } from '../services/naming/userNames';
 import DatabaseService, { ProcessingResult, ProcessingState } from '../services/api/databaseService';
 
 export interface UseNormalizationReturn {
@@ -28,7 +30,11 @@ export const useNormalization = (): UseNormalizationReturn => {
     setProgress({ phase: 'PREP', operation: 'csv-loader', progress: 0, message: `Starting multi-CSV pipeline for ${files.length} files...` });
 
     try {
-      const run = runEngine(files, operations, setProgress, { maxLhsSize: 4 });
+      const run = runEngine(files, operations, setProgress, {
+        maxLhsSize: 4,
+        userNames: loadUserNames(),
+        namer: modelNamingEnabled() ? createWorkerNamer() : null,
+      });
       runRef.current = run;
       const result = await run.promise;
 

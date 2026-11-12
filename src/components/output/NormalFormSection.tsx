@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Table, Hash, Layers, Database, GitBranch, Key, ExternalLink, ArrowRight } from 'lucide-react';
 import { RelationSchema } from '../../types';
+import { relationSignature } from '../../services/naming/relationNames';
+import { saveUserName } from '../../services/naming/userNames';
 
 interface NormalFormSectionProps {
   relations1NF?: RelationSchema[];
@@ -90,7 +92,7 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                     <h4 className="flex items-center gap-2 text-base font-semibold text-gray-900">
                       <Table className="w-5 h-5 text-gray-500" />
-                      {relation.name}
+                      <RelationTitle relation={relation} />
                     </h4>
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       <span className="flex items-center gap-1">
@@ -192,5 +194,52 @@ export function NormalFormSection({ relations1NF, relations2NF, relations3NF, re
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * A relation's name with where it came from: "suggested" for the on-device model, "unnamed" when there is none, and a
+ * rename box either way. A typed name is remembered for these columns and used on the next run.
+ */
+function RelationTitle({ relation }: { relation: RelationSchema }) {
+  const [typed, setTyped] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const source = typed ? 'user' : relation.nameSource;
+  const shown = typed ?? relation.displayName ?? (source === 'placeholder' ? 'Unnamed relation' : relation.name);
+  const canRename = source !== 'source' && !!relation.sourceTable;
+
+  if (editing) {
+    const commit = (value: string) => {
+      setEditing(false);
+      if (value.trim() === shown) return;
+      saveUserName(relationSignature(relation.sourceTable!, relation), value);
+      setTyped(value.trim() || null);
+    };
+    return (
+      <input
+        autoFocus
+        aria-label="Relation name"
+        defaultValue={source === 'placeholder' ? '' : shown}
+        placeholder="Name this relation"
+        className="nf-input min-w-0 rounded border border-gray-300 px-2 py-0.5 text-base font-semibold"
+        onBlur={e => commit(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') commit((e.target as HTMLInputElement).value);
+          if (e.key === 'Escape') setEditing(false);
+        }}
+      />
+    );
+  }
+  return (
+    <>
+      <span className={source === 'placeholder' ? 'italic text-gray-500' : undefined}>{shown}</span>
+      {source === 'model' && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-normal text-amber-800" title="Suggested by the on-device model. Check it and rename if it is wrong.">suggested</span>}
+      {source === 'placeholder' && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-normal text-gray-600">unnamed</span>}
+      {canRename && (
+        <button type="button" onClick={() => setEditing(true)} className="text-xs font-normal text-teal-700 underline underline-offset-2 hover:text-teal-900">
+          rename
+        </button>
+      )}
+    </>
   );
 }
