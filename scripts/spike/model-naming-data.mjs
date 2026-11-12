@@ -101,7 +101,11 @@ for (const dir of dirs) {
   for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.csv')).sort()) {
     const [header, ...rows] = parseCsv(fs.readFileSync(path.join(dir, f), 'utf8'));
     const t0 = Date.now();
-    const answer = (await gen(messages(header, rows), { max_new_tokens: 12, do_sample: false }))[0].generated_text.at(-1).content;
+    const msgs = messages(header, rows);
+    // Qwen3 writes a <think> block unless the chat template is told not to.
+    const answer = /qwen3/i.test(model)
+      ? (await gen(gen.tokenizer.apply_chat_template(msgs, { tokenize: false, add_generation_prompt: true, enable_thinking: false }), { max_new_tokens: 12, do_sample: false, return_full_text: false }))[0].generated_text
+      : (await gen(msgs, { max_new_tokens: 12, do_sample: false }))[0].generated_text.at(-1).content;
     const ok = (TRUTH[f.replace('.csv', '').toLowerCase()] ?? []).includes(tidy(answer));
     total++;
     if (ok) hit++;
