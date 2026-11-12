@@ -136,3 +136,26 @@ One more table (`Order line`) is the whole difference, which is inside what the 
 fails the same way: `PlaylistTrack` and `EmployeeTerritories` come out as a parent, and it adds near misses (`Music Track`,
 `Product Information`, `Order Details` for `Orders`). It is 2.5 times the download and slower, so it was **not adopted**;
 SmolLM2-360M stays. Reproduce: `MODELS_DIR=... node scripts/spike/model-naming.mjs Qwen3-0.6B chatcols <csv dirs>`.
+
+## Fourth run: does showing the model facts about the data help? (branch `spike/data-aware-naming`)
+
+`scripts/spike/model-naming-data.mjs`, SmolLM2-360M-Instruct, same 22 tables, same five worked examples (each now with rows so the
+facts can be shown), greedy, 12 tokens. Variants: `cols` is the shipped prompt (column names only); `distinct` adds up to three
+distinct values per column; `types` adds an inferred type and "all different / repeats"; `both` adds both. The cryptic run
+replaces every header with `c1, c2, ...` (also in the examples), so only the data can say what a table is.
+
+| Variant | Normal headers | Cryptic headers (`c1`...) |
+|---|---|---|
+| `cols` (shipped) | **15 / 22** | 0 / 22 |
+| `distinct` values | 13 / 22 | 1 / 22 |
+| `types` | 12 / 22 | 0 / 22 |
+| `both` | 9 / 22 | 1 / 22 |
+
+- **Data hurt on readable headers**, and more of it hurt more (15, 13, 12, 9). The model is pulled toward the values: `Products`
+  became `Supplier`, `Orders` became `Shipping`, `Order_Details` became `Discount`, `Categories` became `Photo` (a blob column).
+- **It did not rescue cryptic headers.** With only `c1..cn` and the data, the best result was 1 of 22. A 360M model cannot tell
+  what a table is about from a few values, even when the answer is in them (for example, a column of country names).
+- Run time rose from about 0.8 s to about 2 s per relation, because the prompt is longer.
+
+Conclusion: for this model, column names carry the signal, and the data adds noise. The shipped prompt stays. Not tried:
+a larger model (which may use the data better), or giving values only for columns whose names look cryptic.
