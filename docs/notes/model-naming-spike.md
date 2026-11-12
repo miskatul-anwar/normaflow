@@ -159,3 +159,19 @@ replaces every header with `c1, c2, ...` (also in the examples), so only the dat
 
 Conclusion: for this model, column names carry the signal, and the data adds noise. The shipped prompt stays. Not tried:
 a larger model (which may use the data better), or giving values only for columns whose names look cryptic.
+
+### Fourth run, repeated with Qwen3-0.6B
+
+Same script and prompts, `onnx-community/Qwen3-0.6B-ONNX` (919 MB), thinking switched off.
+
+| Variant | Normal headers | Cryptic headers (`c1`...) |
+|---|---|---|
+| `cols` (column names only) | **16 / 22** | 0 / 22 |
+| `distinct` values | 15 / 22 | 1 / 22 |
+| `types` | 14 / 22 | 2 / 22 |
+| `both` | 12 / 22 | 1 / 22 |
+
+Same result as with SmolLM2-360M: the more data in the prompt, the lower the score on readable headers (16, 15, 14, 12), and
+data does not make cryptic headers usable (0 to 2 of 22). With cryptic headers Qwen3 mostly answers one generic word for
+almost every table (`Department`, `Employee`), so it is not reading the values either. Time per relation was about 1.4 s with
+names only and about 3 to 6 s with data. Data in the prompt is not worth it for either model at this size.
