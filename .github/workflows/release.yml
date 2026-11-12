@@ -17,6 +17,10 @@ on:
 permissions:
   contents: write
 
+env:
+  # Fail the build if the relation-naming model cannot be fetched and verified (see scripts/prepare-nl-assets.mjs).
+  NF_REQUIRE_NAMING_MODEL: "1"
+
 jobs:
   release:
     name: Build & Release (${{ matrix.platform }})

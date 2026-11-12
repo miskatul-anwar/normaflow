@@ -37,3 +37,7 @@ Thumbs.db
 *.sw?
 .agents/
 public/ort/
+
+# Relation-naming model: fetched by scripts/prepare-nl-assets.mjs (too large to commit)
+public/models/HuggingFaceTB/
+*.part
