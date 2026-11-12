@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { runEngine, type EngineRun } from '../services/api/engineClient';
 import { createWorkerNamer } from '../services/naming/workerNamer';
 import { loadUserNames, modelNamingEnabled } from '../services/naming/userNames';
-import DatabaseService, { ProcessingResult, ProcessingState } from '../services/api/databaseService';
+import DatabaseService, { ProcessingOptions, ProcessingResult, ProcessingState } from '../services/api/databaseService';
 
 export interface UseNormalizationReturn {
   isProcessing: boolean;
@@ -10,7 +10,7 @@ export interface UseNormalizationReturn {
   results: ProcessingResult | null;
   error: string | null;
   processFile: (file: File, operations: string[]) => Promise<ProcessingResult>;
-  processFiles: (files: File[], operations: string[]) => Promise<ProcessingResult>;
+  processFiles: (files: File[], operations: string[], options?: ProcessingOptions) => Promise<ProcessingResult>;
   cancelProcessing: () => void;
   downloadFile: (file: any) => Promise<void>;
   reset: () => void;
@@ -23,7 +23,7 @@ export const useNormalization = (): UseNormalizationReturn => {
   const [error, setError] = useState<string | null>(null);
   const runRef = useRef<EngineRun | null>(null);
 
-  const processFiles = useCallback(async (files: File[], operations: string[]): Promise<ProcessingResult> => {
+  const processFiles = useCallback(async (files: File[], operations: string[], extra: ProcessingOptions = {}): Promise<ProcessingResult> => {
     setIsProcessing(true);
     setError(null);
     setResults(null);
@@ -34,6 +34,7 @@ export const useNormalization = (): UseNormalizationReturn => {
         maxLhsSize: 4,
         userNames: loadUserNames(),
         namer: modelNamingEnabled() ? createWorkerNamer() : null,
+        ...extra,
       });
       runRef.current = run;
       const result = await run.promise;

@@ -24,6 +24,8 @@ export interface UseNLWorkflowOptions {
   hasFiles: boolean;
   /** The workspace the notifications are about. */
   workspaceId?: string;
+  /** Called when an applied request names options other than steps, such as a SQL dialect. */
+  onOptions?: (options: Resolution['options']) => void;
   /** Override for tests. */
   provider?: EmbeddingProvider;
 }
@@ -58,7 +60,7 @@ function getSharedProvider(): EmbeddingProvider {
   return sharedProvider;
 }
 
-export function useNLWorkflow({ graph, run, hasFiles, workspaceId, provider: injected }: UseNLWorkflowOptions) {
+export function useNLWorkflow({ graph, run, hasFiles, workspaceId, onOptions, provider: injected }: UseNLWorkflowOptions) {
   const provider = useMemo<EmbeddingProvider>(() => {
     if (injected) return injected;
     try {
@@ -161,13 +163,14 @@ export function useNLWorkflow({ graph, run, hasFiles, workspaceId, provider: inj
         graph.clearGraph();
       }
       graph.addOperationsBatch(toAdd);
+      if (res.options.dialect) onOptions?.(res.options);
       // System notifications cannot carry an in-app button, so undo lives in the command bar.
       setUndoSnapshot(before);
       notify('success', `Pipeline built: ${res.plan.length} steps`, workspaceId);
       if (runAfter) pendingRun.current = res.plan.length;
       setResolution(null);
     },
-    [graph, workspaceId],
+    [graph, onOptions, workspaceId],
   );
 
   // Run once React has committed the new nodes (handleRun reads state from its closure).

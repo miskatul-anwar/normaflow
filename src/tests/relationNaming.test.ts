@@ -98,3 +98,16 @@ describe('engine naming', () => {
     expect((r.relations as any[]).some(x => x.nameSource === 'placeholder')).toBe(true);
   });
 });
+
+describe('requested SQL dialect', () => {
+  it('uses the dialect-aware generator for a single file, and keeps the default output otherwise', async () => {
+    const plain = await new DatabaseService().processFile(csv('orders.csv', orders), OPS);
+    const pg = await new DatabaseService().processFile(csv('orders.csv', orders), OPS, undefined, { sqlDialect: 'postgresql' });
+    const sqlOf = (r: any) => String(r.outputFiles.find((f: any) => f.name === 'database_schema.sql')?.content ?? '');
+    expect(sqlOf(plain)).toContain('SET FOREIGN_KEY_CHECKS'); // the default single-file output is unchanged
+    expect(sqlOf(pg)).toContain('Dialect: POSTGRESQL');
+    expect(sqlOf(pg)).toContain('BEGIN;');
+    expect(sqlOf(pg)).not.toContain('SET FOREIGN_KEY_CHECKS');
+    expect(sqlOf(pg)).toContain('CREATE TABLE');
+  });
+});

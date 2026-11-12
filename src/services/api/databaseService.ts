@@ -551,6 +551,21 @@ export class DatabaseService {
       erdContent = outputs.erdContent;
       relationSchemas = outputs.relationSchemas;
       sqlDDL = outputs.sqlDDL;
+      // A requested dialect uses the dialect-aware generator (the same one the multi-file path uses); with no
+      // request, the original single-file generator keeps its output.
+      if (enhancedOptions.sqlDialect && selectedOperations.includes('SQL Generator') && relations3NF.length > 0) {
+        const schema = buildSchema(
+          [{
+            tableName: singleTableName,
+            headers: attributes,
+            rows: processedData,
+            primaryKey: keyResult?.primaryKey ?? [],
+            relations: relations3NF,
+          }],
+          [],
+        );
+        sqlDDL = DatabaseService.generateDDL(toDecomposedRelations(schema), enhancedOptions.sqlDialect);
+      }
 
       // Step 15: Enhanced Report Generator
       onProgress?.({ 

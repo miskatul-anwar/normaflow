@@ -9,6 +9,7 @@ const OutputPage = lazy(() => import('./components/OutputPage'));
 import { OperationPalette } from './components/workflow/OperationPalette';
 import { FlowCanvas } from './components/workflow/FlowCanvas';
 import { useNormalization } from './hooks/useNormalization';
+import type { SQLDialect } from './services/api/databaseService';
 import { useNLWorkflow } from './hooks/useNLWorkflow';
 import { NLCommandBar } from './components/nl/NLCommandBar';
 import { WorkspaceTabBar } from './components/workflow/WorkspaceTabBar';
@@ -62,6 +63,8 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
   const [processedResults, setProcessedResults] = useState<any>(() => loadCachedResult(tabId));
 
   const { isProcessing, processFiles } = useNormalization();
+  // The SQL dialect asked for in the request box ("... in PostgreSQL"); unset means the default output.
+  const [sqlDialect, setSqlDialect] = useState<SQLDialect | undefined>(undefined);
 
   // ----- logging & status ----------------------------------------------------
 
@@ -100,7 +103,7 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
   const executePipeline = useCallback(
     async (files: File[], operations: string[]) => {
       try {
-        const result = await processFiles(files, operations);
+        const result = await processFiles(files, operations, { sqlDialect });
         if (result?.success) {
           setProcessedResults(result);
           saveCachedResult(result, tabId);
@@ -114,7 +117,7 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
         return null;
       }
     },
-    [logMessage, processFiles],
+    [logMessage, processFiles, sqlDialect],
   );
 
   const hasFiles = uploadedFiles.length > 0;
@@ -231,7 +234,13 @@ function Workspace({ tabId, active, onStatus, onSuggestTitle }: WorkspaceProps) 
     [graph, logMessage],
   );
 
-  const nl = useNLWorkflow({ graph, run: handleRun, hasFiles, workspaceId: tabId });
+  const nl = useNLWorkflow({
+    graph,
+    run: handleRun,
+    hasFiles,
+    workspaceId: tabId,
+    onOptions: o => setSqlDialect(o.dialect as SQLDialect | undefined),
+  });
 
   // Report running state and step count to the tab bar.
   useEffect(() => {
