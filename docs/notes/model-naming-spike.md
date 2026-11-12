@@ -120,3 +120,19 @@ Built with SmolLM2-360M-Instruct (decision of the project owner). Verified in th
 model loads from the bundle on onnxruntime-web WASM (no remote requests) and named the two split-out relations of a test
 table `Customer` and `Product`; the whole run took about 58 s, mostly first model load. Not verified: the Tauri installer
 build and warm-up time on slower machines.
+
+## Third run: Qwen3-0.6B
+
+`onnx-community/Qwen3-0.6B-ONNX`, `onnx/model_q4.onnx` (Apache-2.0), same 22 tables, same five-example columns-only prompt,
+greedy, 12 new tokens. Qwen3 starts with a `<think>` block unless the chat template is told not to (`enable_thinking: false`);
+with thinking left on, every answer was unusable (0 of 22), so the script now switches it off for Qwen3 models.
+
+| Model | Download | Correct | Time per relation (Node) |
+|---|---|---|---|
+| SmolLM2-360M-Instruct | 373 MB | 15 of 22 | about 1.0 s |
+| Qwen3-0.6B | **919 MB** | 16 of 22 | about 1.3 s |
+
+One more table (`Order line`) is the whole difference, which is inside what the choice of prompt moves, on a sample of 22. It
+fails the same way: `PlaylistTrack` and `EmployeeTerritories` come out as a parent, and it adds near misses (`Music Track`,
+`Product Information`, `Order Details` for `Orders`). It is 2.5 times the download and slower, so it was **not adopted**;
+SmolLM2-360M stays. Reproduce: `MODELS_DIR=... node scripts/spike/model-naming.mjs Qwen3-0.6B chatcols <csv dirs>`.

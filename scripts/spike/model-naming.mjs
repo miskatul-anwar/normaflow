@@ -63,12 +63,20 @@ let total = 0;
 const gen = decoderOnly
   ? await pipeline('text-generation', model, { dtype: 'q4' })
   : await pipeline('text2text-generation', model, { dtype: 'q8' });
+// Qwen3 writes a <think> block unless the template is told not to; the template is applied here so that can be switched off.
+const generate = async messages => {
+  if (/qwen3/i.test(model)) {
+    const prompt = gen.tokenizer.apply_chat_template(messages, { tokenize: false, add_generation_prompt: true, enable_thinking: false });
+    return (await gen(prompt, { max_new_tokens: 12, do_sample: false, return_full_text: false }))[0].generated_text;
+  }
+  return (await gen(messages, { max_new_tokens: 12, do_sample: false }))[0].generated_text.at(-1).content;
+};
 for (const dir of dirs) {
   for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.csv')).sort()) {
     const p = path.join(dir, f);
     const t0 = Date.now();
     const answer = decoderOnly
-      ? (await gen(CHAT[variant](header(p), sample(p)), { max_new_tokens: 12, do_sample: false }))[0].generated_text.at(-1).content
+      ? await generate(CHAT[variant](header(p), sample(p)))
       : (await gen(PROMPTS[variant](header(p), sample(p)), { max_new_tokens: 16, num_beams: 4 }))[0].generated_text;
     const key = f.replace('.csv', '').toLowerCase();
     const ok = (TRUTH[key] ?? []).includes(tidy(answer));
