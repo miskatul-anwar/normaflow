@@ -32,7 +32,7 @@ export const NL_CASES: NLCase[] = [
   c('keyword', 'profile the data types', ['Data Type Profiler']),
   c('keyword', 'analyse the cardinality', ['Cardinality Analyzer']),
   c('keyword', 'detect foreign keys between the tables', ['Relation Detector']),
-  c('keyword', 'classify the entities', ['NER Classifier']),
+  c('keyword', 'classify the entities', ['Column Classifier']),
   c('keyword', 'check atomicity of the values', ['Atomicity Checker']),
   c('keyword', 'second normal form please', ['2NF']),
   c('keyword', 'generate the relation schemas', ['Relation Generator']),
@@ -47,7 +47,7 @@ export const NL_CASES: NLCase[] = [
   c('acronym', 'mine fds', ['FD Miner']),
   c('acronym', 'erd', ['ERD Generator']),
   c('acronym', 'ddl for postgres', ['SQL Generator']),
-  c('acronym', 'run ner', ['NER Classifier']),
+  c('acronym', 'run ner', ['Column Classifier']),
   c('acronym', 'third normal form', ['3NF']),
   c('acronym', 'first normal form', ['1NF']),
 
@@ -62,10 +62,10 @@ export const NL_CASES: NLCase[] = [
   c('compound', 'generate postgres sql and run it', ['SQL Generator']),
 
   // negation
-  c('negation', "normalize to BCNF but don't classify entities", ['BCNF'], { excluded: ['NER Classifier'] }),
+  c('negation', "normalize to BCNF but don't classify entities", ['BCNF'], { excluded: ['Column Classifier'] }),
   c('negation', 'give me 3NF without the cardinality analysis', ['3NF'], { excluded: ['Cardinality Analyzer'] }),
   c('negation', 'generate the sql, skip the ERD', ['SQL Generator'], { excluded: ['ERD Generator'] }),
-  c('negation', 'give me the full report but skip the classification', ['Report Generator'], { excluded: ['NER Classifier'] }),
+  c('negation', 'give me the full report but skip the classification', ['Report Generator'], { excluded: ['Column Classifier'] }),
 
   // paraphrases without a keyword
   c('paraphrase', 'make every cell hold a single value', ['1NF'], { alt: [['Atomicity Checker']] }),
@@ -79,7 +79,7 @@ export const NL_CASES: NLCase[] = [
   c('paraphrase', 'make sure the split kept all the dependencies', ['Dependency Preservation']),
   c('paraphrase', 'remove the duplicate rows and blanks', ['Data Cleaner']),
   c('paraphrase', 'what type is each column', ['Data Type Profiler']),
-  c('paraphrase', 'tag columns as person, place or date', ['NER Classifier']),
+  c('paraphrase', 'tag columns as person, place or date', ['Column Classifier']),
   c('paraphrase', 'how are the tables linked to each other', ['Relation Detector']),
   c('paraphrase', 'is it one to many or many to many', ['Cardinality Analyzer']),
   c('paraphrase', 'remove partial dependencies on the key', ['2NF']),

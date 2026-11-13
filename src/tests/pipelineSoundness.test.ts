@@ -9,7 +9,7 @@ import { IdentifierRegistry, mdEscape } from '../services/utils/identifiers';
 const csv = (name: string, text: string) => new File([text], name, { type: 'text/csv' });
 
 const ALL_OPS = [
-  'CSV Data Loader', 'Data Cleaner', 'Atomicity Checker', 'Data Type Profiler', 'NER Classifier', '1NF',
+  'CSV Data Loader', 'Data Cleaner', 'Atomicity Checker', 'Data Type Profiler', 'Column Classifier', '1NF',
   'FD Miner', 'Key Discovery', 'Relation Detector', 'Cardinality Analyzer', '2NF', '3NF', 'Lossless Check',
   'Dependency Preservation', 'ERD Generator', 'Relation Generator', 'SQL Generator', 'Report Generator',
 ];

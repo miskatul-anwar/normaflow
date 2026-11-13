@@ -14,7 +14,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { DatabaseService, type SQLDialect } from '../src/services/api/databaseService';
-import { ALL_OPERATION_NAMES } from '../src/config/operations';
+import { ALL_OPERATION_NAMES, canonicalOperationName } from '../src/config/operations';
 
 interface Args {
   files: string[];
@@ -46,7 +46,7 @@ export function parseArgs(argv: string[]): Args | { error: string } {
         if (!DIALECTS.includes(d as SQLDialect)) return { error: `unknown dialect "${d}" (use ${DIALECTS.join(', ')})` };
         args.dialect = d as SQLDialect;
       } else if (a === '--ops') {
-        args.ops = value().split(',').map(s => s.trim()).filter(Boolean);
+        args.ops = value().split(',').map(s => canonicalOperationName(s.trim())).filter(Boolean);
         const unknown = args.ops.filter(o => !ALL_OPERATION_NAMES.includes(o));
         if (unknown.length) return { error: `unknown operation(s): ${unknown.join(', ')}` };
       } else if (a === '--max-lhs') args.maxLhs = Math.max(1, Number(value()) || 4);

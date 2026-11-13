@@ -10,6 +10,7 @@ import { RelationDetectorService } from '../processors/relationDetector';
 import { chooseKey, type KeyChoice } from '../processors/keySelection';
 import { splitMultiValuedColumns } from '../processors/atomicSplit';
 import { verifyLosslessOnData } from '../processors/instanceVerification';
+import { canonicalOperationName } from '../../config/operations';
 import { newRelationId, resetRelationIds, type NameableRelation } from '../naming/relationNames';
 import { applyNames, type NamerFn, type NamableTable } from '../naming/applyNames';
 import { buildSchema, emitMermaidErd, toDecomposedRelations } from '../processors/schemaGraph';
@@ -836,9 +837,9 @@ export class DatabaseService {
       dataProfile = await this.profileDataTypesAdaptive(data, options);
     }
 
-    if (has('NER Classifier')) {
+    if (has('Column Classifier')) {
       this.throwIfAborted();
-      report('PREP', 'ner-classifier', 38, `${tableName}: classifying columns…`);
+      report('PREP', 'column-classifier', 38, `${tableName}: classifying columns…`);
       const ner = RelationDetectorService.performNER([{ tableName, headers: attributes, rows: data }]);
       nerTags = ner[tableName] || [];
     }
@@ -3366,6 +3367,7 @@ export class DatabaseService {
     onProgress?: (state: ProcessingState) => void,
     options: ProcessingOptions = {}
   ): Promise<ProcessingResult> {
+    selectedOperations = selectedOperations.map(canonicalOperationName);
     const startTime = Date.now();
     resetRelationIds();
     try {

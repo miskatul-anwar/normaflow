@@ -27,7 +27,7 @@ describe('lexical resolver', () => {
   it('negation excludes', () => {
     const r = resolveLexical("normalize to BCNF but don't classify entities");
     expect(r.targets).toEqual(['BCNF']);
-    expect(r.excluded).toEqual(['NER Classifier']);
+    expect(r.excluded).toEqual(['Column Classifier']);
   });
 
   it('acronyms and forms', () => {

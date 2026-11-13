@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (operation renamed)
+- The **NER Classifier** operation is now the **Column Classifier**. It was never named-entity recognition: it is a rule-based step that labels each column (identifier, person name, price, date, ...) from its header and sample values, and the labels are shown in the multi-file overview only. Saved pipelines, scripts and command-line calls that use the old name still work, and "run ner" still finds the step.
+
 ### Changed (quality document)
 - `docs/QUALITY.md` now states that NormaFlow follows the ISO/IEC 25000 SQuaRE series as a self-assessment (not a certification), with current numbers (646 tests, 0 accessibility violations), the Windows, Linux and macOS install check, and the limits of the on-device naming model.
 

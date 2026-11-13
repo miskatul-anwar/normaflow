@@ -29,12 +29,12 @@ export const OPERATIONS: Record<string, OperationDefinition> = {
     dependencies: ['Atomicity Checker'],
     description: 'Infers column datatypes'
   },
-  'NER Classifier': {
+  'Column Classifier': {
     phase: 'PREP',
-    id: 'ner-classifier',
+    id: 'column-classifier',
     order: 5,
     dependencies: ['Data Type Profiler'],
-    description: 'Classifies semantic entities'
+    description: 'Classifies column meaning'
   },
   '1NF': {
     phase: 'NORMAL',
@@ -137,3 +137,10 @@ export const OPERATIONS: Record<string, OperationDefinition> = {
 };
 
 export const ALL_OPERATION_NAMES = Object.keys(OPERATIONS);
+
+/** Names that earlier versions used for operations. Saved pipelines and scripts that use them still work. */
+export const LEGACY_OPERATION_NAMES: Record<string, string> = {
+  'NER Classifier': 'Column Classifier',
+};
+
+export const canonicalOperationName = (name: string): string => LEGACY_OPERATION_NAMES[name] ?? name;

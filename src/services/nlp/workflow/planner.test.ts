@@ -19,10 +19,10 @@ describe('planner', () => {
     expect(planFor(['1NF']).plan).toEqual(['CSV Data Loader', 'Data Cleaner', 'Atomicity Checker', 'Data Type Profiler', '1NF']);
   });
 
-  it('3NF pulls in FD Miner and 2NF, not NER', () => {
+  it('3NF pulls in FD Miner and 2NF, not the column classifier', () => {
     const { plan, addedAsDependencies } = planFor(['3NF']);
     expect(plan).toEqual(expect.arrayContaining(['1NF', 'FD Miner', '2NF', '3NF']));
-    expect(plan).not.toContain('NER Classifier');
+    expect(plan).not.toContain('Column Classifier');
     expect(addedAsDependencies).not.toContain('3NF');
   });
 

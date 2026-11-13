@@ -49,7 +49,7 @@ export const OPERATION_VISUALS: Record<string, OperationVisual> = {
   'data-cleaner': { icon: Eraser },
   'atomicity-checker': { icon: Atom },
   'data-profiler': { icon: BarChart3 },
-  'ner-classifier': { icon: Tags },
+  'column-classifier': { icon: Tags },
   '1nf': { glyph: '1NF' },
   '2nf': { glyph: '2NF' },
   '3nf': { glyph: '3NF' },

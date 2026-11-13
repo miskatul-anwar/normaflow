@@ -30,9 +30,9 @@ export const ANCHORS: Record<string, Anchor> = {
     aliases: [/\bprofil\w*/i, /\b(data|column) ?types?\b/i, /\binfer (the )?types?\b/i],
     phrases: ['profile the data types', 'detect the type of each column', 'infer column datatypes', 'what type is each field', 'analyse column formats'],
   },
-  'NER Classifier': {
-    aliases: [/\bner\b/i, /\bclassif\w*/i, /\bentity (type|types|recognition|recognizer|recogniser)\b/i, /\bsemantic (type|types|tag|tags)\b/i, /\bclassify entities\b/i],
-    phrases: ['classify the entities in the columns', 'tag columns as person, place or date', 'find out what each column means', 'semantic classification of columns', 'recognise named entities'],
+  'Column Classifier': {
+    aliases: [/\bcolumn classif\w*/i, /\bner\b/i, /\bclassif\w*/i, /\bentity (type|types|recognition|recognizer|recogniser)\b/i, /\bsemantic (type|types|tag|tags)\b/i, /\bclassify entities\b/i],
+    phrases: ['classify the entities in the columns', 'tag columns as person, place or date', 'find out what each column means', 'semantic classification of columns', 'what kind of data is each column'],
   },
   '1NF': {
     aliases: [/\b1 ?nf\b/i, /\bfirst normal form\b/i, /\bnormal form (1|one)\b/i, /\bnf ?1\b/i],

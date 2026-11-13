@@ -4,9 +4,9 @@ import { detectForeignKeys } from './foreignKeyDetector';
 
 export class RelationDetectorService {
   /**
-   * Named Entity Recognition (NER) for CSV column headers and sample data.
-   * Delegates to the NLP semantic profiler, which fuses column-name evidence
-   * with value-pattern evidence.
+   * Classifies a column (identifier, person name, price, date, ...) from its header and sample values.
+   * Delegates to the semantic profiler, which fuses column-name evidence with value-pattern evidence.
+   * Rule-based; it is not a trained named-entity-recognition model.
    */
   public static classifyColumnEntity(tableName: string, colName: string, sampleValues: any[]): EntityTag {
     const samples = sampleValues

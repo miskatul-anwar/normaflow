@@ -20,7 +20,7 @@ describe('hybrid resolver', () => {
 
   it('negation keeps the excluded op out and an excluded dependency is a conflict, not a silent add', async () => {
     const ok = await resolve("normalize to BCNF but don't classify entities", new NullProvider());
-    expect(ok.plan).not.toContain('NER Classifier');
+    expect(ok.plan).not.toContain('Column Classifier');
     const bad = await resolve('give me BCNF but skip 3NF', new NullProvider());
     expect(bad.plan).toEqual([]);
     expect(bad.message).toMatch(/needs 3NF/);

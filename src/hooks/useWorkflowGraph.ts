@@ -24,7 +24,7 @@ import {
   type Node,
 } from '@xyflow/react';
 import { MarkerType } from '@xyflow/react';
-import { OPERATIONS } from '../config/operations';
+import { OPERATIONS, canonicalOperationName } from '../config/operations';
 import { topologicalSortWorkflow, validateSequence } from '../utils/workflowValidation';
 import { validateEdgeConnection } from '../utils/edgeRules';
 import { ValidationResult } from '../types';
@@ -377,7 +377,13 @@ export function useWorkflowGraph({ log }: UseWorkflowGraphOptions = {}) {
           return false;
         }
         const incoming = data as Record<string, unknown>;
-        const loadedNodes = incoming.nodes as Node[];
+        // Pipelines saved by earlier versions may use an operation's old name.
+        const loadedNodes = (incoming.nodes as Node[]).map(n => {
+          const d = n.data as { label?: string; operationId?: string } | undefined;
+          const label = d?.label ? canonicalOperationName(d.label) : undefined;
+          if (!d || !label || label === d.label) return n;
+          return { ...n, data: { ...d, label, operationId: OPERATIONS[label]?.id ?? d.operationId } };
+        });
         const loadedEdges = (incoming.edges as Edge[]) ?? [];
 
         const seq = validateSequence(loadedNodes);

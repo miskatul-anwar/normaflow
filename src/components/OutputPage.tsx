@@ -335,7 +335,7 @@ export default function OutputPage({ tabId, tabs = [] }: { tabId: string; tabs?:
                 />
               )}
 
-              {/* Multi-Table NER Tags & Relational Overview */}
+              {/* Multi-table column classification and relational overview */}
               {isMultiTable && multiTables.length > 0 && (
                 <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
                   <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-5 py-3">
