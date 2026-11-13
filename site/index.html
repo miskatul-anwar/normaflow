@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
+  <title>NormaFlow: normalize raw tables into a relational design</title>
+  <meta name="description" content="NormaFlow is a desktop app that turns CSV and spreadsheet files into a normalized relational design: functional dependencies, keys, 3NF/BCNF, ER diagram and SQL. It runs on your machine.">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#download">Skip to download</a>
+
+  <header class="top">
+    <div class="wrap bar">
+      <a class="brand" href="./"><img src="assets/icon.webp" width="32" height="32" alt="">NormaFlow</a>
+      <nav aria-label="Project links">
+        <a href="https://github.com/miskatul-anwar/normaflow">Source</a>
+        <a href="https://github.com/miskatul-anwar/normaflow/blob/main/CHANGELOG.md">Changelog</a>
+        <a href="https://github.com/miskatul-anwar/normaflow/blob/main/docs/QUALITY.md">Quality</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero wrap">
+      <h1>From raw tables to a relational design</h1>
+      <p class="lead">NormaFlow reads CSV and spreadsheet files, finds the functional dependencies and keys, decomposes the data to 3NF or BCNF, and gives you the ER diagram, SQL and a report. Everything runs on your computer.</p>
+
+      <div id="download" class="card dl" aria-live="polite">
+        <p id="dl-status" class="muted">Looking up the latest version…</p>
+        <noscript><p>JavaScript is off. <a href="https://github.com/miskatul-anwar/normaflow/releases/latest">Open the latest release on GitHub</a>.</p></noscript>
+      </div>
+
+      <div id="more" class="more" hidden>
+        <h2>All downloads</h2>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th scope="col">System</th><th scope="col">File</th><th scope="col">Size</th><th scope="col">SHA-256</th></tr></thead>
+            <tbody id="files"></tbody>
+          </table>
+        </div>
+        <p class="muted small" id="size-note"></p>
+      </div>
+    </section>
+
+    <section class="wrap install" aria-labelledby="install-h">
+      <h2 id="install-h">Installing</h2>
+      <details id="n-windows">
+        <summary>Windows</summary>
+        <p>Run the <code>.exe</code> installer (or the <code>.msi</code> for managed installs). The installer is not code-signed, so Windows may show <em>Windows protected your PC</em>. Choose <em>More info</em>, then <em>Run anyway</em>.</p>
+      </details>
+      <details id="n-macos">
+        <summary>macOS</summary>
+        <p>Open the <code>.dmg</code> and drag NormaFlow to Applications. Pick <em>Apple Silicon</em> for an M1 or later Mac and <em>Intel</em> for an older one (Apple menu, About This Mac). The app is not notarized, so the first time, right-click it and choose <em>Open</em>.</p>
+      </details>
+      <details id="n-linux">
+        <summary>Linux</summary>
+        <p><strong>AppImage:</strong> <code>chmod +x NormaFlow_*.AppImage</code>, then run it. <strong>Debian/Ubuntu:</strong> <code>sudo apt install ./NormaFlow_*.deb</code>. <strong>Fedora/RHEL:</strong> <code>sudo dnf install ./NormaFlow-*.rpm</code>.</p>
+      </details>
+      <details>
+        <summary>Check the download</summary>
+        <p>Compare the SHA-256 in the table with the one you compute: <code>sha256sum FILE</code> (Linux), <code>shasum -a 256 FILE</code> (macOS) or <code>Get-FileHash FILE</code> (Windows PowerShell).</p>
+      </details>
+    </section>
+
+    <section class="wrap what" aria-labelledby="what-h">
+      <h2 id="what-h">What it does</h2>
+      <ul class="grid">
+        <li><h3>Describe the goal</h3><p>Type what you want in plain words, such as “normalize to 3NF and generate SQL”, or “run all steps”. NormaFlow shows the pipeline it will build before it runs.</p></li>
+        <li><h3>A pipeline you can edit</h3><p>Nineteen steps from loading to the report. Add, remove and reorder them on a canvas, with undo.</p></li>
+        <li><h3>Checked decompositions</h3><p>Every result is tested for lossless join and dependency preservation, so you see when BCNF costs you a constraint.</p></li>
+        <li><h3>Ready-to-use outputs</h3><p>ER diagram in four notations, SQL DDL, normalized data, and a report that downloads as PDF.</p></li>
+        <li><h3>Private by design</h3><p>Your files are analyzed on your machine. The two small models it uses ship inside the installer, and the app needs no network.</p></li>
+        <li><h3>Suggested names</h3><p>A small on-device model proposes names for new relations. They are marked <em>suggested</em>, and you can rename them.</p></li>
+      </ul>
+    </section>
+
+    <section class="wrap shots" aria-labelledby="shots-h">
+      <h2 id="shots-h">A look inside</h2>
+      <figure>
+        <img src="assets/shot-pipeline.webp" width="1600" height="1000" loading="lazy" alt="The NormaFlow pipeline page: operations list on the left, a request box above the canvas, and the pipeline as connected steps.">
+        <figcaption>The pipeline page.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/shot-output.webp" width="1600" height="1000" loading="lazy" alt="The NormaFlow Output page: a sidebar of results and the normal-form view with each relation's keys and source dependency.">
+        <figcaption>The Output page.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/shot-erd.webp" width="1600" height="1091" loading="lazy" alt="An ER diagram in Crow's foot notation with four tables.">
+        <figcaption>The ER diagram, here in Crow's foot notation.</figcaption>
+      </figure>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    <p>NormaFlow is open source. This page makes one request, to the GitHub API, to list the latest release; it uses no cookies and no analytics.</p>
+    <p><a href="https://github.com/miskatul-anwar/normaflow/releases">All releases</a> · <a href="https://github.com/miskatul-anwar/normaflow/issues">Report a problem</a> · <a href="https://github.com/miskatul-anwar/normaflow/blob/main/LICENSE">Licence</a></p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

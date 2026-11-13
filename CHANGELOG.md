@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (download page)
+- `site/`: a one-page website that picks the installer for the visitor's system (Windows, macOS with both Apple Silicon and Intel, Linux), lists every installer with its size and SHA-256, and explains the unsigned-installer prompts. It reads the latest release from the GitHub API when the page loads, so it needs no update after a release; if GitHub cannot be reached it links to the Releases page. No cookies, no analytics, a strict content-security policy. `.github/workflows/pages.yml` publishes it to GitHub Pages when `site/` changes on `main`.
+
+### Fixed
+- The README release badge said v2.6.0 for a v3.0.0 release; it now reads the latest release from GitHub.
+
 ### Added ("run everything" in the request box)
 - A request such as "run all steps", "run everything", "use every option", "the whole pipeline" or "end to end" now builds the pipeline from **every operation in the sidebar** (all 19). Before, these words were ignored and the request matched nothing. Skips still apply: "run everything except the report" gives 18 steps, and "run all steps without 3NF" also drops the steps that need 3NF (BCNF, Relation Generator, SQL Generator). A SQL dialect and "run" in the same request still work. Plain requests such as "normalize all tables to 3NF" are unchanged.
 

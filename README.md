@@ -7,7 +7,7 @@
 **Turn raw CSV files into normalized database schemas — ERDs, SQL DDL and full normalization reports — in seconds.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-115e59.svg)](LICENSE)
-[![Release: v3.0.0](https://img.shields.io/badge/Release-v2.6.0-0284c7.svg?logo=github)](https://github.com/miskatul-anwar/normaflow/releases)
+[![Release](https://img.shields.io/github/v/release/miskatul-anwar/normaflow?logo=github&color=0284c7)](https://github.com/miskatul-anwar/normaflow/releases)
 [![CI](https://github.com/miskatul-anwar/normaflow/actions/workflows/ci.yml/badge.svg)](https://github.com/miskatul-anwar/normaflow/actions/workflows/ci.yml)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Built with Tauri](https://img.shields.io/badge/Built%20with-Tauri%202-FFC131?logo=tauri&logoColor=black)](https://tauri.app)
@@ -48,7 +48,7 @@ Drop in one or many CSV or spreadsheet files (Excel `.xlsx` `.xlsm` `.xlsb` `.xl
 
 ### Download (recommended)
 
-Grab the latest installer for your platform from the [**Releases page**](https://github.com/miskatul-anwar/normaflow/releases):
+Use the [**download page**](https://miskatul-anwar.github.io/normaflow/), which picks the installer for your system, or grab one from the [**Releases page**](https://github.com/miskatul-anwar/normaflow/releases):
 
 | Platform | Artifact |
 |---|---|
@@ -57,7 +57,7 @@ Grab the latest installer for your platform from the [**Releases page**](https:/
 | Linux | `.deb` / `.rpm` / `.AppImage` |
 
 > [!NOTE]
-> macOS builds are unsigned. On first launch right-click → **Open**, or allow the app under *System Settings → Privacy & Security*.
+> macOS builds are unsigned. On first launch right-click → **Open**, or allow the app under *System Settings → Privacy & Security*. The Windows installer is not code-signed either, so SmartScreen may ask you to choose *More info → Run anyway*.
 
 ### Build from source
 
