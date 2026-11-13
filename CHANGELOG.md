@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-11-13
+
 ### Added (download page)
 - `site/`: a one-page website that picks the installer for the visitor's system (Windows, macOS with both Apple Silicon and Intel, Linux), lists every installer with its size and SHA-256, and explains the unsigned-installer prompts. It reads the latest release from the GitHub API when the page loads, so it needs no update after a release; if GitHub cannot be reached it links to the Releases page. No cookies, no analytics, a strict content-security policy. The hero is a real result (`enrollment.csv` under 3NF and BCNF, with the dependency that BCNF loses) in relation-schema notation, set in Computer Modern and Inter (SIL OFL, bundled in `site/assets/fonts` with their licences). `.github/workflows/pages.yml` publishes it to GitHub Pages when `site/` changes on `main`.
 
