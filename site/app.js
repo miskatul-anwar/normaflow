@@ -56,7 +56,7 @@
 
     var mine = files.filter(function (f) { return f.c.os === os; }).sort(function (x, y) { return x.c.rank - y.c.rank; });
     if (mine.length) {
-      card.appendChild(el('p', 'meta')).appendChild(el('span', 'chip', 'NormaFlow ' + version));
+      card.appendChild(el('p', 'ver', 'NormaFlow ' + version));
       var btns = el('div', 'btns');
       var shown = os === 'macos' ? mine.slice(0, 2) : mine.slice(0, 1);
       shown.forEach(function (f, i) {
@@ -70,14 +70,16 @@
         ? 'Not sure which Mac you have? Apple menu, About This Mac: “Apple M…” means Apple Silicon, “Intel” means Intel. ' + shown.map(function (f) { return f.c.kind + ' ' + size(f.a.size); }).join(' · ') + '.'
         : f0.c.kind + ' · ' + size(f0.a.size) + ' · ' + f0.c.note));
       if (os === 'windows' || os === 'macos') {
-        card.appendChild(el('p', 'warn', os === 'windows'
+        var w = el('p', 'warn'); w.appendChild(el('b', null, 'First launch. '));
+        w.appendChild(document.createTextNode(os === 'windows'
           ? 'The installer is not code-signed, so Windows may warn you. Choose More info, then Run anyway.'
           : 'The app is not notarized. The first time, right-click it and choose Open.'));
+        card.appendChild(w);
       }
       var d = $('n-' + os); if (d) d.open = true;
     } else {
-      card.appendChild(el('p', 'meta')).appendChild(el('span', 'chip', 'NormaFlow ' + version));
-      card.appendChild(el('p', null, os === 'mobile'
+      card.appendChild(el('p', 'ver', 'NormaFlow ' + version));
+      card.appendChild(el('p', 'meta', os === 'mobile'
         ? 'NormaFlow is a desktop app for Windows, macOS and Linux. Open this page on a computer to download it.'
         : 'Pick your system from the list below.'));
     }
@@ -86,8 +88,8 @@
     ['windows', 'macos', 'linux'].forEach(function (name) {
       files.filter(function (f) { return f.c.os === name; }).sort(function (x, y) { return x.c.rank - y.c.rank; }).forEach(function (f) {
         total = Math.max(total, f.a.size || 0);
-        var tr = el('tr', f.c.os === os ? 'mine' : '');
-        var sys = el('td'); sys.appendChild(el('strong', null, OS_NAME[name])); sys.appendChild(el('div', 'muted small', f.c.note + (f.c.arch ? '' : '')));
+        var tr = el('tr');
+        var sys = el('td'); if (f.c.os === os) sys.appendChild(el('span', 'you', 'Your system')); sys.appendChild(el('strong', null, OS_NAME[name])); sys.appendChild(el('div', 'muted small', f.c.note));
         var file = el('td'); file.appendChild(link(f.a.browser_download_url, f.a.name));
         var sum = el('td', 'sum'); var h = String(f.a.digest || '').replace(/^sha256:/, '');
         if (/^[0-9a-f]{64}$/i.test(h)) {
@@ -108,6 +110,14 @@
       ? 'Each installer is large because it includes the two models the app runs on your computer.'
       : '';
   }
+
+  /** The specimen: switch between the two real results shown for enrollment.csv. */
+  ['3nf', 'bcnf'].forEach(function (k) {
+    var btn = $('b-' + k); if (!btn) return;
+    btn.addEventListener('click', function () {
+      ['3nf', 'bcnf'].forEach(function (j) { $('p-' + j).hidden = j !== k; $('b-' + j).setAttribute('aria-pressed', String(j === k)); });
+    });
+  });
 
   fetch('https://api.github.com/repos/' + REPO + '/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
     .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })

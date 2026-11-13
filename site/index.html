@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
-  <title>NormaFlow: normalize raw tables into a relational design</title>
-  <meta name="description" content="NormaFlow is a desktop app that turns CSV and spreadsheet files into a normalized relational design: functional dependencies, keys, 3NF/BCNF, ER diagram and SQL. It runs on your machine.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; font-src 'self'; script-src 'self'; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
+  <title>NormaFlow</title>
+  <meta name="description" content="NormaFlow is a desktop app that finds functional dependencies and keys in CSV files, splits the table to 3NF or BCNF, and checks every split for lossless join and dependency preservation.">
   <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="preload" href="assets/fonts/KaTeX_Main-Regular.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,8 +15,8 @@
 
   <header class="top">
     <div class="wrap bar">
-      <a class="brand" href="./"><img src="assets/icon.webp" width="32" height="32" alt="">NormaFlow</a>
-      <nav aria-label="Project links">
+      <a class="brand" href="./"><img src="assets/icon.webp" width="26" height="26" alt="">NormaFlow</a>
+      <nav aria-label="Project">
         <a href="https://github.com/miskatul-anwar/normaflow">Source</a>
         <a href="https://github.com/miskatul-anwar/normaflow/blob/main/CHANGELOG.md">Changelog</a>
         <a href="https://github.com/miskatul-anwar/normaflow/blob/main/docs/QUALITY.md">Quality</a>
@@ -24,78 +25,115 @@
   </header>
 
   <main>
-    <section class="hero wrap">
-      <h1>From raw tables to a relational design</h1>
-      <p class="lead">NormaFlow reads CSV and spreadsheet files, finds the functional dependencies and keys, decomposes the data to 3NF or BCNF, and gives you the ER diagram, SQL and a report. Everything runs on your computer.</p>
+    <section class="wrap hero">
+      <div class="intro">
+        <h1><span>Find the keys.</span> <span>Split the table.</span> <span>Check what you lost.</span></h1>
+        <p class="lead">NormaFlow reads a CSV or spreadsheet, mines its functional dependencies, splits it to 3NF or BCNF, and tests every split for lossless join and dependency preservation. It runs on your computer.</p>
 
-      <div id="download" class="card dl" aria-live="polite">
-        <p id="dl-status" class="muted">Looking up the latest version…</p>
-        <noscript><p>JavaScript is off. <a href="https://github.com/miskatul-anwar/normaflow/releases/latest">Open the latest release on GitHub</a>.</p></noscript>
-      </div>
-
-      <div id="more" class="more" hidden>
-        <h2>All downloads</h2>
-        <div class="tablewrap">
-          <table>
-            <thead><tr><th scope="col">System</th><th scope="col">File</th><th scope="col">Size</th><th scope="col">SHA-256</th></tr></thead>
-            <tbody id="files"></tbody>
-          </table>
+        <div id="download" class="dl" aria-live="polite">
+          <p id="dl-status" class="muted">Looking up the latest version…</p>
+          <noscript><p><a href="https://github.com/miskatul-anwar/normaflow/releases/latest">Open the latest release on GitHub.</a></p></noscript>
         </div>
-        <p class="muted small" id="size-note"></p>
       </div>
+
+      <figure class="spec" aria-labelledby="spec-cap">
+        <div class="spec-head">
+          <span class="mono">enrollment.csv, 120 rows</span>
+          <div class="seg" role="group" aria-label="Normal form">
+            <button type="button" id="b-3nf" aria-pressed="false" aria-controls="p-3nf">3NF</button>
+            <button type="button" id="b-bcnf" aria-pressed="true" aria-controls="p-bcnf">BCNF</button>
+          </div>
+        </div>
+        <div class="spec-body">
+          <p class="label">Table</p>
+          <p class="mono rel">Enrollment(<u>student_id</u>, <u>course</u>, teacher)</p>
+          <p class="label">Dependencies found</p>
+          <p class="mono fd">{student_id, course} <span class="arr">→</span> teacher</p>
+          <p class="mono fd">teacher <span class="arr">→</span> course</p>
+
+          <div id="p-bcnf" class="panel">
+            <p class="label">BCNF</p>
+            <p class="mono rel">R<sub>1</sub>(<u>teacher</u>, course)</p>
+            <p class="mono rel">R<sub>2</sub>(<u>student_id</u>, <u>teacher</u>)</p>
+            <dl class="verdict">
+              <div><dt>Lossless join</dt><dd class="ok">holds</dd></div>
+              <div><dt>Dependencies kept</dt><dd class="bad">1 of 2</dd></div>
+            </dl>
+            <p class="note"><span class="bad">Lost:</span> <span class="mono">{student_id, course} <span class="arr">→</span> teacher</span>. No single relation holds it any more.</p>
+          </div>
+
+          <div id="p-3nf" class="panel" hidden>
+            <p class="label">3NF</p>
+            <p class="mono rel">Enrollment(<u>student_id</u>, <u>course</u>, teacher)</p>
+            <dl class="verdict">
+              <div><dt>Lossless join</dt><dd class="ok">holds</dd></div>
+              <div><dt>Dependencies kept</dt><dd class="ok">2 of 2</dd></div>
+            </dl>
+            <p class="note">The table is already in 3NF, so nothing is lost. <span class="mono">teacher <span class="arr">→</span> course</span> still repeats a course for each of a teacher's students; BCNF removes that.</p>
+          </div>
+        </div>
+        <figcaption id="spec-cap">Output of a real run. Underlined attributes form the key.</figcaption>
+      </figure>
+    </section>
+
+    <section class="wrap files" aria-labelledby="files-h" id="more" hidden>
+      <h2 id="files-h">All downloads</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th scope="col">System</th><th scope="col">File</th><th scope="col">Size</th><th scope="col">SHA-256</th></tr></thead>
+          <tbody id="files"></tbody>
+        </table>
+      </div>
+      <p class="muted small" id="size-note"></p>
+    </section>
+
+    <section class="wrap how" aria-labelledby="how-h">
+      <h2 id="how-h">What is in the app</h2>
+      <dl class="terms">
+        <div><dt>Request box</dt><dd>Type a goal, such as “normalize to 3NF and generate SQL” or “run all steps”. The preview lists the steps before anything runs.</dd></div>
+        <div><dt>Pipeline</dt><dd>Nineteen steps from loading to the report, on a canvas you can edit. Each workspace keeps its own files, pipeline and results.</dd></div>
+        <div><dt>Checks</dt><dd>Every decomposition is tested for lossless join and dependency preservation, on the data as well as on the dependencies.</dd></div>
+        <div><dt>Output</dt><dd>ER diagram in Chen, Crow’s foot, Barker or UML notation. SQL DDL for PostgreSQL, MySQL, SQLite or ANSI. Normalized data and a PDF report.</dd></div>
+        <div><dt>Input</dt><dd>CSV, XLSX, XLS and ODS. Each sheet of a workbook becomes a table, and several files are linked by detected foreign keys.</dd></div>
+        <div><dt>Table names</dt><dd>A small model suggests names for new tables and marks them <em>suggested</em>. It was right for about two tables in three in our test, so check them. You can rename any of them.</dd></div>
+        <div><dt>Privacy</dt><dd>Files are analyzed on your machine. The two small models ship in the installer, and the app makes no network requests while it runs.</dd></div>
+      </dl>
+    </section>
+
+    <section class="wrap shots" aria-label="Screenshots">
+      <figure>
+        <img src="assets/shot-pipeline.webp" width="1600" height="1000" loading="lazy" alt="The pipeline page: operations on the left, the request box above the canvas, and the pipeline drawn as connected steps.">
+        <figcaption><strong>Pipeline page.</strong> The request box turns a sentence into steps; the canvas shows them and lets you edit them.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/shot-erd.webp" width="1600" height="1091" loading="lazy" alt="An ER diagram in Crow's foot notation with four tables and their keys.">
+        <figcaption><strong>ER diagram.</strong> Crow’s foot notation, with keys marked. It exports as SVG or as diagram source.</figcaption>
+      </figure>
     </section>
 
     <section class="wrap install" aria-labelledby="install-h">
       <h2 id="install-h">Installing</h2>
       <details id="n-windows">
         <summary>Windows</summary>
-        <p>Run the <code>.exe</code> installer (or the <code>.msi</code> for managed installs). The installer is not code-signed, so Windows may show <em>Windows protected your PC</em>. Choose <em>More info</em>, then <em>Run anyway</em>.</p>
+        <p>Run the <code>.exe</code> installer, or the <code>.msi</code> for managed installs. The installer is not code-signed, so Windows may show “Windows protected your PC”. Choose <em>More info</em>, then <em>Run anyway</em>.</p>
       </details>
       <details id="n-macos">
         <summary>macOS</summary>
-        <p>Open the <code>.dmg</code> and drag NormaFlow to Applications. Pick <em>Apple Silicon</em> for an M1 or later Mac and <em>Intel</em> for an older one (Apple menu, About This Mac). The app is not notarized, so the first time, right-click it and choose <em>Open</em>.</p>
+        <p>Open the <code>.dmg</code> and drag NormaFlow to Applications. Choose Apple Silicon for an M1 or later Mac and Intel for an older one (Apple menu, About This Mac). The app is not notarized, so the first time, right-click it and choose <em>Open</em>.</p>
       </details>
       <details id="n-linux">
         <summary>Linux</summary>
-        <p><strong>AppImage:</strong> <code>chmod +x NormaFlow_*.AppImage</code>, then run it. <strong>Debian/Ubuntu:</strong> <code>sudo apt install ./NormaFlow_*.deb</code>. <strong>Fedora/RHEL:</strong> <code>sudo dnf install ./NormaFlow-*.rpm</code>.</p>
+        <p><strong>AppImage:</strong> <code>chmod +x NormaFlow_*.AppImage</code>, then run it. <strong>Debian, Ubuntu:</strong> <code>sudo apt install ./NormaFlow_*.deb</code>. <strong>Fedora, RHEL:</strong> <code>sudo dnf install ./NormaFlow-*.rpm</code>.</p>
       </details>
       <details>
-        <summary>Check the download</summary>
-        <p>Compare the SHA-256 in the table with the one you compute: <code>sha256sum FILE</code> (Linux), <code>shasum -a 256 FILE</code> (macOS) or <code>Get-FileHash FILE</code> (Windows PowerShell).</p>
+        <summary>Check a download</summary>
+        <p>Compare the SHA-256 in the table with the one you compute: <code>sha256sum FILE</code> on Linux, <code>shasum -a 256 FILE</code> on macOS, <code>Get-FileHash FILE</code> in Windows PowerShell.</p>
       </details>
-    </section>
-
-    <section class="wrap what" aria-labelledby="what-h">
-      <h2 id="what-h">What it does</h2>
-      <ul class="grid">
-        <li><h3>Describe the goal</h3><p>Type what you want in plain words, such as “normalize to 3NF and generate SQL”, or “run all steps”. NormaFlow shows the pipeline it will build before it runs.</p></li>
-        <li><h3>A pipeline you can edit</h3><p>Nineteen steps from loading to the report. Add, remove and reorder them on a canvas, with undo.</p></li>
-        <li><h3>Checked decompositions</h3><p>Every result is tested for lossless join and dependency preservation, so you see when BCNF costs you a constraint.</p></li>
-        <li><h3>Ready-to-use outputs</h3><p>ER diagram in four notations, SQL DDL, normalized data, and a report that downloads as PDF.</p></li>
-        <li><h3>Private by design</h3><p>Your files are analyzed on your machine. The two small models it uses ship inside the installer, and the app needs no network.</p></li>
-        <li><h3>Suggested names</h3><p>A small on-device model proposes names for new relations. They are marked <em>suggested</em>, and you can rename them.</p></li>
-      </ul>
-    </section>
-
-    <section class="wrap shots" aria-labelledby="shots-h">
-      <h2 id="shots-h">A look inside</h2>
-      <figure>
-        <img src="assets/shot-pipeline.webp" width="1600" height="1000" loading="lazy" alt="The NormaFlow pipeline page: operations list on the left, a request box above the canvas, and the pipeline as connected steps.">
-        <figcaption>The pipeline page.</figcaption>
-      </figure>
-      <figure>
-        <img src="assets/shot-output.webp" width="1600" height="1000" loading="lazy" alt="The NormaFlow Output page: a sidebar of results and the normal-form view with each relation's keys and source dependency.">
-        <figcaption>The Output page.</figcaption>
-      </figure>
-      <figure>
-        <img src="assets/shot-erd.webp" width="1600" height="1091" loading="lazy" alt="An ER diagram in Crow's foot notation with four tables.">
-        <figcaption>The ER diagram, here in Crow's foot notation.</figcaption>
-      </figure>
     </section>
   </main>
 
   <footer class="wrap foot">
-    <p>NormaFlow is open source. This page makes one request, to the GitHub API, to list the latest release; it uses no cookies and no analytics.</p>
+    <p>Open source, MIT licence. This page asks the GitHub API for the latest release when it loads and sets no cookies.</p>
     <p><a href="https://github.com/miskatul-anwar/normaflow/releases">All releases</a> · <a href="https://github.com/miskatul-anwar/normaflow/issues">Report a problem</a> · <a href="https://github.com/miskatul-anwar/normaflow/blob/main/LICENSE">Licence</a></p>
   </footer>
 

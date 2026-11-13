@@ -1,0 +1,11 @@
+Fonts used by this page, all under the SIL Open Font License, Version 1.1 (https://openfontlicense.org/):
+
+  KaTeX_Main-Regular, KaTeX_Main-Italic, KaTeX_Main-Bold, KaTeX_Typewriter-Regular
+    Computer Modern as packaged by KaTeX.
+    Copyright (c) 2009-2010 Design Science, Inc. (www.mathjax.org)
+    Copyright (c) 2014-2018 Khan Academy (www.khanacademy.org)
+
+  Inter (latin 400 and 600), via @fontsource/inter
+    Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)
+
+The fonts are redistributed unmodified.
