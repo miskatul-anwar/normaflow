@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (quality document)
+- `docs/QUALITY.md` now states that NormaFlow follows the ISO/IEC 25000 SQuaRE series as a self-assessment (not a certification), with current numbers (646 tests, 0 accessibility violations), the Windows, Linux and macOS install check, and the limits of the on-device naming model.
+
 ### Removed
 - Root-level leftovers: `NOT_DONE.md`, `IMPROVEMENTS.md` (the audit work list and its open-items file; both remain in git history), a duplicate `icon.png` (the app uses `public/icon.png`) and `shell.nix`.
 
