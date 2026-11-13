@@ -5,7 +5,9 @@
  * negation marks a hit as excluded. Several hits are all kept as targets; the
  * planner takes the union of their dependency closures.
  */
-import { ANCHORS, NEGATION, RUN_WORDS, TRAILING_NEGATION, WEAK_ALIASES } from './anchors';
+import { ALL_STEPS_PATTERNS, ANCHORS, NEGATION, RUN_WORDS, TRAILING_NEGATION, WEAK_ALIASES } from './anchors';
+import { ALL_OPERATION_NAMES } from '../../../config/operations';
+import { dependencyClosure } from './planner';
 
 export type Dialect = 'postgresql' | 'mysql' | 'sqlite' | 'ansi';
 
@@ -84,14 +86,21 @@ export function resolveLexical(text: string): LexicalResult {
   const pending: string[] = [];
   let anyWeak = false;
   let matchedClauses = 0;
+  let everything = false;
 
   for (const clause of splitClauses(text)) {
+    const wantsAll = ALL_STEPS_PATTERNS.some(re => re.test(clause));
+    everything ||= wantsAll;
     let hits = hitsIn(clause);
     const present = new Set(hits.map(h => h.operation));
     hits = hits.filter(h => !(SUPERSEDED_BY[h.operation] ?? []).some(s => present.has(s)));
     // "read"/"open"/"load" are only loader requests when nothing else is asked in the clause.
     if (hits.length > 1) hits = hits.filter(h => h.operation !== 'CSV Data Loader');
 
+    if (hits.length === 0 && wantsAll) {
+      matchedClauses++;
+      continue;
+    }
     if (hits.length === 0) {
       const content = clause.split(/[^a-z0-9']+/).filter(w => w && !STOPWORDS.has(w) && !RUN_WORDS.test(w));
       if (content.length >= 2) pending.push(clause);
@@ -105,6 +114,13 @@ export function resolveLexical(text: string): LexicalResult {
       const list = negated ? excluded : targets;
       if (!list.includes(hit.operation)) list.push(hit.operation);
     }
+  }
+
+  if (everything) {
+    // Every operation in the sidebar, minus anything the user asked to skip and whatever needs a skipped step.
+    const skip = new Set(excluded);
+    const all = ALL_OPERATION_NAMES.filter(op => ![...dependencyClosure([op])].some(d => skip.has(d)));
+    targets.splice(0, targets.length, ...all);
   }
 
   const confidence = matchedClauses === 0 ? 'none' : pending.length > 0 || anyWeak ? 'medium' : 'high';

@@ -14,6 +14,7 @@ export interface NLCase {
   kind: 'keyword' | 'paraphrase' | 'typo' | 'acronym' | 'compound' | 'negation' | 'junk';
 }
 
+import { ALL_OPERATION_NAMES } from '../config/operations';
 const c = (kind: NLCase['kind'], text: string, targets: string[], extra: Partial<NLCase> = {}): NLCase => ({ kind, text, targets, ...extra });
 
 export const NL_CASES: NLCase[] = [
@@ -33,6 +34,9 @@ export const NL_CASES: NLCase[] = [
   c('keyword', 'analyse the cardinality', ['Cardinality Analyzer']),
   c('keyword', 'detect foreign keys between the tables', ['Relation Detector']),
   c('keyword', 'classify the entities', ['Column Classifier']),
+  c('keyword', 'run all steps', ALL_OPERATION_NAMES),
+  c('keyword', 'use every option in the sidebar and run it', ALL_OPERATION_NAMES),
+  c('negation', 'run everything except the report', ALL_OPERATION_NAMES.filter(n => n !== 'Report Generator'), { excluded: ['Report Generator'] }),
   c('keyword', 'check atomicity of the values', ['Atomicity Checker']),
   c('keyword', 'second normal form please', ['2NF']),
   c('keyword', 'generate the relation schemas', ['Relation Generator']),

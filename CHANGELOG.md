@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added ("run everything" in the request box)
+- A request such as "run all steps", "run everything", "use every option", "the whole pipeline" or "end to end" now builds the pipeline from **every operation in the sidebar** (all 19). Before, these words were ignored and the request matched nothing. Skips still apply: "run everything except the report" gives 18 steps, and "run all steps without 3NF" also drops the steps that need 3NF (BCNF, Relation Generator, SQL Generator). A SQL dialect and "run" in the same request still work. Plain requests such as "normalize all tables to 3NF" are unchanged.
+
 ### Changed (operation renamed)
 - The **NER Classifier** operation is now the **Column Classifier**. It was never named-entity recognition: it is a rule-based step that labels each column (identifier, person name, price, date, ...) from its header and sample values, and the labels are shown in the multi-file overview only. Saved pipelines, scripts and command-line calls that use the old name still work, and "run ner" still finds the step.
 

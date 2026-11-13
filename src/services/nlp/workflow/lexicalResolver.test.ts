@@ -62,4 +62,45 @@ describe('lexical resolver', () => {
   it('splits clauses', () => {
     expect(splitClauses('a, b and c; d then e')).toEqual(['a', 'b', 'c', 'd', 'e']);
   });
+
+  describe('"run everything"', () => {
+    const all = Object.keys(OPERATIONS);
+    it.each([
+      'Run all steps', 'run all the steps', 'run every step', 'execute all operations', 'use all the options',
+      'run everything', 'do it all', 'everything', 'run the whole pipeline', 'full pipeline', 'complete analysis',
+      'end to end', 'run each step', 'include every operation and run it',
+    ])('%j selects every operation in the sidebar', q => {
+      expect([...t(q)].sort()).toEqual([...all].sort());
+    });
+
+    it('honours "skip" and drops what needs the skipped step', () => {
+      expect(t('run everything except the report')).not.toContain('Report Generator');
+      expect(t('run everything except the report')).toHaveLength(all.length - 1);
+      const noBcnf = t('run all steps but skip BCNF');
+      expect(noBcnf).not.toContain('BCNF');
+      expect(noBcnf).toContain('3NF');
+      const no3nf = t('run all steps without 3NF');
+      // BCNF, Relation Generator (and so SQL Generator) need 3NF; Lossless Check needs only 2NF.
+      for (const gone of ['3NF', 'BCNF', 'Relation Generator', 'SQL Generator']) expect(no3nf).not.toContain(gone);
+      expect(no3nf).toContain('Lossless Check');
+      expect(no3nf).toHaveLength(all.length - 4);
+    });
+
+    it('keeps the run flag and the SQL dialect', () => {
+      const r = resolveLexical('run everything in postgres');
+      expect(r.options).toEqual({ run: true, dialect: 'postgresql' });
+      expect(r.confidence).toBe('high');
+    });
+
+    it.each([
+      ['normalize all tables to 3NF', ['3NF']],
+      ['show all functional dependencies', ['FD Miner']],
+      ['convert all columns to 1NF', ['1NF']],
+      ['give me the full report', ['Report Generator']],
+      ['explain each step', []],
+    ])('does not read %j as "everything"', (q, expected) => {
+      expect(t(q).length).toBeLessThan(all.length);
+      if (expected.length) expect(t(q)).toEqual(expected);
+    });
+  });
 });

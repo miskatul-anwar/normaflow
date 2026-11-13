@@ -101,3 +101,16 @@ export const NEGATION = /\b(don'?t|do not|dont|without|skip|exclude|except|exclu
 export const RUN_WORDS = /\b(run|execute|go ahead|start it|and run|then run)\b/i;
 /** Negation after the operation: "sql is not needed", "skip nothing but erd is unnecessary". */
 export const TRAILING_NEGATION = /\b(is(n'?t| not)|are(n'?t| not)|not) (needed|required|necessary|wanted)\b|\bunnecessary\b|\bno thanks\b/;
+
+/**
+ * "Run every step": the user wants the whole pipeline, not one operation. Deliberately narrow, so that
+ * "normalize all tables to 3NF" or "show all functional dependencies" are not read as "everything".
+ */
+export const ALL_STEPS_PATTERNS: RegExp[] = [
+  /\b(all|every)( of)?( the| your| its| these)?( available| single)? ?(steps?|operations?|options?|stages?|nodes?|tools?|modules?|features?|analys[ei]s|checks?)\b/i,
+  /\b(run|execute|apply|use|include|enable|add|do) each( and every)?( of)?( the)? ?(steps?|operations?|options?|stages?|nodes?|tools?)\b/i,
+  /\b(full|whole|entire|complete)( normali[sz]ation| analysis| end[- ]to[- ]end)? ?(pipeline|workflow|flow|process|analysis|run)\b/i,
+  /\bend[- ]to[- ]end\b/i,
+  /\b(run|do|apply|execute|include|use|enable|add|give me|show me|with|try) (everything|it all|all of it|the works)\b/i,
+  /^(please |pls )?(everything|it all|all of it|the works|all)[.!]*$/i,
+];
